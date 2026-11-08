@@ -1,0 +1,35 @@
+<p class="lead">The tools are small programs over the library's public API. hdrg-cli, hdrg-video, hdrg-ffmpeg and hdrg-inspect in {{src:tools}} are installed; hdrg-gui ({{src:tools/gui}}) is built on request and not installed. Two more for developers live in {{src:tests/tools}}: they read internal headers and are not installed.</p>
+
+{{fig:tools}}
+
+<h2>hdrg-cli: still images</h2>
+<p>{{src:tools/hdrg-cli.c}} runs {{api:hdrg_convert}} with every setting as an option (and <code>--set name=value</code> by the library's names; the three CLIs parse <code>--set</code> and the enumerated options alike, and hdrg-cli and hdrg-video the filters, <code>--filter</code> and <code>--filter-opt</code>: {{src:tools/common.c}}). The writer is <code>--format</code>'s (an id such as <code>hdrg.jxl</code>, or its name or extension; <code>--jpeg</code>, <code>--jxl</code>, <code>--avif</code>, <code>--heif</code> the same), else the output's extension's (<code>.jxl</code>, <code>.avif</code>, <code>.heic</code>), else JPEG; <code>--format-opt key=value</code> gives it an option and <code>--list-formats</code> lists the codecs and their options. The AVIF and HEIF modules are loaded from beside the program.</p>
+<pre><code>hdrg-cli --stats in.jpg out.jpg                 # gain-map JPEG (the default)
+hdrg-cli --hybrid in.jpg out.jpg                # PQ base + SDR-recovering gain map
+hdrg-cli --pq in.jpg out.jpg                    # single-layer PQ
+hdrg-cli in.jpg out.jxl                         # JPEG XL: PQ base + SDR-recovering gain map
+hdrg-cli --format-opt quality=95 in.jpg out.jxl # an option of the writer
+hdrg-cli --preset anime in.png out.avif         # 10-bit AVIF (the module), the ANIME starting point
+hdrg-cli --output-size 3840x0 in.jpg out.jpg    # the SCALE stage
+hdrg-cli --plugin ./my.so --filter scale=org.example.scaler --filter-opt taps=4 in.jpg out.jpg</code></pre>
+<p>The options are the settings' names (<code>--diffuse-max</code>, <code>--apl-peak-fraction</code>, <code>--peak-nits</code>, <code>--effort</code>, <code>--deband</code>, …), plus <code>--gpu auto|filters</code>, <code>--threads</code>, <code>--list-filters</code> and <code>--stats</code>.</p>
+
+<h2>hdrg-video: frames through pipes</h2>
+<p>{{src:tools/hdrg-video.c}} runs a session over a y4m stream (or raw RGB with <code>--size</code>) and writes PQ (raw RGB, or <code>--y4m</code> for 4:2:0 10-bit BT.2020). It exposes the session's options: <code>--temporal</code> (two-pass reads the input twice), <code>--latency</code>, <code>--past</code> / <code>--future</code>, <code>--proxy</code>, <code>--out-rate</code>, <code>--output-size</code>, <code>--filter</code>, <code>--gpu</code>, <code>--shed</code>, <code>--set name=value</code>. It prints the latency report and MaxCLL / MaxFALL in x265's form, and can write HDR10+ JSON for x265 (<code>--hdr10plus-json</code>), ST 2094-50 JSON and a <code>.cube</code> LUT of the STATIC mapping (<code>--export-lut</code>).</p>
+<pre><code>ffmpeg -i in.mp4 -f yuv4mpegpipe -strict -1 - | hdrg-video --y4m - - |
+  ffmpeg -i - -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -c:v libx265 out.mp4</code></pre>
+
+<h2>hdrg-ffmpeg: files</h2>
+<p>{{src:tools/hdrg-ffmpeg.c}} demuxes, decodes, grades and encodes a file with FFmpeg's libraries (dynamically linked) and {{src:tools/ffmpeg}}: 4:2:0 10-bit PQ / BT.2020 (libsvtav1 by default, else libx265), the mastering display on the stream, HDR10+ and ST 2094-50 on the packets, audio copied. AV1 film grain is taken from the decoder as parameters and put back into the PQ output by the session; <code>--hwaccel videotoolbox</code> with a <code>*_videotoolbox</code> encoder passes pixel buffers on the GPU when the session keeps its frames there (<code>--latency playback</code> or <code>low</code>), and under the default <code>--latency offline</code> maps them for the CPU in place, without a copy.</p>
+
+<h2>hdrg-gui</h2>
+<p>{{src:tools/gui}} (CMake <code>HDRG_BUILD_GUI=ON</code>): SDL3 and Dear ImGui. It opens stills and videos with the OS's decoders (AVFoundation / ImageIO, Media Foundation / WIC, GStreamer, or on Linux FFmpeg with <code>HDRG_GUI_MEDIA=ffmpeg</code>), plays them in an HDR window (extended-linear swapchain; the window's headroom becomes the display caps) as the graded HDR, the SDR original or both side by side (the SDR left, the HDR right), edits every setting (the fields are made from the settings table) and exports stills (by a format of its settings or the file's extension: JPEG, JPEG XL, and AVIF / HEIF with their modules beside it) and videos: HEVC 10-bit PQ without audio through VideoToolbox (macOS) or Media Foundation (Windows); on Linux, the FFmpeg build runs hdrg-ffmpeg (libsvtav1, else libx265, the audio copied) and the GStreamer build exports stills only.</p>
+
+<h2>Internal and developer tools</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>{{src:tools/hdrg-inspect.c|hdrg-inspect}}</td><td>Dumps a file's HDR signaling (ICC, cicp, HAGC, gain-map metadata, AVIF CICP / clli, HEIF boxes, a JPEG XL's color, intensity target and jhgm gain map); exits 0 when an HDR signal is present. Installed; it includes the public headers alone (and links the internal library only for the bundled libjxl).</td></tr>
+<tr><td>{{src:tests/tools/hdrg-bench.c|hdrg-bench}}</td><td>Median time of each stage (decode, passes A / B / C, render, color LUT).</td></tr>
+<tr><td>{{src:tests/tools/hdrg-predictor-data.c|hdrg-predictor-data}}</td><td>Training rows of the light predictor (features of each judged light and its pixels) for {{src:scripts/predictor}}.</td></tr>
+</tbody></table></div>

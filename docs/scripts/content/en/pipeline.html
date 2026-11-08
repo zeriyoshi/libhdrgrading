@@ -1,0 +1,58 @@
+<p class="lead">Every frame, a still image's or a session's, goes through the same core: pass A analyzes it, pass B plans the gain on cells, the render fits the plan to a display, and pass C applies it in bands. The caller's pixels are read three times as code values; nothing at full resolution is held in floating point.</p>
+
+{{fig:pipeline}}
+
+<h2>The sequence and the frame</h2>
+<p>{{src:src/pipeline/pipeline.c}} splits the work into what a sequence keeps and what each frame recomputes:</p>
+<ul>
+<li><strong>Sequence</strong> (<code>hdrg_pipeline_open</code>): the source color with its per-channel code tables (the EOTF of 256 or 65536 entries, with <code>sdr_eotf</code> applied), the color LUT into the rendition's gamut, the apply pass's per-worker scratch, the PREFILTER chain and the SCALE filter instances.</li>
+<li><strong>Frame</strong> (<code>hdrg_pipeline_frame</code> = <code>hdrg_pipeline_analyze</code> + <code>hdrg_pipeline_plan</code> + <code>hdrg_pipeline_bind</code>): the analysis, the plan and render, the binding of the plan to the output size; then the caller pulls the output rows band by band (<code>hdrg_pipeline_rows</code>).</li>
+</ul>
+<p>A session analyzes frames ahead of rendering them (when they are sent) and can analyze a reduced proxy (<code>hdrg_pipeline_proxy</code>: the center pixels of 2<sup>shift</sup> squares) while the plan and the apply pass stay at the source size.</p>
+
+<h2>Noise and PREFILTER</h2>
+<p>Before the chain runs, {{src:src/core/noise.c}} measures the frame at full resolution on a fixed grid of 16 &times; 16 tiles (Immerkær's method on the quieter tiles): the Y' noise overall and in eight luma levels, Cb and Cr, the blockiness of the 8-pixel grid and the ringing near edges. The filters read it as {{api:HDRG_SD_NOISE}} side data, so a deblocking or deringing filter does nothing on a frame without block artifacts or ringing. Pass A measures the noise again on the frame the core reads (after the chain); that estimate cores pass C.</p>
+<p>The chain is the filters added to the PREFILTER stage (up to {{api:HDRG_PREFILTER_MAX}}, in the order added) or, without any, the built-in filters the params ask for, in this order: <code>hdrg.deblock</code> &rarr; <code>hdrg.dering</code> &rarr; <code>hdrg.defringe</code> &rarr; <code>hdrg.deband</code> &rarr; <code>hdrg.mctf</code> (sessions only) &rarr; <code>hdrg.denoise.spatial</code> (when the grain policy is not PRESERVE). Under a GPU context the pipeline takes each filter's Metal, Vulkan or WebGPU version when one exists and a device is found. A build that left a family out ({{dev:build}}) gives it the strength 0 in every preset, and a params that asks for it gives {{api:HDRG_ERR_UNSUPPORTED}}. A filter that has nothing to do for a frame declares a passthrough; a still whose filters all pass through is converted as without the stage.</p>
+
+<h2>Pass A: analysis</h2>
+<p>{{src:src/core/analyze.c}} reads the frame once, by rows in parallel, and keeps statistics on cells:</p>
+<ul>
+<li>The analysis luminance La = max(Y, 0.7 &middot; max(R, G, B)), so a saturated light is not missed.</li>
+<li>A 4096-bin histogram of La for p99.5, the key (the log-average luminance) and the scene histogram (the cuts), merged from integer counts per worker.</li>
+<li>Per cell (4 &times; 4 pixels; 2 &times; 2 under {{api:HDRG_EFFORT_QUALITY}}): the mean and maximum La, the brightest channel, the mean Y.</li>
+<li><strong>Lights</strong>: connected components of bright cells, chamfer-distance rings around them, and the falloff of Y outward along rays. A region whose surround falls off evenly and monotonically in every direction (a glow) gets a boost share up to 1; one with a sharp edge (text, UI, a flat fill, a sunlit wall) or a falloff to one side does not. In doubt a region stays diffuse. {{api:hdrg_params_t.colored_lights|colored_lights}} judges saturated lights too.</li>
+<li>Optionally the ANALYZE stage ({{api:HDRG_STAGE_ANALYZE}}, when {{api:hdrg_params_t.light_predictor|light_predictor}} is above 0): {{src:src/core/predict.c}} gives each judged light's record (its core's box, its boost, ten features of its cells, its surround and the frame) to the stage's filter, the app's or else the small light predictor <code>hdrg.analyze.predict</code> (a fixed-point MLP, {{src:src/plugins/predict}}), and scales the light's boost and its cells' by (1 &minus; amount) + amount &times; the chance the filter gives it, so the check can only lower a doubtful light's boost.</li>
+<li>Sessions: black bars at the edges are left out of the statistics.</li>
+</ul>
+
+<h2>Pass B: plan</h2>
+<p>{{src:src/core/plan.c}} turns the analysis into the content's intent, independent of any display:</p>
+<ul>
+<li>The diffuse level: log2(diffuse_max) scaled by a smoothstep of the key (a low-key frame stays at the SDR level).</li>
+<li>The lights' boost share h on a bilateral grid: 8 &times; 8-pixel cells by 24 bins of log2 La, smoothed with [1 2 1], so a boost follows the luminance of its region and does not halo across an edge.</li>
+<li>The clarity base (a box blur of the cells' log2 La), the APL statistics per cell and, when there is noise, a coring table from the noise level function.</li>
+</ul>
+<p>{{api:HDRG_TEMPORAL_STATIC}} uses a fixed plan instead: no analysis, the same mapping for every pixel of the same code values (which {{api:hdrg_lut3d_export}} samples).</p>
+
+<h2>Render</h2>
+<p>{{src:src/core/render.c}} fits a plan to {{api:hdrg_display_caps_t}}: the diffuse multiplier and the span of the boost up to the peak, the APL budget's common factor (a binary search over the plan's cell statistics against {{api:hdrg_params_t.apl_peak_fraction|apl_peak_fraction}}, {{api:hdrg_params_t.apl_budget_nits|apl_budget_nits}} and the display's full-frame limit), the shoulder's peak (the display's or the format's, never the content's), the gamut and the output encoding. Rendering for another display reuses the plan.</p>
+
+<h2>SCALE</h2>
+<p>When the output size differs from the input's (or a filter is added to the stage), the apply pass reads the scaled code values band by band from the SCALE stage: the filter added to it, else a built-in scaler &mdash; {{api:hdrg_params_t.upscaler|upscaler}}'s (Lanczos, the edge-adaptive kernel, FSR 1 or NIS; NIS up to 2&times; on each side, past that Lanczos) for an output no smaller on either side, Lanczos otherwise. A build without the edge family defaults ANIME and GAME to Lanczos; a scaler the build left out is {{api:HDRG_ERR_UNSUPPORTED}}. The analysis and the plan stay at the input size; the plan's grid is mapped onto the output pixels.</p>
+
+<h2>Pass C: apply</h2>
+<p>{{src:src/core/apply.c}} renders 256-row bands in parallel and streams them to the encoder or the session's output. Each row runs in blocks of 16 pixels through the SIMD kernels:</p>
+<ul>
+<li>Code value &rarr; linear &rarr; La &rarr; t = log2 La.</li>
+<li>The gain g = diffuse + h(La) &middot; span (h sliced from the grid at the pixel's place and La) + the contrast slope + clarity. With noise, the gain and the clarity detail follow La cored toward its 3 &times; 3 mean, so the boost does not amplify grain.</li>
+<li>The color LUT (33&sup3;, tetrahedral, in the rendition's linear gamut) &times; 2<sup>g</sup>; highlight desaturation and the soft shoulder from 75 % of the peak.</li>
+<li>Single-layer PQ: the PQ code (8-bit with a triangular dither, or 16-bit). Two-layer forms: the SDR rendition (or the PQ primary of the hybrid) plus the log2 ratios summed into the gain-map cells.</li>
+<li>When measuring light (single-layer PQ, the hybrid's base): the largest and mean max(R, G, B) and a histogram that gives MaxCLL / FALL, HDR10+ and the ST 2094-50 curve back to the SDR.</li>
+<li>Video sessions: the grain the PREFILTER stage removed (RESYNTH), or the codec's film-grain parameters a frame carries (PRESERVE and RESYNTH), drawn back in PQ as it looked in SDR ({{src:src/core/grain.c}}).</li>
+</ul>
+
+<h2>Color</h2>
+<p>{{src:src/core/color.c}} keeps an input's color as primaries and per-channel transfer. Gamut expansion maps colors near the source boundary outward in Oklab LCh with lightness and hue fixed, protecting neutrals, pastels, dark tones, skin and memory colors; saturation scales chroma in the same map. Both are baked into the 33&sup3; LUT over the input's code values, and the luminance ratio multiplies the LUT's output, so a color inside the target and every neutral pass through unchanged.</p>
+
+<h2>Determinism</h2>
+<p>The passes split their work the same way for any thread count, reduce in a fixed order, take their dithers from {{src:src/foundation/include/hdrgrading/foundation/hash.h|hash.h}} and their transcendental functions from {{src:src/foundation/include/hdrgrading/foundation/fmath.h|fmath.h}}. Within one build and one SIMD tier the output bytes before encoding are identical (L0); across tiers with FMA they agree within one code (L0x); GPU versions agree with the CPU within the L2 tolerance ({{dev:verification#determinism|the determinism levels}}).</p>

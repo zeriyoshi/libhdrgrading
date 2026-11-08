@@ -1,0 +1,74 @@
+<p class="lead">libhdrgrading は、SDR の画像と動画を、HDR ディスプレイで違和感なく明るく見える HDR へグレーディングし、標準的な HDR の信号で書き出すライブラリです。C11 で書かれ、大域の状態を持たず、出力は決定的で、フィルタとコーデックのプラグインの ABI を持ちます。</p>
+
+<h2>何をするか</h2>
+<ul>
+<li><strong>静止画</strong>: JPEG・PNG・GIF と、オプトインの AVIF のモジュールがあれば AVIF を読み、HDR のファイルを書きます。既定は SDR を基本にしたゲインマップの JPEG (ISO 21496-1) で、HDR を表示できない環境でも正しい SDR が見えます。ほかに PQ を基本にする 2 つの形 (<em>ハイブリッド</em>: PQ + SDR を戻すゲインマップ、素の単層 PQ) があり、同じ 3 つの形を JPEG XL と、オプトインのビルド (<code>HDRG_WITH_AVIF</code> / <code>HDRG_WITH_HEIF</code>) では 10bit の AVIF と HEIF でも書けます。{{page:still}}を参照。</li>
+<li><strong>動画</strong>: セッションがフレーム (R'G'B' か平面の Y'CbCr) を受け取り、フレームごとの HDR10+ と SMPTE ST 2094-50 のメタデータ付きの単層 PQ を返します。<code>HDRG_WITH_TEMPORAL</code> (既定は OFF) のビルドではシーンの統計がシーンのフレームを追い、既定のビルドは各フレームを自分の統計で描きます。シークしても出力はバイトまで同じです (RECURSIVE を除く: {{dev:verification#determinism|決定性の水準}})。{{page:video}}を参照。</li>
+<li><strong>つなぎ込み</strong>: FFmpeg のフィルタと補助ライブラリ、GStreamer の要素、VapourSynth のプラグイン、ブラウザ用のモジュール (WebAssembly)、コマンドラインのツールと GUI。{{page:bindings}}と{{page:tools}}を参照。</li>
+</ul>
+
+<h2>絵の持ち上げ方</h2>
+<p>画素のゲインは 2 層です:</p>
+<ol>
+<li><strong>拡散面の倍率</strong>: フレームで 1 つの値。どの拡散面も同じ倍率で持ち上げるので ({{api:hdrg_params_t.diffuse_max|diffuse_max}} まで、既定 2 倍)、壁・紙・肌・文字は SDR のときの比を保ちます。暗い・ローキーのフレームは SDR の水準のままです。</li>
+<li><strong>光の上乗せ</strong>: 光の手がかりがある領域、つまり周りがどの向きにも同じようになだらかに落ちる明るい領域 (グロー・にじみ・鏡面のやわらかい縁) だけを、表示のピークへ向けてさらに伸ばします。</li>
+</ol>
+<p>平均輝度の上限 (既定はピークの 4 分の 1、BT.2408) がフレーム全体を抑えます。輝度の操作はどれも R・G・B に同じ比を掛けるので色相は構造的に変わらず、SDR の元より暗くなる画素もありません。色域の拡張 (Oklab で Display P3 へ) と彩度は 3D LUT に焼き、グレーディング (コントラスト・clarity・彩度・ハイライトの脱飽和) をその上に重ねます。</p>
+
+<h2>コードを形づくる原則</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>原則</th><th>実際にどうなっているか</th></tr></thead>
+<tbody>
+<tr><td>コンテンツの意図と表示を分ける</td><td>フレームのプランはコンテンツだけで決まり ({{api:hdrg_params_t}})、描画がそれを表示に合わせます ({{api:hdrg_display_caps_t}})。静止画のファイルは想定の視聴へ描き、表示を推測しません。</td></tr>
+<tr><td>出力は決定的</td><td>同じ入力・設定・ビルド・SIMD の階層なら、スレッド数によらずエンコード前のバイトが同じです ({{dev:verification#determinism|決定性の水準}})。ディザとノイズはカウンタのハッシュから、超越関数はライブラリ自身の数学関数から取り、仕事はスレッド数によらず同じに分けます。</td></tr>
+<tr><td>全解像度の float の面を持たない</td><td>3 回の走査は呼び出し元の符号値をチャネルごとの表でその場で復号し、結果はセルの格子に置きます。適用は帯ごとにエンコーダへ流します。</td></tr>
+<tr><td>色は来たままに持つ</td><td>入力の色は原色とチャネルごとの伝達特性 (ICC・CICP・EXIF・PNG のチャンク) で持ち、sRGB へ潰しません。解析はソースの値で行います。</td></tr>
+<tr><td>任意の処理は段に置く</td><td>ノイズ低減・deblock・deband・拡大・フレーム補間は段のフィルタで、外部のプラグインと同じ ABI で内蔵し、CPU 版と GPU 版があります。判定した光の確かめと、動画のフレームをまたぐ統計も段のフィルタです。</td></tr>
+<tr><td>任意の部分はビルドのオプション</td><td>動画の統計の時間方向のフィルタ・動き補償の補間・多フレームの拡大は CMake のオプション (既定 OFF) で、任意の内蔵プラグインはビルドから外せ、どのプラグインもライセンスを報告します。</td></tr>
+</tbody></table></div>
+
+<h2>ページ</h2>
+<div class="table-wrap"><table>
+<tbody>
+<tr><td>{{page:architecture}}</td><td>ライブラリの層と、ソースツリーとの対応。</td></tr>
+<tr><td>{{page:pipeline}}</td><td>1 枚のフレームが 3 回の走査 (解析・プラン・適用) と描画を通る流れ。</td></tr>
+<tr><td>{{page:still}}</td><td>hdrg_convert: 読み手・入力の色・3 つの形・書き手。</td></tr>
+<tr><td>{{page:video}}</td><td>セッション: フレームの流れ・時間のモード・遅延のプロファイル・シーク・メタデータ。</td></tr>
+<tr><td>{{page:gpu}}</td><td>WebGPU・Metal・Vulkan の下位層、シェーダ、GPU のフィルタ、GPU の上のコア。</td></tr>
+<tr><td>{{page:plugins}}</td><td>プラグインのホスト、段、フィルタとコーデックの ABI、内蔵のプラグイン。</td></tr>
+<tr><td>{{page:bindings}}</td><td>FFmpeg・GStreamer・VapourSynth・ブラウザのモジュール。</td></tr>
+<tr><td>{{page:tools}}</td><td>hdrg-cli・hdrg-video・hdrg-ffmpeg・hdrg-gui と内部のツール。</td></tr>
+</tbody></table></div>
+<p>ビルド・テスト・規約・API リファレンスは{{dev:index}}にあります。</p>
+
+<h2>最初のプログラム</h2>
+<pre><code>#include &lt;hdrgrading/hdrgrading.h&gt;
+
+/* jpeg, jpeg_size: メモリ上の SDR のファイル */
+hdrg_context_t *ctx;
+hdrg_params_t params;
+hdrg_status_t status;
+uint8_t *out;
+size_t out_size;
+
+status = hdrg_context_create(NULL, &amp;ctx);          /* コアごとに 1 スレッド */
+if (status != HDRG_OK) {
+    return status;
+}
+
+hdrg_params_init(&amp;params, HDRG_PRESET_PHOTO);      /* ANIME・GAME も */
+status = hdrg_convert(ctx, jpeg, jpeg_size, &amp;params, NULL, NULL, &amp;out, &amp;out_size);
+if (status == HDRG_OK) {
+    /* out: ゲインマップの JPEG (既定の形と容器) */
+    hdrg_free(out);
+}
+
+hdrg_context_destroy(ctx);</code></pre>
+<p>CMake のパッケージ (<code>find_package(hdrgrading)</code>、ターゲット <code>hdrgrading::hdrgrading</code>) か pkg-config (<code>hdrgrading</code>) でリンクします。関数は{{dev:api/index}}にあります。</p>
+
+<h2>リポジトリのほかの資料</h2>
+<ul>
+<li>{{src:README.md}}: ビルド・install・コマンドラインの例。</li>
+<li>{{src:CONTRIBUTING.md}}: 開発環境・プリセット・CI・依存。</li>
+<li>{{src:LICENSE-APACHE}} / {{src:LICENSE-MIT}}・{{src:NOTICE}}: ライブラリと同梱の部品のライセンス。</li>
+</ul>

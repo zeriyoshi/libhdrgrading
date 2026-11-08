@@ -1,0 +1,55 @@
+<p class="lead">{{api:hdrg_convert}} takes the bytes of an SDR file and returns the bytes of an HDR file; {{api:hdrg_convert_raw}} takes decoded pixels with their H.273 primaries and transfer. Both run the pipeline once and write one of three forms with the context's writer: a codec plugin, JPEG by default, JPEG XL built in, AVIF and HEIF as modules.</p>
+
+{{fig:still}}
+
+<h2>The steps</h2>
+<ol>
+<li><strong>Settings.</strong> The three structs are checked and resolved ({{api:hdrg_params_t}}, {{api:hdrg_display_caps_t}}, {{api:hdrg_encode_params_t}}; NULL = the defaults). A still resolves <code>effort</code> AUTO to QUALITY and <code>grain_policy</code> AUTO to PRESERVE (RESYNTH needs the frames of a video and gives {{api:HDRG_ERR_UNSUPPORTED}}). {{api:HDRG_OUTPUT_AUTO|output_mode AUTO}} is the writer's default form.</li>
+<li><strong>Format.</strong> The context's readers probe the file's head in the order registered (the built-in JPEG, PNG and GIF, then the app's plugins, the AVIF module among them). None that takes it (a PNG or a GIF too, in a build that left that reader out): {{api:HDRG_ERR_UNSUPPORTED_FORMAT}}.</li>
+<li><strong>Decode</strong> (the reader, {{src:src/host/codec_host.c}}): interleaved R'G'B' of 8 or 16 bits into the picture the host allocates, its color, its EXIF. The size is checked against the context's <code>max_pixels</code> before any pixel is allocated ({{api:HDRG_ERR_LIMIT}}).</li>
+<li><strong>Orientation.</strong> EXIF orientations 2 to 8 are applied to the pixels, and the EXIF tag carried to the output is set to 1.</li>
+<li><strong>Pipeline</strong> (see {{page:pipeline}}): opened for the file's assumed viewing, run once, its rows streamed to the writer.</li>
+<li><strong>Writer</strong> ({{src:src/container.c}}): the rows band by band, then the gain map and its metadata, the profile and the light the form needs; the writer's bytes are the output.</li>
+</ol>
+
+<h2>The input color</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Input</th><th>Reader</th><th>Color, in order of preference</th></tr></thead>
+<tbody>
+<tr><td>JPEG</td><td><code>hdrg.jpeg</code>, jpegli ({{src:src/plugins/jpeg/jpeg.c}})</td><td>ICC &gt; EXIF R03 (Adobe RGB) &gt; sRGB. Subsampled Y'CbCr (4:2:0 / 4:2:2) is taken as raw 16-bit planes and upsampled by the library's chroma-from-luma ({{api:hdrg_params_t.chroma_fit|chroma_fit}}: LINEAR, or SEGMENTED for line art), in 8-iMCU-row bands, rounded to 8 bits once.</td></tr>
+<tr><td>PNG</td><td><code>hdrg.png</code>, libpng ({{src:src/plugins/png/png.c}})</td><td>cICP &gt; iCCP &gt; sRGB &gt; cHRM / gAMA; 16-bit samples kept.</td></tr>
+<tr><td>GIF</td><td><code>hdrg.gif</code>, giflib ({{src:src/plugins/gif/gif.c}})</td><td>sRGB; the first image only.</td></tr>
+<tr><td>AVIF</td><td>the AVIF module (<code>org.hdrgrading.avif</code>, the system's libavif: {{src:src/plugins/avif/avif.c}})</td><td>ICC, else CICP of an SDR transfer; PQ and HLG sources are rejected. The picture is cropped to its clean aperture (clap); the rotation / mirror (irot / imir) become the orientation.</td></tr>
+</tbody></table></div>
+<p>ICC profiles of the matrix + TRC kind are read directly ({{src:src/io/icc.c}}); LUT-based ones go through lcms2 to BT.2020 &gamma;2.2 16-bit. Without lcms2 (<code>HDRG_WITH_LCMS2=OFF</code>) a JPEG's hybrid and PQ forms are {{api:HDRG_ERR_ICC_UNSUPPORTED}} (they need a generated P3 PQ profile), the JPEG writer's target gamut is sRGB, and there is no JPEG XL (libjxl's color management is lcms2's); the writers that signal their color by CICP need no profile. HEIF is written, not read.</p>
+
+<h2>The three forms</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>{{api:hdrg_output_mode_t|output_mode}}</th><th>Base image</th><th>HDR through</th><th>Shows correctly in</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_OUTPUT_GAINMAP}} (JPEG's, AVIF's and HEIF's default)</td><td>The real SDR rendition (sRGB, or Display P3 when the gamut is expanded)</td><td>A monochrome gain map toward HDR (ISO 21496-1), declared at most <code>gainmap_headroom_cap_stops</code> (3 stops) of headroom</td><td>Gain-map readers in HDR (iOS 18+ / macOS 15+, Android 15+, Chrome); every other viewer in correct SDR</td></tr>
+<tr><td>{{api:HDRG_OUTPUT_HYBRID}} (JPEG XL's default)</td><td>PQ pixels (in a JPEG with a "P3 PQ" ICC profile with cicp and a HAGC tag; elsewhere by CICP)</td><td>The PQ base itself; a gain map back to SDR (HDR-base direction)</td><td>HDR-aware viewers in HDR; unmanaged SDR viewers show it dark; libultrahdr rejects the direction</td></tr>
+<tr><td>{{api:HDRG_OUTPUT_PQ}}</td><td>Single-layer PQ</td><td>The PQ base; a JPEG's ICC HAGC curve (SMPTE ST 2094-50) for low-headroom displays</td><td>PQ-aware viewers</td></tr>
+</tbody></table></div>
+<p>In a JPEG the gain map is a second JPEG stream linked by MPF, with the ISO 21496-1 metadata, Apple's HDRGainMap XMP and the Adobe / Google hdrgm XMP (each switchable). The HAGC tag carries the gain curve back to the SDR measured by the apply pass, so pipelines that keep only the ICC profile can still tone-map ({{src:src/core/dynamic.c}}, {{src:src/plugins/jpeg/jpeg_mux.c}}).</p>
+
+<h2>The writers</h2>
+<p>{{api:hdrg_context_set_writer}} picks the writer of the following conversions by id with its options (key=value, {{api:hdrg_options_set}}; a NULL id with options gives them to the default <code>hdrg.jpeg</code>, NULL with NULL goes back to the defaults); hdrg-cli takes <code>--format</code> (else the output's extension) and <code>--format-opt</code>, hdrg-gui a format of its settings ({{page:tools}}).</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Writer</th><th>Codec</th><th>Signaling</th><th>Options</th></tr></thead>
+<tbody>
+<tr><td><code>hdrg.jpeg</code> (the default)</td><td>jpegli, 4:4:4</td><td>ICC (and HAGC), MPF + XMP for the gain map</td><td><code>quality</code> (98), <code>gainmap_quality</code> (90), <code>hagc</code>, <code>icc_lumi</code>, <code>apple_xmp</code>, <code>hdrgm_xmp</code></td></tr>
+<tr><td><code>hdrg.jxl</code> (built in, the jxl family: lcms2 needed)</td><td>JPEG XL, the bundled libjxl; the 16-bit base as one frame</td><td>The base's color encoding (an HDR base: BT.2100 PQ with its intensity target the rendition's peak); the gain map an 8-bit grey codestream in the <code>jhgm</code> box with its ISO 21496-1 metadata and the alternate's color; the Exif in its box</td><td><code>quality</code> (90; 100 lossless), <code>gainmap_quality</code> (90), <code>effort</code> (7)</td></tr>
+<tr><td><code>org.hdrgrading.avif</code> (module, <code>HDRG_WITH_AVIF</code>)</td><td>10-bit AV1 through the system's libavif</td><td>CICP only (no ICC); the PQ bases in a BT.2020 container (CICP 9/16/9) with MaxCLL / MaxFALL (clli); the gain map is ISO 21496-1</td><td><code>quality</code> (90), <code>gainmap_quality</code> (90), <code>speed</code> (6), <code>threads</code> (0: the conversion's), <code>chroma</code> (444 / 420)</td></tr>
+<tr><td><code>org.hdrgrading.heif</code> (module, opt-in <code>HDRG_WITH_HEIF</code>)</td><td>10-bit HEVC (libheif's x265)</td><td>As AVIF; the gain map both as ISO 21496-1 (tmap) and as Apple's auxiliary HDR gain map ({{src:src/plugins/heif/bmff.c}})</td><td><code>quality</code> (70), <code>gainmap_quality</code> (70), <code>chroma</code> (420 / 444), <code>apple_xmp</code></td></tr>
+</tbody></table></div>
+<p>The modules are loaded by the app ({{api:hdrg_context_load_plugin}}); hdrg-cli and hdrg-gui load those beside them. Both modules are off by default, and building them is at your own risk ({{dev:build}}). The encoded bytes may depend on the CPU (jpegli and libjxl pick their instructions); the pixels before encoding do not. The AVIF module's bytes are the system's encoder's: libaom's output may change with its version and, in some versions, with the threads it runs on, so the library does not guarantee the same AVIF bytes across runs or machines. It encodes on the conversion's threads by default; <code>threads=1</code> keeps the bytes of a given libaom the same whatever the conversion's threads (the tests run so).</p>
+
+<h2>The assumed viewing</h2>
+<p>A file has no display to ask, so the container sets one (<code>hdrg_container_caps</code> from the display caps and the encode params): SDR white 203 cd/m&sup2;, the peak of <code>peak_nits</code> or the format's (1000 cd/m&sup2; for PQ; SDR white &times; 2<sup>cap</sup> for a gain map, 3 stops by default), Display P3 (for an ICC writer such as JPEG only with lcms2, else sRGB, which needs no profile; the CICP writers' PQ and hybrid bases go in a BT.2020 container). Viewers scale a gain map by their own headroom over the declared one, so a display with less headroom shows every gain scaled down, never below the SDR.</p>
+
+<h2>Output size</h2>
+<p>{{api:hdrg_encode_params_t.output_width|output_width}} and <code>output_height</code> (one side 0 keeps the aspect ratio) run the SCALE stage: a filter added with {{api:hdrg_context_add_filter}}, else the built-in scaler of {{api:hdrg_params_t.upscaler|upscaler}} for an enlargement and Lanczos otherwise. The analysis and the plan stay at the input size.</p>
+
+<h2>Results</h2>
+<p>The output buffer carries its allocator, so {{api:hdrg_free}} works even after the context is destroyed. {{api:hdrg_get_last_stats}} returns what the last successful conversion measured and applied: the diffuse level, the area of lights, the APL before and after, the noise, the blockiness, the ringing and the SIMD tier that ran.</p>

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "automerge": false,
+  "github-actions": {
+    "enabled": false
+  },
+  "dockerfile": {
+    "enabled": false
+  },
+  "git-submodules": {
+    "enabled": true
+  },
+  "customDatasources": {
+    "valgrind": {
+      "defaultRegistryUrlTemplate": "https://sourceware.org/pub/valgrind/",
+      "format": "html"
+    }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Valgrind source release built in the dev image (update VALGRIND_SHA256 in the same PR)",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\nARG VALGRIND_VERSION=(?<currentValue>\\S+)"
+      ],
+      "extractVersionTemplate": "^valgrind-(?<version>\\d+\\.\\d+\\.\\d+)\\.tar\\.bz2$"
+    },
+    {
+      "customType": "regex",
+      "description": "LLVM major version installed from apt.llvm.org",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/", "/^\\.devcontainer/devcontainer\\.json$/"],
+      "matchStrings": [
+        "ARG LLVM_VERSION=(?<currentValue>\\d+)",
+        "\"LLVM_VERSION\": \"(?<currentValue>\\d+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "llvm/llvm-project",
+      "extractVersionTemplate": "^llvmorg-(?<version>\\d+)\\.\\d+\\.\\d+$",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "description": "VapourSynth built in the dev image (kept equal to the third_party/vapoursynth branch)",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG VAPOURSYNTH_VERSION=(?<currentValue>\\S+)"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "vapoursynth/vapoursynth",
+      "versioningTemplate": "regex:^R(?<major>\\d+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "emsdk installed in the dev image (kept equal to the third_party/emsdk branch)",
+      "managerFilePatterns": ["/^\\.devcontainer/Dockerfile$/"],
+      "matchStrings": ["ARG EMSDK_VERSION=(?<currentValue>\\S+)"],
+      "datasourceTemplate": "github-tags",
+      "depNameTemplate": "emscripten-core/emsdk",
+      "versioningTemplate": "semver"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["git-submodules"],
+      "matchUpdateTypes": ["digest"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": [
+        "third_party/emsdk",
+        "third_party/libpng",
+        "third_party/zlib",
+        "third_party/unity",
+        "third_party/giflib",
+        "third_party/imgui",
+        "third_party/libjxl",
+        "third_party/brotli"
+      ],
+      "versioning": "semver-coerced"
+    },
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": ["third_party/lcms2"],
+      "versioning": "regex:^lcms(?<major>\\d+)\\.(?<minor>\\d+)(?:\\.(?<patch>\\d+))?$"
+    },
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": ["third_party/sdl"],
+      "versioning": "regex:^release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": ["third_party/vapoursynth"],
+      "versioning": "regex:^R(?<major>\\d+)$"
+    },
+    {
+      "matchManagers": ["git-submodules"],
+      "matchDepNames": ["third_party/jpegli"],
+      "enabled": false
+    },
+    {
+      "description": "VapourSynth moves in lockstep: the submodule branch and the dev image ARG",
+      "matchDepNames": ["third_party/vapoursynth", "vapoursynth/vapoursynth"],
+      "groupName": "vapoursynth"
+    },
+    {
+      "description": "emsdk moves in lockstep: the submodule branch and the dev image ARG",
+      "matchDepNames": ["third_party/emsdk", "emscripten-core/emsdk"],
+      "groupName": "emsdk",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

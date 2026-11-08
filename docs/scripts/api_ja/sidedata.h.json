@@ -1,0 +1,576 @@
+[
+ {
+  "key": "52e0023c5cb3f987",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading — the side data of a frame: its noise (the analysis's,",
+   "given to the filters), its motion (an app's or a filter's vectors) and its",
+   "codec's film grain parameters (an app's, from its decoder). An app gives",
+   "a session's frames their motion and grain in these formats; the filters",
+   "read and write them (filter.h)"
+  ],
+  "ja": [
+   "libhdrgrading — フレームのサイドデータ: ノイズ (解析のもので、フィルタへ渡す)、動き (アプリかフィルタのベクトル)、コーデックの粒のパラメータ (アプリがデコーダから受け取ったもの)。アプリはセッションのフレームの動きと粒をこの形式で渡し、フィルタはそれを読み書きします (filter.h)"
+  ]
+ },
+ {
+  "key": "47ff64398cfe15f5",
+  "of": "HDRG_SD_NOISE",
+  "en": [
+   "Side data of a frame (nego_side_data). HDRG_SD_NOISE, version",
+   "HDRG_SD_NOISE_VERSION (1 while the ABI is not frozen): the input frame's",
+   "noise and compression artifacts as HDRG_SD_NOISE_FLOATS",
+   "floats, levels of its code values over the full scale (an 8-bit code is",
+   "1/255). Y', Cb, Cr apply the source's luminance coefficients to its code",
+   "values.",
+   "  [0]       Y' over every level; < 0 = not measured (frame too small)",
+   "  [1] - [8] Y' of the levels in each eighth of [0, 1]; < 0 = too few",
+   "            samples",
+   "  [9], [10] Cb, Cr",
+   "  [11]      blockiness: Y' steps across the 8-pixel grid over those",
+   "            inside it, on the quieter areas, edges (steps over 12 8-bit",
+   "            codes) left out (1 = no block artifacts)",
+   "  [12]      block step: the mean |Y' step| across the grid minus the one",
+   "            inside it, on the same areas (0 = no block artifacts)",
+   "  [13]      ringing: in the grid's blocks with an edge, the mean",
+   "            |Y' - its 3x3 mean| of the samples away from the edge over",
+   "            the same in the blocks without one (1 = no ringing)",
+   "  [14]      ringing level: the first mean minus the second (0 = none)"
+  ],
+  "ja": [
+   "フレームのサイドデータ (nego_side_data)。HDRG_SD_NOISE、版 HDRG_SD_NOISE_VERSION (ABI がフリーズするまでは 1): 入力のフレームのノイズと圧縮の跡を HDRG_SD_NOISE_FLOATS 個の float で表したもので、値は符号値のフルスケールに対する水準です (8bit の 1 コードは 1/255)。Y'、Cb、Cr は、ソースの輝度の係数をその符号値に当てたものです。",
+   "  [0]       すべての水準を通した Y'。< 0 = 測っていない (フレームが小さすぎる)",
+   "  [1] - [8] [0, 1] を 8 等分したそれぞれの水準の Y'。< 0 = 標本が",
+   "            少なすぎる",
+   "  [9], [10] Cb、Cr",
+   "  [11]      ブロック性: 8 画素の格子をまたぐ Y' の段差と格子の内側の段差の",
+   "            比。静かなほうの領域で、エッジ (8bit で 12 コードを超える段差)",
+   "            は除く (1 = ブロックの跡なし)",
+   "  [12]      ブロックの段差: 格子をまたぐ |Y' の段差| の平均から格子の内側の",
+   "            ものを引いた値。同じ領域で (0 = ブロックの跡なし)",
+   "  [13]      リンギング: エッジのある格子のブロックでの、エッジから離れた標本の",
+   "            |Y' - その 3x3 の平均| の平均と、エッジのないブロックでの同じ",
+   "            値の比 (1 = リンギングなし)",
+   "  [14]      リンギングの水準: 1 つ目の平均から 2 つ目を引いた値 (0 = なし)"
+  ]
+ },
+ {
+  "key": "7a3abe49f3eb39e4",
+  "of": "HDRG_SD_MOTION",
+  "en": [
+   "HDRG_SD_MOTION, version HDRG_SD_MOTION_VERSION (1 while the ABI is not",
+   "frozen): the motion of a frame's blocks, in the",
+   "host's byte order: a hdrg_sd_motion_t, then its fields, each a",
+   "hdrg_sd_motion_field_t followed by its grid_w x grid_h",
+   "hdrg_sd_motion_block_t in rows. A field's vector v of the block at q (the",
+   "frame's pixels) is the motion from frame t to frame t + ref_offset in",
+   "quarter pixels: the content at q in frame t is at q + v there. An INTERP",
+   "job's output (job_set_side_data) carries the motion between its two",
+   "frames at its phase: ref_offset 1, the output's block at q reading the",
+   "job's frame at q - phase v and the next one at q + (1 - phase) v (the",
+   "session caps the gain of the output's blocks of low confidence with",
+   "it). The app gives a session frame's",
+   "(hdrg_session_frame_t.motion: a codec's, a game engine's): the frame's",
+   "PREFILTER filters and its INTERP jobs read it (nego_side_data). A",
+   "PREFILTER job's output (job_set_side_data) adds its fields to the frame's",
+   "after the app's (HDRG_SD_MOTION_FIELDS at most, the app's first) for the",
+   "frame's INTERP jobs and the session's output (not the PREFILTER filters",
+   "after it): hdrg.mctf's, the motion to the frames of its window at phase 0."
+  ],
+  "ja": [
+   "HDRG_SD_MOTION、版 HDRG_SD_MOTION_VERSION (ABI がフリーズするまでは 1): フレームのブロックの動きで、ホストのバイト順です: hdrg_sd_motion_t、続いてその場で、場はそれぞれ hdrg_sd_motion_field_t の後に grid_w x grid_h 個の hdrg_sd_motion_block_t を行の順に並べたものです。位置 q (フレームの画素) のブロックの場のベクトル v は、フレーム t からフレーム t + ref_offset への 1/4 画素単位の動きです: フレーム t の q にある内容は、そちらでは q + v にあります。INTERP のジョブの出力 (job_set_side_data) は、その位相での 2 つのフレームの間の動きを運びます: ref_offset は 1 で、出力の q のブロックはジョブのフレームを q - phase v で、次のフレームを q + (1 - phase) v で読みます (セッションはこれを使って、信頼度の低い出力のブロックのゲインを頭打ちにします)。アプリはセッションのフレームの動きを渡します (hdrg_session_frame_t.motion: コーデックのもの、ゲームエンジンのもの): そのフレームの PREFILTER のフィルタと INTERP のジョブがそれを読みます (nego_side_data)。PREFILTER のジョブの出力 (job_set_side_data) は、自分の場をフレームの場のアプリのものの後ろに足し (合わせて HDRG_SD_MOTION_FIELDS まで、アプリのものが先)、そのフレームの INTERP のジョブとセッションの出力に渡します (後ろの PREFILTER のフィルタには渡しません): hdrg.mctf のものは、位相 0 でのウィンドウのフレームへの動きです。"
+  ]
+ },
+ {
+  "key": "7a3398ce394ea87c",
+  "of": "HDRG_SD_MOTION_FIELDS",
+  "en": [
+   "a frame's fields at most"
+  ],
+  "ja": [
+   "フレームの場の最大の数"
+  ]
+ },
+ {
+  "key": "4978894c79797f16",
+  "of": "HDRG_MOTION_INTERNAL",
+  "en": [
+   "where a field's vectors come from"
+  ],
+  "ja": [
+   "場のベクトルの出どころ"
+  ]
+ },
+ {
+  "key": "0185dc61b13e866e",
+  "of": "HDRG_MOTION_INTERNAL",
+  "en": [
+   "the library's estimate (hdrg.interp.mc, hdrg.mctf)"
+  ],
+  "ja": [
+   "ライブラリの推定 (hdrg.interp.mc、hdrg.mctf)"
+  ]
+ },
+ {
+  "key": "88f8b3ec9e7b38d2",
+  "of": "HDRG_MOTION_CODEC",
+  "en": [
+   "a decoder's (hints: not for interpolation)"
+  ],
+  "ja": [
+   "デコーダのもの (手がかり: 補間には使わない)"
+  ]
+ },
+ {
+  "key": "ec5c73c780f17de0",
+  "of": "HDRG_MOTION_ENGINE",
+  "en": [
+   "a game engine's"
+  ],
+  "ja": [
+   "ゲームエンジンのもの"
+  ]
+ },
+ {
+  "key": "f806339b565d2b0a",
+  "of": "HDRG_MOTION_FLOW",
+  "en": [
+   "an optical flow's"
+  ],
+  "ja": [
+   "オプティカルフローのもの"
+  ]
+ },
+ {
+  "key": "3ca2181405673f6e",
+  "of": "HDRG_MOTION_HOST",
+  "en": [
+   "the app's own"
+  ],
+  "ja": [
+   "アプリ自身のもの"
+  ]
+ },
+ {
+  "key": "7b672a5aea91b271",
+  "of": "HDRG_MOTION_SIGNAL_LUMA",
+  "en": [
+   "the signal a field was estimated on"
+  ],
+  "ja": [
+   "場を推定した信号"
+  ]
+ },
+ {
+  "key": "459d1579523564af",
+  "of": "HDRG_MOTION_SIGNAL_LUMA",
+  "en": [
+   "the luma"
+  ],
+  "ja": [
+   "輝度"
+  ]
+ },
+ {
+  "key": "d75b10241e646a0a",
+  "of": "HDRG_MOTION_SIGNAL_NONE",
+  "en": [
+   "not from the pixels (a codec's, an engine's)"
+  ],
+  "ja": [
+   "画素からではない (コーデックのもの、エンジンのもの)"
+  ]
+ },
+ {
+  "key": "0fdaed5f4b50fdd1",
+  "of": "HDRG_MOTION_COVERED",
+  "en": [
+   "a block's occlusion"
+  ],
+  "ja": [
+   "ブロックの隠れ"
+  ]
+ },
+ {
+  "key": "3d5a4587e3830d96",
+  "of": "HDRG_MOTION_COVERED",
+  "en": [
+   "frame t's content is hidden in t + ref_offset"
+  ],
+  "ja": [
+   "フレーム t の内容が t + ref_offset では隠れる"
+  ]
+ },
+ {
+  "key": "9d7af732dcbb9cc2",
+  "of": "HDRG_MOTION_UNCOVERED",
+  "en": [
+   "t + ref_offset shows content frame t has not"
+  ],
+  "ja": [
+   "t + ref_offset に、フレーム t にない内容が現れる"
+  ]
+ },
+ {
+  "key": "6d7f4e50479404f4",
+  "of": "hdrg_sd_motion_block_t.mv_x",
+  "en": [
+   "quarter pixels of the frame"
+  ],
+  "ja": [
+   "フレームの 1/4 画素単位"
+  ]
+ },
+ {
+  "key": "6e56f7322d1cb156",
+  "of": "hdrg_sd_motion_block_t.cost",
+  "en": [
+   "the match's mean |difference| of the signal, 16-bit codes (0xffff:",
+   "unknown)"
+  ],
+  "ja": [
+   "一致の信号の |差| の平均、16bit の符号値 (0xffff: 不明)"
+  ]
+ },
+ {
+  "key": "4d176889723c8935",
+  "of": "hdrg_sd_motion_block_t.confidence",
+  "en": [
+   "0 (none) to 255 (sure)"
+  ],
+  "ja": [
+   "0 (なし)〜255 (確か)"
+  ]
+ },
+ {
+  "key": "8c0e097bb48d31aa",
+  "of": "hdrg_sd_motion_block_t.occlusion",
+  "en": [
+   "HDRG_MOTION_COVERED / UNCOVERED (0: none or unknown)"
+  ],
+  "ja": [
+   "HDRG_MOTION_COVERED / UNCOVERED (0: なしか不明)"
+  ]
+ },
+ {
+  "key": "68de60bdb8330de9",
+  "of": "hdrg_sd_motion_field_t.source",
+  "en": [
+   "HDRG_MOTION_*"
+  ],
+  "ja": [
+   "HDRG_MOTION_*"
+  ]
+ },
+ {
+  "key": "9e9c1be50bec6f5c",
+  "of": "hdrg_sd_motion_field_t.ref_offset",
+  "en": [
+   "the vectors' frame: t + ref_offset (not 0)"
+  ],
+  "ja": [
+   "ベクトルの先のフレーム: t + ref_offset (0 でない)"
+  ]
+ },
+ {
+  "key": "d9376bbb66105a2b",
+  "of": "hdrg_sd_motion_field_t.block_w",
+  "en": [
+   "a block's pixels"
+  ],
+  "ja": [
+   "ブロックの画素数"
+  ]
+ },
+ {
+  "key": "934b592a0354cb63",
+  "of": "hdrg_sd_motion_field_t.grid_w",
+  "en": [
+   "the blocks across and down (the last ones may be partial)"
+  ],
+  "ja": [
+   "横と縦のブロックの数 (最後のものは欠けていてもよい)"
+  ]
+ },
+ {
+  "key": "5bf1867ef9faa767",
+  "of": "hdrg_sd_motion_field_t.origin_x",
+  "en": [
+   "the first block's top-left in the frame's pixels"
+  ],
+  "ja": [
+   "フレームの画素での最初のブロックの左上"
+  ]
+ },
+ {
+  "key": "c40ad4dd87d0ff2c",
+  "of": "hdrg_sd_motion_field_t.phase",
+  "en": [
+   "INTERP's output: its place between t and t + 1 (1/65536); else 0"
+  ],
+  "ja": [
+   "INTERP の出力: t と t + 1 の間の位置 (1/65536)。ほかは 0"
+  ]
+ },
+ {
+  "key": "f27146035c02784d",
+  "of": "hdrg_sd_motion_field_t.signal",
+  "en": [
+   "HDRG_MOTION_SIGNAL_*"
+  ],
+  "ja": [
+   "HDRG_MOTION_SIGNAL_*"
+  ]
+ },
+ {
+  "key": "6779e3203e63b1d0",
+  "of": "hdrg_sd_motion_field_t.shift",
+  "en": [
+   "estimated at the frame's size >> shift"
+  ],
+  "ja": [
+   "フレームの寸法 >> shift で推定したもの"
+  ]
+ },
+ {
+  "key": "5feceb66ffc86f38",
+  "of": "hdrg_sd_motion_field_t.reserved",
+  "en": [
+   "0"
+  ],
+  "ja": [
+   "0"
+  ]
+ },
+ {
+  "key": "4fc28b72a9c00753",
+  "of": "hdrg_sd_motion_t.fields",
+  "en": [
+   "1 to HDRG_SD_MOTION_FIELDS"
+  ],
+  "ja": [
+   "1〜HDRG_SD_MOTION_FIELDS"
+  ]
+ },
+ {
+  "key": "b8cdb15f2cd36615",
+  "of": "HDRG_SD_FILM_GRAIN",
+  "en": [
+   "HDRG_SD_FILM_GRAIN, version HDRG_SD_FILM_GRAIN_VERSION (1 while the ABI",
+   "is not frozen): the film grain a codec carries as",
+   "parameters its decoder did not add to the frame (FFmpeg's",
+   "export_side_data=film_grain), in the host's byte order: a",
+   "hdrg_sd_film_grain_t, then its kind's parameters. HDRG_FILM_GRAIN_AV1: a",
+   "hdrg_sd_film_grain_av1_t, AV1's film grain synthesis (AFGS1's model) on",
+   "the coded Y'CbCr the header describes. The app gives a session frame's",
+   "(hdrg_session_frame_t.film_grain): the session puts the grain in the",
+   "output as the source would have shown it in SDR (grain_policy PRESERVE",
+   "and RESYNTH, in place of the grain its PREFILTER stage removed; REDUCE",
+   "leaves it out)."
+  ],
+  "ja": [
+   "HDRG_SD_FILM_GRAIN、版 HDRG_SD_FILM_GRAIN_VERSION (ABI がフリーズするまでは 1): コーデックがパラメータとして運び、デコーダがフレームに足さなかったコーデックの粒 (FFmpeg の export_side_data=film_grain) で、ホストのバイト順です: hdrg_sd_film_grain_t、続いてその種類のパラメータ。HDRG_FILM_GRAIN_AV1: hdrg_sd_film_grain_av1_t で、ヘッダが記述する符号化した Y'CbCr の上の AV1 の粒の合成 (AFGS1 のモデル)。アプリはセッションのフレームの粒を渡します (hdrg_session_frame_t.film_grain): セッションは、ソースが SDR で見せたであろうとおりに粒を出力に入れます (grain_policy の PRESERVE と RESYNTH で、PREFILTER の段が取り除いた粒の代わりに。REDUCE は入れません)。"
+  ]
+ },
+ {
+  "key": "cce910f253d7fd18",
+  "of": "HDRG_FILM_GRAIN_AV1",
+  "en": [
+   "AV1's film grain synthesis (AFGS1's model)"
+  ],
+  "ja": [
+   "AV1 の粒の合成 (AFGS1 のモデル)"
+  ]
+ },
+ {
+  "key": "d0bbde5f9c3234fa",
+  "of": "hdrg_sd_film_grain_t.kind",
+  "en": [
+   "HDRG_FILM_GRAIN_*"
+  ],
+  "ja": [
+   "HDRG_FILM_GRAIN_*"
+  ]
+ },
+ {
+  "key": "d608a13c900e45fe",
+  "of": "hdrg_sd_film_grain_t.bit_depth",
+  "en": [
+   "the coded luma's, 8 to 12: the parameters' codes"
+  ],
+  "ja": [
+   "符号化した輝度のもの、8〜12: パラメータの符号値はこの深度"
+  ]
+ },
+ {
+  "key": "e72489ee6ab47cbb",
+  "of": "hdrg_sd_film_grain_t.full_range",
+  "en": [
+   "1: the coded Y'CbCr's full range; 0: video range"
+  ],
+  "ja": [
+   "1: 符号化した Y'CbCr がフルレンジ、0: ビデオレンジ"
+  ]
+ },
+ {
+  "key": "c951cc85368f5368",
+  "of": "hdrg_sd_film_grain_t.subsampling_x",
+  "en": [
+   "the chroma's, 0 or 1 (4:2:0: 1 and 1)"
+  ],
+  "ja": [
+   "色差のもの、0 か 1 (4:2:0: 1 と 1)"
+  ]
+ },
+ {
+  "key": "ee3c2257cf69a75a",
+  "of": "hdrg_sd_film_grain_av1_t",
+  "en": [
+   "AV1's film_grain_params (the AV1 specification's 5.9.30, 6.8.20); the",
+   "fields the specification stores with an offset are here without it"
+  ],
+  "ja": [
+   "AV1 の film_grain_params (AV1 の仕様の 5.9.30・6.8.20)。仕様がオフセット付きで格納する欄は、ここではオフセットを除いた値です"
+  ]
+ },
+ {
+  "key": "d19f10b25a65bc70",
+  "of": "hdrg_sd_film_grain_av1_t.y_points",
+  "en": [
+   "the luma's scaling function: 8-bit values rising, scalings"
+  ],
+  "ja": [
+   "輝度の scaling 関数: 昇順の 8bit の値と scaling"
+  ]
+ },
+ {
+  "key": "8aa59accca2900a1",
+  "of": "hdrg_sd_film_grain_av1_t.uv_points",
+  "en": [
+   "Cb's and Cr's"
+  ],
+  "ja": [
+   "Cb と Cr のもの"
+  ]
+ },
+ {
+  "key": "8d12a6e69e7cbb14",
+  "of": "hdrg_sd_film_grain_av1_t.ar_coeffs_y",
+  "en": [
+   "the luma's auto-regression: 2 lag (lag + 1) of them"
+  ],
+  "ja": [
+   "輝度の自己回帰: 2 lag (lag + 1) 個"
+  ]
+ },
+ {
+  "key": "ff38c4d4d20ec3b1",
+  "of": "hdrg_sd_film_grain_av1_t.ar_coeffs_uv",
+  "en": [
+   "Cb's and Cr's: as many, then the luma's term"
+  ],
+  "ja": [
+   "Cb と Cr のもの: 同じ数、続いて輝度の項"
+  ]
+ },
+ {
+  "key": "8ca32874fc135da4",
+  "of": "hdrg_sd_film_grain_av1_t.uv_mult",
+  "en": [
+   "cb_mult - 128, cr_mult - 128"
+  ],
+  "ja": [
+   "cb_mult - 128、cr_mult - 128"
+  ]
+ },
+ {
+  "key": "c29c3a731dc30eb4",
+  "of": "hdrg_sd_film_grain_av1_t.uv_mult_luma",
+  "en": [
+   "cb_luma_mult - 128, cr_luma_mult - 128"
+  ],
+  "ja": [
+   "cb_luma_mult - 128、cr_luma_mult - 128"
+  ]
+ },
+ {
+  "key": "4aafedecb1be037b",
+  "of": "hdrg_sd_film_grain_av1_t.uv_offset",
+  "en": [
+   "cb_offset - 256, cr_offset - 256"
+  ],
+  "ja": [
+   "cb_offset - 256、cr_offset - 256"
+  ]
+ },
+ {
+  "key": "d28572cffc2aa98a",
+  "of": "hdrg_sd_film_grain_av1_t.num_y_points",
+  "en": [
+   "0 to 14"
+  ],
+  "ja": [
+   "0〜14"
+  ]
+ },
+ {
+  "key": "6a706092cdd37a67",
+  "of": "hdrg_sd_film_grain_av1_t.num_uv_points",
+  "en": [
+   "0 to 10"
+  ],
+  "ja": [
+   "0〜10"
+  ]
+ },
+ {
+  "key": "0be83a7a43ad8062",
+  "of": "hdrg_sd_film_grain_av1_t.chroma_scaling_from_luma",
+  "en": [
+   "1: Cb and Cr scale by the luma's function"
+  ],
+  "ja": [
+   "1: Cb と Cr は輝度の関数で scaling する"
+  ]
+ },
+ {
+  "key": "e025f74955558642",
+  "of": "hdrg_sd_film_grain_av1_t.scaling_shift",
+  "en": [
+   "8 to 11"
+  ],
+  "ja": [
+   "8〜11"
+  ]
+ },
+ {
+  "key": "783641e41ac25b6f",
+  "of": "hdrg_sd_film_grain_av1_t.ar_coeff_lag",
+  "en": [
+   "0 to 3"
+  ],
+  "ja": [
+   "0〜3"
+  ]
+ },
+ {
+  "key": "c4cc3cc25f09706d",
+  "of": "hdrg_sd_film_grain_av1_t.ar_coeff_shift",
+  "en": [
+   "6 to 9"
+  ],
+  "ja": [
+   "6〜9"
+  ]
+ },
+ {
+  "key": "d312a1dd092b377b",
+  "of": "hdrg_sd_film_grain_av1_t.overlap",
+  "en": [
+   "(not read)"
+  ],
+  "ja": [
+   "(読まない)"
+  ]
+ }
+]

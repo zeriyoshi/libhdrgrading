@@ -1,0 +1,35 @@
+<p class="lead">A map of the repository. {{src:CLAUDE.md}} has a line for nearly every file; this page groups them by what they are for.</p>
+
+<h2>Library</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Path</th><th>Contents</th></tr></thead>
+<tbody>
+<tr><td>{{src:include/hdrgrading}}</td><td>The public headers: hdrgrading.h (the context, stills, the settings), video.h (sessions), gpu.h (the app's GPU device, frames and shaders), metadata.h (HDR10+, ST 2094-50 and their T.35 payloads), sidedata.h (noise, motion and film grain side data), plugin.h (the plugin host), filter.h and codec.h (the plugin ABIs), version.h.in.</td></tr>
+<tr><td>{{src:src/context.c}}, {{src:src/params.c}}, {{src:src/priv.h}}</td><td>The context, the allocator helpers, statistics, the pool; the presets, the setting checks and the settings by name.</td></tr>
+<tr><td>{{src:src/convert.c}}, {{src:src/container.c}}</td><td>Still conversion; the writer of a still (the rows, the gain map and its metadata, the profile, the light given to the codec).</td></tr>
+<tr><td>{{src:src/session}}</td><td>Video sessions: session.c (open, send, receive, the queue, the rendering; the statistics across frames through the STATS stage), flash.c (the flash limiter), rate.c (the output rate), resident.c (frames kept on the GPU, the app's GPU frames), latency.c (the latency's estimate and report), export.c (the shaders and the state for the app's GPU); their state in session.h.</td></tr>
+<tr><td>{{src:src/pipeline.h}}, {{src:src/pipeline}}</td><td>The pipeline of a sequence and its frames (pipeline.c), the PREFILTER chain and device chains (chain.c), the SCALE stage (scale.c); their shared parts in parts.h.</td></tr>
+<tr><td>{{src:src/lut3d.c}}</td><td>The STATIC mapping as a 3D LUT.</td></tr>
+<tr><td>{{src:src/core}}</td><td>analyze, noise, plan, render, apply, color, image, yuv, grain, motion, predict (the judged lights' records for the ANALYZE stage and their boosts scaled by its chances), exec, recycle, dynamic (HDR10+, the ST 2094-50 gain curve and their T.35 payloads); the core on the GPU (gpu_core*, gpu_apply, gpu_convert, gpu_analyze, gpu_gather) and its WGSL in {{src:src/core/wgsl|core/wgsl}} with the generated msl / spirv / hlsl.</td></tr>
+<tr><td>{{src:src/kernels}}</td><td>The SIMD function table (kernels.h), CPU detection (cpu.c), the PQ table, the scalar reference, per-ISA primitives (v_*.h) and translation units (k_*.c), the shared kernel bodies (vmath.h).</td></tr>
+<tr><td>{{src:src/io}}</td><td>ICC (icc.c), the gain map's metadata (gainmeta.c: ISO 21496-1, XMP). jpegli's C shim is in {{src:src/plugins/jpeg/jpegli_compat}}.</td></tr>
+<tr><td>{{src:src/host}}</td><td>The host (host.c; a filter's instance and jobs in job.c, the devices and their GPU share in device.c), the built-in defaults (defaults.c), the public functions (public.c), validation, the loader, the stage runner (stage.c), the ANALYZE and STATS stages (analyzer.c, stats.c), job frame formats (format.c), the codec host (codec_host.c).</td></tr>
+<tr><td>{{src:src/plugins}}</td><td>The built-in plugins, a CMake project each (cmake/HdrgPlugin.cmake): bilinear, polyphase, edge (+ temporal), fsr, nis, metalfx, denoise, deblock, dering, defringe, deband, mctf, interp (each its CPU part and its parts.h; all but bilinear and metalfx with webgpu_*.c and gk_*.c and their WGSL in <code>wgsl/</code> with the generated msl / spirv; metalfx is Metal alone), predict (+ predict_weights, written by scripts/predictor/train.py), stats; the codecs jpeg, png, gif, jxl; the modules avif and heif; shared (blockme, noise).</td></tr>
+<tr><td>{{src:src/gpu}}</td><td>The project hdrgrading-gpu: webgpu.c, metal.m, vulkan.c, gk_metal.c / gk_vulkan.c, apple.c, the GPU plugins' part (filter_plugin.c, filter_gk.c, filter_webgpu.c, filter_metal.c, filter_vulkan.c); headers in include/hdrgrading/gpu.</td></tr>
+<tr><td>{{src:src/foundation}}</td><td>The project hdrgrading-foundation: memory, math, fmath, hash, fpenv, thread, pool, clock, gpu_share (the GPU share of the plugin ABI) (headers in include/hdrgrading/foundation).</td></tr>
+<tr><td>{{src:src/wasm}}</td><td>The browser module's interface; {{src:src/wasm/demo}}: the demo's pages.</td></tr>
+<tr><td>{{src:src/bindings}}</td><td>ffmpeg (the filter's patch), gstreamer, vapoursynth: public headers alone.</td></tr>
+</tbody></table></div>
+
+<h2>Around the library</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Path</th><th>Contents</th></tr></thead>
+<tbody>
+<tr><td>{{src:tools}}</td><td>The installed programs: hdrg-cli, hdrg-video, hdrg-ffmpeg, hdrg-inspect (with the HAGC reader hagc.c); the CLIs' shared parsing (common.c); hdrg-ffmpeg's FFmpeg helper ({{src:tools/ffmpeg}}); {{src:tools/gui}}: hdrg-gui.</td></tr>
+<tr><td>{{src:tests}}</td><td>unit, conformance, plugins (built from the public headers alone), modules (a module with a GPU layer of its own), the bindings' tests, wasm, install, fuzz (the libFuzzer harness and the seed writer), tools (the tools' tests and the developer tools hdrg-bench and hdrg-predictor-data); helpers test_util.h, test_stage.h, test_jpeg.h, test_gpu_module.h.</td></tr>
+<tr><td>{{src:docs}}</td><td>These docs (the GitHub Pages site); their sources are in {{src:docs/scripts}}.</td></tr>
+<tr><td>{{src:cmake}}</td><td>HdrgCommon (warnings, sanitizers, coverage, tests), HdrgDeps (the bundled dependencies), HdrgPlugin (the plugins' projects, their shaders), HdrgHeif, HdrgWasm, the package templates.</td></tr>
+<tr><td>{{src:scripts}}</td><td>fetch_deps, docker_dev, jobs, build_dawn, build_ffmpeg, gen_shaders, coverage (+ merge, uncovered), wasm_demo (the site with the demo), check_style, the predictor's training.</td></tr>
+<tr><td>{{src:third_party}}</td><td>Submodules: jpegli, libpng, zlib, giflib, lcms2, libjxl, brotli, unity, emsdk, vapoursynth (header), fidelityfx-fsr and nis (sources of the ports), sdl and imgui (the GUI).</td></tr>
+<tr><td>{{src:.github}}</td><td>Workflows, the CI images, Renovate and Dependabot.</td></tr>
+</tbody></table></div>

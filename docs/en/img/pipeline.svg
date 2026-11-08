@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 740" width="1040" height="740" class="hd-svg" role="img" aria-labelledby="pipeline-title" lang="en">
+<title id="pipeline-title">One frame through the pipeline: analysis, plan, render, apply</title>
+<desc>A frame is read three times from its code values: pass A analyzes it, pass B plans the gain on cells, the render fits the plan to the display, pass C applies it in bands.</desc>
+<style>
+.hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+@media (prefers-color-scheme: dark) {
+  .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+  html[data-theme="light"] .hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+}
+html[data-theme="dark"] .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+.hd-svg .hd-bg { fill: var(--hd-bg); }
+.hd-svg text { font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", sans-serif; fill: var(--hd-ink); }
+.hd-svg .hd-mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+.hd-svg .hd-label { font-size: 13px; font-weight: 600; }
+.hd-svg .hd-sub { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-gtitle { font-size: 12px; font-weight: 700; fill: var(--hd-muted); }
+.hd-svg .hd-note { font-size: 11.5px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel-bg { fill: var(--hd-bg); opacity: .92; }
+.hd-svg .hd-group { fill: var(--hd-group); stroke: var(--hd-group-stroke); stroke-width: 1; }
+.hd-svg .hd-edge { fill: none; stroke: var(--hd-line); stroke-width: 1.4; }
+.hd-svg .hd-edge.hd-dashed { stroke-dasharray: 5 4; }
+.hd-svg .hd-edge.hd-accent { stroke: var(--hd-accent); stroke-width: 1.8; }
+.hd-svg .hd-arrow { fill: var(--hd-line); }
+.hd-svg .hd-arrow.hd-accent { fill: var(--hd-accent); }
+.hd-svg .hd-k-app rect.hd-box { fill: var(--hd-app-fill); stroke: var(--hd-app-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-api rect.hd-box { fill: var(--hd-api-fill); stroke: var(--hd-api-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-entry rect.hd-box { fill: var(--hd-entry-fill); stroke: var(--hd-entry-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-core rect.hd-box { fill: var(--hd-core-fill); stroke: var(--hd-core-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-io rect.hd-box { fill: var(--hd-io-fill); stroke: var(--hd-io-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-plugin rect.hd-box { fill: var(--hd-plugin-fill); stroke: var(--hd-plugin-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-filter rect.hd-box { fill: var(--hd-filter-fill); stroke: var(--hd-filter-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-gpu rect.hd-box { fill: var(--hd-gpu-fill); stroke: var(--hd-gpu-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-common rect.hd-box { fill: var(--hd-common-fill); stroke: var(--hd-common-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box { fill: var(--hd-ext-fill); stroke: var(--hd-ext-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-data rect.hd-box { fill: var(--hd-data-fill); stroke: var(--hd-data-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box, .hd-svg .hd-k-data rect.hd-box { stroke-dasharray: 4 3; }
+</style>
+<rect class="hd-bg" x="0" y="0" width="1040" height="740"/>
+<polyline class="hd-edge" points="375.0,86.0 375.0,110.0"/>
+<polygon class="hd-arrow" points="375.0,116.0 371.5,109.0 378.5,109.0"/>
+<polyline class="hd-edge" points="375.0,162.0 375.0,186.0"/>
+<polygon class="hd-arrow" points="375.0,192.0 371.5,185.0 378.5,185.0"/>
+<polyline class="hd-edge" points="375.0,238.0 375.0,262.0"/>
+<polygon class="hd-arrow" points="375.0,268.0 371.5,261.0 378.5,261.0"/>
+<polyline class="hd-edge" points="375.0,314.0 375.0,338.0"/>
+<polygon class="hd-arrow" points="375.0,344.0 371.5,337.0 378.5,337.0"/>
+<polyline class="hd-edge" points="375.0,390.0 375.0,414.0"/>
+<polygon class="hd-arrow" points="375.0,420.0 371.5,413.0 378.5,413.0"/>
+<polyline class="hd-edge" points="375.0,466.0 375.0,490.0"/>
+<polygon class="hd-arrow" points="375.0,496.0 371.5,489.0 378.5,489.0"/>
+<polyline class="hd-edge" points="375.0,542.0 375.0,566.0"/>
+<polygon class="hd-arrow" points="375.0,572.0 371.5,565.0 378.5,565.0"/>
+<polyline class="hd-edge" points="375.0,618.0 375.0,642.0"/>
+<polygon class="hd-arrow" points="375.0,648.0 371.5,641.0 378.5,641.0"/>
+<polyline class="hd-edge" points="210.0,317.5 230.0,317.5 230.0,291.0 244.0,291.0"/>
+<polygon class="hd-arrow" points="250.0,291.0 243.0,287.5 243.0,294.5"/>
+<polyline class="hd-edge" points="210.0,340.5 230.0,340.5 230.0,367.0 244.0,367.0"/>
+<polygon class="hd-arrow" points="250.0,367.0 243.0,363.5 243.0,370.5"/>
+<polyline class="hd-edge" points="210.0,443.0 244.0,443.0"/>
+<polygon class="hd-arrow" points="250.0,443.0 243.0,439.5 243.0,446.5"/>
+<polyline class="hd-edge" points="210.0,595.0 244.0,595.0"/>
+<polygon class="hd-arrow" points="250.0,595.0 243.0,591.5 243.0,598.5"/>
+<polyline class="hd-edge hd-dashed" points="250.0,139.0 236.0,139.0 236.0,156.0 222.0,156.0 222.0,583.5 244.0,583.5"/>
+<polygon class="hd-arrow" points="250.0,583.5 243.0,580.0 243.0,587.0"/>
+<g class="hd-k-data">
+<rect class="hd-box" x="250" y="40" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="60.0" text-anchor="middle">Frame (code values)</text>
+<text class="hd-sub hd-mono" x="375.0" y="75.0" text-anchor="middle">core/image: EOTF LUT</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="250" y="116" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="136.0" text-anchor="middle">Noise estimate</text>
+<text class="hd-sub hd-mono" x="375.0" y="151.0" text-anchor="middle">core/noise</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="250" y="192" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="212.0" text-anchor="middle">PREFILTER stage (optional)</text>
+<text class="hd-sub hd-mono" x="375.0" y="227.0" text-anchor="middle">host/stage · plugins/</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="250" y="268" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="288.0" text-anchor="middle">Pass A: analysis</text>
+<text class="hd-sub hd-mono" x="375.0" y="303.0" text-anchor="middle">core/analyze · ANALYZE stage</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="250" y="344" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="364.0" text-anchor="middle">Pass B: plan</text>
+<text class="hd-sub hd-mono" x="375.0" y="379.0" text-anchor="middle">core/plan</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="250" y="420" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="440.0" text-anchor="middle">Render for the display</text>
+<text class="hd-sub hd-mono" x="375.0" y="455.0" text-anchor="middle">core/render</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="250" y="496" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="516.0" text-anchor="middle">SCALE stage (optional)</text>
+<text class="hd-sub hd-mono" x="375.0" y="531.0" text-anchor="middle">host/stage</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="250" y="572" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="592.0" text-anchor="middle">Pass C: apply (bands)</text>
+<text class="hd-sub hd-mono" x="375.0" y="607.0" text-anchor="middle">core/apply · kernels/</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="250" y="648" width="250" height="46" rx="7"/>
+<text class="hd-label" x="375.0" y="668.0" text-anchor="middle">Output rows</text>
+<text class="hd-sub" x="375.0" y="683.0" text-anchor="middle">container or session</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="30" y="306" width="180" height="46" rx="7"/>
+<text class="hd-label" x="120.0" y="326.0" text-anchor="middle">hdrg_params_t</text>
+<text class="hd-sub" x="120.0" y="341.0" text-anchor="middle">content intent</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="30" y="420" width="180" height="46" rx="7"/>
+<text class="hd-label" x="120.0" y="440.0" text-anchor="middle">hdrg_display_caps_t</text>
+<text class="hd-sub" x="120.0" y="455.0" text-anchor="middle">what the display shows</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="30" y="572" width="180" height="46" rx="7"/>
+<text class="hd-label" x="120.0" y="592.0" text-anchor="middle">Color LUT</text>
+<text class="hd-sub" x="120.0" y="607.0" text-anchor="middle">core/color: Oklab gamut map</text>
+</g>
+<text class="hd-note" x="530" y="59" text-anchor="start">The caller&#x27;s pixels stay as code values; each pass decodes them on the fly</text>
+<text class="hd-note" x="530" y="74" text-anchor="start">through per-channel EOTF tables (no full-resolution float planes).</text>
+<text class="hd-note" x="530" y="135" text-anchor="start">16 × 16 tiles (Immerkær): the Y&#x27; noise by level, Cb / Cr, blockiness, ringing.</text>
+<text class="hd-note" x="530" y="150" text-anchor="start">Given to the filters as HDRG_SD_NOISE; measured again after the chain for pass C.</text>
+<text class="hd-note" x="530" y="211" text-anchor="start">Built-in chain deblock → dering → defringe → deband → MCTF (sessions) → NR,</text>
+<text class="hd-note" x="530" y="226" text-anchor="start">or up to 6 filters added; skipped when every filter passes the frame through.</text>
+<text class="hd-note" x="530" y="287" text-anchor="start">La = max(Y, 0.7 · maxRGB); histogram → p99.5 and key; 4 × 4 cells (2 × 2 under</text>
+<text class="hd-note" x="530" y="302" text-anchor="start">QUALITY). Lights: bright components, rings, an even falloff → boost share;</text>
+<text class="hd-note" x="530" y="317" text-anchor="start">the ANALYZE stage (light_predictor &gt; 0) may lower a doubtful light&#x27;s boost.</text>
+<text class="hd-note" x="530" y="363" text-anchor="start">Diffuse level from the key; the boost share on a bilateral grid (8 × 8 cells ×</text>
+<text class="hd-note" x="530" y="378" text-anchor="start">24 log2 La bins); clarity base; APL cell statistics. Display independent.</text>
+<text class="hd-note" x="530" y="439" text-anchor="start">hdrg_display_caps_t → diffuse multiplier, boost span up to the peak, APL budget</text>
+<text class="hd-note" x="530" y="454" text-anchor="start">factor (binary search), shoulder peak, gamut, encoding. Re-rendered per display.</text>
+<text class="hd-note" x="530" y="515" text-anchor="start">A different output size or a filter on the stage: the filter, else a built-in</text>
+<text class="hd-note" x="530" y="530" text-anchor="start">scaler (Lanczos; the upscaler when no side shrinks). Analysis and plan stay as input.</text>
+<text class="hd-note" x="530" y="591" text-anchor="start">256-row bands in parallel, 16-pixel blocks: g = diffuse + h · span + contrast +</text>
+<text class="hd-note" x="530" y="606" text-anchor="start">clarity; color LUT (33³) × 2^g; shoulder; PQ, or SDR + gain-map sums; grain.</text>
+<text class="hd-note" x="530" y="667" text-anchor="start">8 / 16-bit rows to the writer (JPEG, JPEG XL, AVIF, HEIF), or the session&#x27;s PQ</text>
+<text class="hd-note" x="530" y="682" text-anchor="start">R&#x27;G&#x27;B&#x27; / 4:2:0; the light measured on the way gives MaxCLL / FALL, HDR10+ and</text>
+<text class="hd-note" x="530" y="697" text-anchor="start">ST 2094-50.</text>
+<text class="hd-note" x="30" y="186" text-anchor="start">dashed: the estimate,</text>
+<text class="hd-note" x="30" y="201" text-anchor="start">again after the chain,</text>
+<text class="hd-note" x="30" y="216" text-anchor="start">cores pass C</text>
+</svg>

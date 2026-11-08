@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+name: CI image
+description: >
+  Builds one of .github/docker's images for a platform (layers cached in the GitHub Actions cache,
+  written only outside pull requests) and loads it as hdrg-ci:<name>.
+inputs:
+  file:
+    description: The Dockerfile in .github/docker (alpine.Dockerfile or debian.Dockerfile)
+    required: true
+  platform:
+    description: linux/amd64 or linux/386 on an x64 runner, linux/arm64 on an arm64 one
+    required: true
+  name:
+    description: The image's tag and cache scope (the platform's name, such as alpine-x86)
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@v4.4.1
+    - uses: docker/build-push-action@v7.4.0
+      with:
+        context: .github/docker
+        file: .github/docker/${{ inputs.file }}
+        platforms: ${{ inputs.platform }}
+        tags: hdrg-ci:${{ inputs.name }}
+        load: true
+        cache-from: type=gha,scope=hdrg-ci-${{ inputs.name }}
+        cache-to: ${{ github.event_name != 'pull_request' && format('type=gha,mode=max,scope=hdrg-ci-{0}', inputs.name) || '' }}

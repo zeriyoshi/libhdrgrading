@@ -1,0 +1,196 @@
+[
+ {
+  "key": "1135bbc6665408e5",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading — dynamic HDR metadata of an output (a session's frame, a",
+   "still's HAGC): HDR10+ (SMPTE ST 2094-40) and SMPTE ST 2094-50, and their",
+   "ITU-T T.35 payloads"
+  ],
+  "ja": [
+   "libhdrgrading — 出力の動的な HDR のメタデータ (セッションのフレーム、静止画の HAGC): HDR10+ (SMPTE ST 2094-40) と SMPTE ST 2094-50、そしてその ITU-T T.35 のペイロード"
+  ]
+ },
+ {
+  "key": "a10a8c8c95cd04ad",
+  "of": "HDRG_HDR10PLUS_PERCENTILES",
+  "en": [
+   "at 1, 5, 10, 25, 50, 75, 90, 95 and 99 %"
+  ],
+  "ja": [
+   "1、5、10、25、50、75、90、95、99 % の位置"
+  ]
+ },
+ {
+  "key": "d72b2a34ad701332",
+  "of": "hdrg_hdr10plus_t",
+  "en": [
+   "A frame's HDR10+ statistics (SMPTE ST 2094-40 application 4) of its",
+   "output: one window, the whole frame; linear cd/m² of",
+   "the output's components (its gamut's R, G, B: BT.2020 in its container)"
+  ],
+  "ja": [
+   "フレームの出力の HDR10+ の統計 (SMPTE ST 2094-40 の application 4): ウィンドウは 1 つでフレーム全体。出力の成分 (その色域の R、G、B。BT.2020 の入れ物なら BT.2020) の線形の cd/m²"
+  ]
+ },
+ {
+  "key": "8d6b27b1db151545",
+  "of": "hdrg_hdr10plus_t.maxscl",
+  "en": [
+   "R's, G's and B's largest"
+  ],
+  "ja": [
+   "R、G、B それぞれの最大"
+  ]
+ },
+ {
+  "key": "8464dff019901ad8",
+  "of": "hdrg_hdr10plus_t.average_maxrgb",
+  "en": [
+   "the mean max(R, G, B) (avg_nits)"
+  ],
+  "ja": [
+   "max(R, G, B) の平均 (avg_nits)"
+  ]
+ },
+ {
+  "key": "9b9d51d84254c1b8",
+  "of": "hdrg_hdr10plus_t.percentiles",
+  "en": [
+   "max(R, G, B) at each percentage (of the",
+   "bins of 1/8 octave, linear inside)"
+  ],
+  "ja": [
+   "各百分率の max(R, G, B) (1/8 オクターブの区分から、区分の中は線形)"
+  ]
+ },
+ {
+  "key": "a3c2c4a04f99cb15",
+  "of": "hdrg_hdr10plus_t.valid",
+  "en": [
+   "the output's light was measured (single-layer PQ, not the state alone)"
+  ],
+  "ja": [
+   "出力の光を測った (単層 PQ。状態だけではない)"
+  ]
+ },
+ {
+  "key": "f5ca228568cfe008",
+  "of": "hdrg_st2094_50_t",
+  "en": [
+   "A frame's SMPTE ST 2094-50 adaptive tone map (application 5): the gain",
+   "curve of the output back to its SDR source, for a",
+   "display without headroom (alternate headroom 0; one between it and the",
+   "baseline weighs the gain by its headroom), fitted to the frame's output",
+   "and source (the log2 ratio of their max(R, G, B) by the output's level):",
+   "the values of the payload (the ICC 'HAGC' tag's form)"
+  ],
+  "ja": [
+   "フレームの SMPTE ST 2094-50 の適応トーンマップ (application 5): ヘッドルームのない表示のための、出力からその SDR のソースへ戻すゲインの曲線 (代替のヘッドルーム 0。それと基本の間のヘッドルームの表示は、ゲインをそのヘッドルームで重み付けします)。フレームの出力とソースに当てはめたもの (出力の水準ごとの、それらの max(R, G, B) の log2 の比): ペイロードの値 (ICC の 'HAGC' のタグの形)"
+  ]
+ },
+ {
+  "key": "32bea465183d69b2",
+  "of": "hdrg_st2094_50_t.baseline_headroom",
+  "en": [
+   "log2 of the rendition's peak over the reference white"
+  ],
+  "ja": [
+   "基準の白に対する描画のピークの log2"
+  ]
+ },
+ {
+  "key": "0a56e39cf54d4b9b",
+  "of": "hdrg_st2094_50_t.reference_white",
+  "en": [
+   "cd/m² of the SDR white in the output (default 203)"
+  ],
+  "ja": [
+   "出力での SDR の白の cd/m² (既定 203)"
+  ]
+ },
+ {
+  "key": "ab63c17c922ebef6",
+  "of": "hdrg_st2094_50_t.x",
+  "en": [
+   "the output's max(R, G, B) over the reference white,",
+   "rising (at most 64)"
+  ],
+  "ja": [
+   "基準の白に対する出力の max(R, G, B)、昇順 (64 まで)"
+  ]
+ },
+ {
+  "key": "9d7cbe9e191e7ab9",
+  "of": "hdrg_st2094_50_t.y",
+  "en": [
+   "log2 gain there back to the SDR (-6 to 0; PCHIP",
+   "between, held past the ends)"
+  ],
+  "ja": [
+   "そこで SDR へ戻す log2 のゲイン (-6 から 0。間は PCHIP、端の外は端の値を保つ)"
+  ]
+ },
+ {
+  "key": "74539a7ae04b93df",
+  "of": "hdrg_st2094_50_t.count",
+  "en": [
+   "the control points, 1 to HDRG_ST2094_50_POINTS"
+  ],
+  "ja": [
+   "制御点の数、1 から HDRG_ST2094_50_POINTS"
+  ]
+ },
+ {
+  "key": "d4306a780e934762",
+  "of": "hdrg_st2094_50_t.gamut",
+  "en": [
+   "the gain's space: HDRG_GAMUT_* (the output's)"
+  ],
+  "ja": [
+   "ゲインの色空間: HDRG_GAMUT_* (出力のもの)"
+  ]
+ },
+ {
+  "key": "21a54795ef05deb6",
+  "of": "hdrg_st2094_50_t.valid",
+  "en": [
+   "fitted (the output's light measured, a headroom above the white)"
+  ],
+  "ja": [
+   "当てはめた (出力の光を測り、白より上のヘッドルームがある)"
+  ]
+ },
+ {
+  "key": "b15c06303fef83b3",
+  "of": "hdrg_hdr10plus_t35",
+  "en": [
+   "A frame's HDR10+ as its ITU-T T.35 message's payload after the 6 header",
+   "bytes (country 0xB5, provider 0x003C, provider oriented 0x0001,",
+   "application identifier 4): from application_version 1, the bytes of FFmpeg's",
+   "av_dynamic_hdr_plus_to_t35 and FFMS2's HDR10Plus frame property. One",
+   "window, no targeted display, no tone mapping curve (the display's own);",
+   "the values in 1/100000 of 10000 cd/m^2. Returns its size",
+   "(HDRG_HDR10PLUS_T35_BYTES), written into out when size is at least that;",
+   "0: not valid"
+  ],
+  "ja": [
+   "フレームの HDR10+ を、ITU-T T.35 のメッセージの 6 バイトの見出し (country 0xB5、provider 0x003C、provider oriented 0x0001、application identifier 4) の後のペイロードとして書きます: application_version 1 から、FFmpeg の av_dynamic_hdr_plus_to_t35 と FFMS2 のフレームの属性 HDR10Plus のバイト列です。ウィンドウは 1 つ、目標の表示なし、トーンマッピングの曲線なし (表示自身のもの)。値は 10000 cd/m^2 の 1/100000 単位です。大きさ (HDRG_HDR10PLUS_T35_BYTES) を返し、size がそれ以上なら out に書きます。0: 有効でない"
+  ]
+ },
+ {
+  "key": "49cdc50a0bf75a2f",
+  "of": "hdrg_st2094_50_t35",
+  "en": [
+   "A frame's ST 2094-50 as its T.35 message's payload after the 5 header",
+   "bytes (country 0xB5, provider 0x0090, provider oriented 0x0001): the bytes of FFmpeg's",
+   "av_dynamic_hdr_smpte2094_app5_to_t35, the ICC 'HAGC' tag's. One alternate",
+   "at headroom 0 with PCHIP slopes; the reference white when not 203 cd/m^2.",
+   "Returns its size (at most HDRG_ST2094_50_T35_MAX), written into out when",
+   "size is at least that; 0: not valid"
+  ],
+  "ja": [
+   "フレームの ST 2094-50 を、T.35 のメッセージの 5 バイトの見出し (country 0xB5、provider 0x0090、provider oriented 0x0001) の後のペイロードとして書きます: FFmpeg の av_dynamic_hdr_smpte2094_app5_to_t35 と ICC の 'HAGC' のタグのバイト列です。ヘッドルーム 0 の代替が 1 つで、PCHIP の傾き付き。203 cd/m^2 でなければ基準の白も含みます。大きさ (最大 HDRG_ST2094_50_T35_MAX) を返し、size がそれ以上なら out に書きます。0: 有効でない"
+  ]
+ }
+]

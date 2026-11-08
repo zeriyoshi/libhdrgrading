@@ -1,0 +1,248 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 OR MIT -->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>libhdrgrading デモ</title>
+<style>
+:root {
+    --bg: #fafaf9;
+    --fg: #1c1917;
+    --muted: #57534e;
+    --card: #ffffff;
+    --border: #e7e5e4;
+    --accent: #b45309;
+    --error: #b91c1c;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #0c0a09;
+        --fg: #f5f5f4;
+        --muted: #a8a29e;
+        --card: #1c1917;
+        --border: #292524;
+        --accent: #f59e0b;
+        --error: #f87171;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #0c0a09;
+    --fg: #f5f5f4;
+    --muted: #a8a29e;
+    --card: #1c1917;
+    --border: #292524;
+    --accent: #f59e0b;
+    --error: #f87171;
+}
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.7 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 16px 64px;
+}
+h1 {
+    margin: 0 0 4px;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+}
+p.lead {
+    margin: 0 0 24px;
+    color: var(--muted);
+}
+a {
+    color: var(--accent);
+}
+.card {
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+}
+.controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 24px;
+    align-items: end;
+}
+label {
+    display: grid;
+    gap: 4px;
+    font-size: 14px;
+    color: var(--muted);
+}
+label span.value {
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+}
+select,
+input[type="file"],
+button {
+    font: inherit;
+    color: inherit;
+}
+select,
+button {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+}
+button.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+}
+button:disabled {
+    opacity: 0.5;
+}
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    align-items: center;
+}
+#status {
+    margin: 16px 0;
+    font-variant-numeric: tabular-nums;
+}
+#status.error {
+    color: var(--error);
+}
+.images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+figure {
+    margin: 0;
+}
+figure img {
+    display: block;
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+}
+figcaption {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--muted);
+}
+img.limited {
+    dynamic-range-limit: standard;
+}
+img.unlimited {
+    dynamic-range-limit: no-limit;
+}
+dl.info {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 2px 16px;
+    margin: 24px 0 0;
+    font-size: 14px;
+    color: var(--muted);
+}
+dl.info dd {
+    margin: 0;
+    color: var(--fg);
+}
+.note {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--muted);
+}
+section.preview {
+    margin-bottom: 16px;
+}
+section.preview h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+}
+section.preview canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #000;
+}
+</style>
+</head>
+<body>
+<main>
+<h1>libhdrgrading デモ</h1>
+<p class="lead">SDR の画像をブラウザ内 (WebAssembly) で HDR へグレーディングします。画像はこのページの外へ送られません。<a href="../">トップへ</a></p>
+
+<section class="card">
+<div class="controls">
+<label>画像<input id="file" type="file" accept="image/jpeg,image/png,image/gif"></label>
+<label>プリセット
+<select id="preset">
+<option value="photo">写真 (photo)</option>
+<option value="anime">アニメ・イラスト (anime)</option>
+<option value="game">ゲーム (game)</option>
+</select>
+</label>
+<label>出力の形式
+<select id="mode">
+<option value="gainmap">ゲインマップ (SDR ベース、既定)</option>
+<option value="hybrid">ハイブリッド (PQ + SDR 復元ゲインマップ)</option>
+<option value="pq">単層 PQ</option>
+</select>
+</label>
+<label>拡散面の上限 (倍) <span class="value" id="diffuse-max-value"></span><input id="diffuse-max" type="range" min="1" max="4" step="0.1" value="2"></label>
+<label>強さ <span class="value" id="strength-value"></span><input id="strength" type="range" min="0" max="1" step="0.05" value="1"></label>
+<label>彩度 <span class="value" id="saturation-value"></span><input id="saturation" type="range" min="0.5" max="1.5" step="0.05" value="1.05"></label>
+<label>色域の拡張 <span class="value" id="expand-value"></span><input id="expand" type="range" min="0" max="1" step="0.05" value="0.7"></label>
+<label>表示のピーク (nits) <span class="value" id="peak-nits-value"></span><input id="peak-nits" type="range" min="400" max="4000" step="50" value="1000"></label>
+<label>SDR の白 (nits) <span class="value" id="sdr-white-value"></span><input id="sdr-white" type="range" min="80" max="400" step="1" value="203"></label>
+</div>
+<div class="actions">
+<button id="sample" type="button">サンプル画像</button>
+<button id="reset" type="button">スライダを既定に戻す</button>
+<button id="convert" class="primary" type="button" disabled>変換</button>
+<a id="download" hidden>JPEG を保存</a>
+</div>
+</section>
+
+<p id="status">読み込み中…</p>
+
+<section class="card preview" id="preview-card" hidden>
+<h2>対話プレビュー (WebGPU)</h2>
+<p class="note">スライダを動かすと、ライブラリの適用シェーダ (WGSL) をこのブラウザの GPU で走らせて、HDR の canvas に描き直します。解析とプランは WASM、適用は GPU です。前処理 (deblock など) は入らず、長辺 2048 画素まで縮小します。境目の左が元の SDR、右が HDR です。</p>
+<label>比較の境目<input id="split" type="range" min="0" max="1" step="0.01" value="0.5"></label>
+<canvas id="preview"></canvas>
+<p class="note" id="preview-status"></p>
+</section>
+
+<div class="images">
+<figure><img id="original" alt="元画像"><figcaption>元画像 (SDR) <span id="size"></span></figcaption></figure>
+<figure><img id="limited" class="limited" alt="変換結果 (標準のダイナミックレンジ)"><figcaption>変換結果、<code>dynamic-range-limit: standard</code> (SDR として表示)</figcaption></figure>
+<figure><img id="unlimited" class="unlimited" alt="変換結果 (制限なし)"><figcaption>変換結果、<code>dynamic-range-limit: no-limit</code> (HDR として表示)</figcaption></figure>
+</div>
+
+<p class="note" id="css" hidden>このブラウザは <code>dynamic-range-limit</code> に対応していないため、右の 2 枚は同じに見えます。</p>
+<p class="note">ゲインマップ形式は Chrome / Edge / Safari が HDR で表示します。HDR 対応ディスプレイと、OS 側の HDR 表示の設定が必要です。スライダは動かしたものだけがプリセットの値を上書きします。</p>
+
+<dl class="info">
+<dt>ライブラリ</dt><dd id="version">-</dd>
+<dt>WASM のビルド</dt><dd id="build">-</dd>
+<dt>ディスプレイ</dt><dd id="display">-</dd>
+</dl>
+</main>
+<script type="module" src="demo.js"></script>
+</body>
+</html>

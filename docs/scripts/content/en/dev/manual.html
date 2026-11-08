@@ -1,0 +1,45 @@
+<p class="lead">Everything under {{src:docs}} except {{src:docs/scripts}} and {{src:docs/assets}} is generated; the same build is the GitHub Pages site. The generator is one Python script with no dependencies beyond the standard library (Python 3.9 or later).</p>
+
+<pre><code>python3 -I docs/scripts/build.py            # rewrite docs/ (only the files that change)
+python3 -I docs/scripts/build.py --check    # exit 1 when docs/ is out of date
+python3 -I docs/scripts/build.py --strict   # also fail on diagram layout warnings
+python3 -I docs/scripts/build.py --out DIR --site --source-base https://github.com/OWNER/REPO/blob/SHA
+                                              # the site to publish: the docs (assets too) in DIR,
+                                              # its top linking demo/ and coverage/, source links
+                                              # to the repository on GitHub</code></pre>
+
+<h2>What to edit</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>To change</th><th>Edit</th></tr></thead>
+<tbody>
+<tr><td>The text of a page</td><td>{{src:docs/scripts/content|docs/scripts/content/&lt;lang&gt;/&lt;page&gt;.html}} (and <code>dev/&lt;page&gt;.html</code>). English and Japanese are separate files: change both.</td></tr>
+<tr><td>The list of pages, their titles, the page template</td><td>{{src:docs/scripts/build.py}} (<code>USER_PAGES</code>, <code>DEV_PAGES</code>, <code>Site.page</code>)</td></tr>
+<tr><td>A diagram</td><td>{{src:docs/scripts/diagrams.py}}: one function per diagram, boxes at explicit coordinates, labels as <code>L(en, ja)</code>.</td></tr>
+<tr><td>How diagrams are drawn (colors, arrows, text)</td><td>{{src:docs/scripts/svgdiagram.py}}</td></tr>
+<tr><td>The API reference</td><td>The comments of {{src:include/hdrgrading}} themselves (their Japanese in {{src:docs/scripts/api_ja}}); the parser and the layout are {{src:docs/scripts/apiref.py}}.</td></tr>
+<tr><td>Colors and layout of the pages</td><td>{{src:docs/assets/manual.css}}</td></tr>
+</tbody></table></div>
+
+<h2>Placeholders</h2>
+<p>The page bodies are HTML with placeholders that the build expands and checks, so a renamed file or symbol breaks the build instead of leaving a dead link:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Placeholder</th><th>Becomes</th><th>Checked</th></tr></thead>
+<tbody>
+<tr><td><code>{&#8203;{fig:NAME}}</code></td><td>The diagram, inline (so the theme switch reaches it), with a link to its SVG file</td><td>The diagram exists; unused diagrams are warned about</td></tr>
+<tr><td><code>{&#8203;{src:PATH}}</code>, <code>{&#8203;{src:PATH|TEXT}}</code></td><td>A link to a file or directory of the repository</td><td>The path exists</td></tr>
+<tr><td><code>{&#8203;{api:SYMBOL}}</code>, <code>{&#8203;{api:STRUCT.MEMBER|TEXT}}</code></td><td>A link into the API reference</td><td>The symbol is in a public header</td></tr>
+<tr><td><code>{&#8203;{page:NAME}}</code>, <code>{&#8203;{man:NAME}}</code>, <code>{&#8203;{dev:NAME}}</code></td><td>A link to a page of the same part, of the manual, of dev/</td><td>The page exists</td></tr>
+</tbody></table></div>
+
+<h2>Diagrams</h2>
+<p>A diagram is a <code>Diagram(name, width, height, title, desc)</code> with <code>box</code> (a kind picks the color: app, api, entry, core, io, plugin, filter, gpu, common, ext, data), <code>group</code>, <code>edge</code> (sides, anchor fractions <code>sa</code> / <code>da</code>, waypoints <code>via</code>, <code>dashed</code>, a label), <code>line</code> and <code>text</code>. The build writes <code>docs/&lt;lang&gt;/img/&lt;name&gt;.svg</code> for each language and inlines the same SVG into the pages. It estimates text widths and warns when a label does not fit its box or boxes overlap; the estimate is conservative, so look at the result in a browser too. The SVGs follow the system's light or dark theme, and the page's theme switch when inlined.</p>
+
+<h2>The API reference</h2>
+<p>The headers document themselves with plain comments before declarations and after members. Doxygen and libclang only take doc comments (<code>/** */</code>, <code>///&lt;</code>), so using them would mean rewriting every header comment or adding a dependency to the build; {{src:docs/scripts/apiref.py}} reads the headers' own layout (kept by clang-format and check_style.py) instead. It stops with an error on a line it does not understand, and the build fails unless every <code>HDRG_API</code> function of the headers is in the reference. The English pages show the comments as written; the Japanese pages show each in Japanese with the English under it, and identifiers in both link to their entries.</p>
+<p>The translations are in {{src:docs/scripts/api_ja}}, one file a header, each comment keyed by a hash of its English, so a comment that does not change keeps its translation and only new or changed ones are translated ({{src:docs/scripts/api_ja/README.md}}: the steps, the rules and the terms). A plain build brings the files up to date with the headers (a new or changed comment comes in with <code>"ja": null</code>, an unused one goes) and fails while a comment is untranslated or a translation does not match its English (its blocks, list items and identifiers); <code>python3 -I docs/scripts/apiref.py docs/scripts/api_ja/&lt;header&gt;.json</code> checks one file.</p>
+
+<h2>Checking</h2>
+<p>Run <code>--check</code> after changing a public header or a page source to see whether the generated files must be rebuilt and committed. CI's repository checks run <code>--check --strict</code> ({{src:.github/workflows/ci.yml}}), so a header change without the rebuilt manual fails there.</p>
+
+<h2>Publishing</h2>
+<p>GitHub Pages ({{src:.github/workflows/pages.yml}}) builds the docs again as the whole site with <code>--out site --site</code> and <code>--source-base</code> set to the commit on GitHub, so its source links reach the files the pages describe (a directory under <code>tree/</code>, a file under <code>blob/</code>, the API reference's line anchors too); the site's top (the docs' own <code>index.html</code>) also links the WASM demo and the coverage the other jobs put beside it (when the CI run has no merged coverage, the site still goes out, with a page saying so in its place). {{src:scripts/wasm_demo.sh}} builds the same site with the demo into <code>build/web</code> to try locally, and the CMake target <code>hdrg_web</code> (<code>cmake --build &lt;build&gt; --target hdrg_web</code>) builds the site without the demo into <code>&lt;build&gt;/web</code>. The committed docs keep relative links for browsing a checkout.</p>

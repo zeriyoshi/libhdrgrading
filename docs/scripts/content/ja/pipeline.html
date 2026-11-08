@@ -1,0 +1,58 @@
+<p class="lead">静止画でもセッションでも、フレームはどれも同じコアを通ります。走査 A が解析し、走査 B がセルの上にゲインを計画し、描画がプランを表示に合わせ、走査 C が帯ごとに適用します。呼び出し元の画素は符号値として 3 回読まれ、全解像度の浮動小数点のデータは持ちません。</p>
+
+{{fig:pipeline}}
+
+<h2>系列とフレーム</h2>
+<p>{{src:src/pipeline/pipeline.c}} は、系列が持ち続けるものとフレームごとに作り直すものを分けます:</p>
+<ul>
+<li><strong>系列</strong> (<code>hdrg_pipeline_open</code>): ソースの色とチャネルごとの符号値の表 (256 か 65536 個の EOTF、<code>sdr_eotf</code> を反映)、描画の色域への色の LUT、適用のワーカーごとの作業領域、PREFILTER の連鎖と SCALE のフィルタのインスタンス。</li>
+<li><strong>フレーム</strong> (<code>hdrg_pipeline_frame</code> = <code>hdrg_pipeline_analyze</code> + <code>hdrg_pipeline_plan</code> + <code>hdrg_pipeline_bind</code>): 解析、プランと描画、出力の寸法への結び付け。その後、呼び出し元が出力の行を帯ごとに取り出します (<code>hdrg_pipeline_rows</code>)。</li>
+</ul>
+<p>セッションは、フレームを描く前 (送ったとき) に解析し、縮小画で解析できます (<code>hdrg_pipeline_proxy</code>: 2<sup>shift</sup> 四方の中央の画素)。プランと適用はソースの寸法のままです。</p>
+
+<h2>ノイズと PREFILTER</h2>
+<p>連鎖を通す前に、{{src:src/core/noise.c}} がフレームを全解像度の 16 × 16 のタイルの固定の格子で測ります (静かなタイルでの Immerkær 法): Y' のノイズの全体と 8 つの輝度の区分、Cb と Cr、8 画素の格子のブロック性、輪郭の近くのリンギング。フィルタはそれを {{api:HDRG_SD_NOISE}} のサイドデータとして読むので、ブロックの跡やリンギングのないフレームでは deblock・dering は何もしません。走査 A はコアが読むフレーム (連鎖の後) でノイズを測り直し、走査 C のコアリングはその値を使います。</p>
+<p>連鎖は、PREFILTER 段に足したフィルタ (追加した順に {{api:HDRG_PREFILTER_MAX}} まで) か、足していなければ params が求める内蔵のフィルタで、順は <code>hdrg.deblock</code> → <code>hdrg.dering</code> → <code>hdrg.defringe</code> → <code>hdrg.deband</code> → <code>hdrg.mctf</code> (セッションだけ) → <code>hdrg.denoise.spatial</code> (粒の方針が PRESERVE でないとき) です。GPU のコンテキストでは、Metal・Vulkan・WebGPU 版があって device が見つかればそれを使います。系統を外したビルド ({{dev:build}}) では、どのプリセットでもその強さは 0 で、それを求める params は {{api:HDRG_ERR_UNSUPPORTED}} です。フレームですることのないフィルタは素通しを申告し、全部が素通しの静止画は段なしと同じに変換します。</p>
+
+<h2>走査 A: 解析</h2>
+<p>{{src:src/core/analyze.c}} はフレームを行ごとに並列に 1 回読み、セルの上に統計を置きます:</p>
+<ul>
+<li>解析輝度 La = max(Y, 0.7 × max(R, G, B)) (彩度の高い光を取りこぼさない)。</li>
+<li>p99.5・key (対数平均の輝度)・シーンのヒストグラム (切れ目の判定) のための La の 4096 区分のヒストグラム (ワーカーごとの整数の数を合算)。</li>
+<li>セル (4 × 4 画素、{{api:HDRG_EFFORT_QUALITY}} では 2 × 2) ごとの平均と最大の La・最も明るいチャネル・平均の Y。</li>
+<li><strong>光</strong>: 明るいセルの連結成分、その周りのチャンファー距離の輪、光線に沿って外へ向かう Y の落ち方。周りがどの向きにも同じように単調に落ちる領域 (グロー) は上乗せの割合を 1 まで持ち、輪郭の鋭い領域 (文字・UI・平坦な塗り・日の当たる壁) や片側へ寄って落ちる領域は持ちません。迷ったら拡散面のままです。{{api:hdrg_params_t.colored_lights|colored_lights}} で色の濃い光も判定します。</li>
+<li>任意で ANALYZE の段 ({{api:HDRG_STAGE_ANALYZE}}、{{api:hdrg_params_t.light_predictor|light_predictor}} が 0 より大きいとき): {{src:src/core/predict.c}} が判定した光ごとの記録 (芯の箱・上乗せ・芯のセルと周りとフレームからの 10 個の特徴量) を段のフィルタ (アプリのもの、なければ光の小型予測器 <code>hdrg.analyze.predict</code>: 固定小数点の MLP、{{src:src/plugins/predict}}) に渡し、光とそのセルの上乗せを (1 &minus; 量) + 量 &times; フィルタが付けた確からしさ 倍にします。確かめは疑わしい光の上乗せを下げるだけです。</li>
+<li>セッション: 画面の端の黒帯は統計から外します。</li>
+</ul>
+
+<h2>走査 B: プラン</h2>
+<p>{{src:src/core/plan.c}} は解析をコンテンツの意図に変えます。表示には依存しません:</p>
+<ul>
+<li>拡散面の倍率: log2(diffuse_max) に key の smoothstep を掛けたもの (ローキーのフレームは SDR の水準)。</li>
+<li>光の上乗せの割合 h を bilateral grid に: 8 × 8 画素のセル × log2 La の 24 区分、[1 2 1] で平滑化。上乗せは領域の輝度に沿い、輪郭を越えてハローになりません。</li>
+<li>clarity の基底 (セルの log2 La のボックスぼかし)、セルごとの APL の統計、ノイズがあればノイズの水準の関数からコアリングの表。</li>
+</ul>
+<p>{{api:HDRG_TEMPORAL_STATIC}} は代わりに固定のプランを使います: 解析なしで、同じ符号値の画素は同じマッピング ({{api:hdrg_lut3d_export}} が標本化するもの)。</p>
+
+<h2>描画</h2>
+<p>{{src:src/core/render.c}} はプランを {{api:hdrg_display_caps_t}} に合わせます: 拡散面の倍率とピークまでの上乗せの幅、APL の共通の係数 (プランのセル統計を {{api:hdrg_params_t.apl_peak_fraction|apl_peak_fraction}}・{{api:hdrg_params_t.apl_budget_nits|apl_budget_nits}}・表示の全白の上限と比べる二分探索)、肩のピーク (表示か形式の値で、内容では変えない)、色域、出力の符号化。別の表示へ描き直すときはプランを使い回します。</p>
+
+<h2>SCALE</h2>
+<p>出力の寸法が入力と違うとき (または段にフィルタを足したとき)、適用は SCALE 段から拡大・縮小した符号値を帯ごとに読みます: 段に足したフィルタ、なければ内蔵の scaler &mdash; どちらの辺も縮まないときは {{api:hdrg_params_t.upscaler|upscaler}} のもの (Lanczos・独自のエッジ適応・FSR 1・NIS。NIS はそれぞれの辺で 2 倍までで、超えれば Lanczos)、ほかは Lanczos。edge の系統のないビルドでは ANIME と GAME の既定は Lanczos で、ビルドから外した scaler は {{api:HDRG_ERR_UNSUPPORTED}} です。解析とプランは入力の寸法のままで、プランの格子を出力の画素へ写します。</p>
+
+<h2>走査 C: 適用</h2>
+<p>{{src:src/core/apply.c}} は 256 行の帯を並列に描き、エンコーダかセッションの出力へ流します。行は 16 画素のブロックで SIMD のカーネルを通ります:</p>
+<ul>
+<li>符号値 → リニア → La → t = log2 La。</li>
+<li>ゲイン g = 拡散面 + h(La) × 幅 (h は画素の位置と La で格子から切り出す) + コントラストの傾き + clarity。ノイズがあれば、ゲインと clarity の詳細は 3 × 3 の平均へコアリングした La で決め、上乗せが粒を増幅しません。</li>
+<li>色の LUT (33³、四面体補間、描画の色域のリニア) × 2<sup>g</sup>。ハイライトの脱飽和と、ピークの 75% からのやわらかい肩。</li>
+<li>単層 PQ: PQ の符号 (8bit は三角ディザ付き、または 16bit)。2 層の形: SDR の描画 (ハイブリッドは PQ のプライマリ) と、ゲインマップのセルへ積算した log2 の比。</li>
+<li>光を測るとき (単層 PQ・ハイブリッドの基本): 最大と平均の max(R, G, B) とヒストグラムから MaxCLL / FALL・HDR10+・SDR へ戻す ST 2094-50 の曲線。</li>
+<li>動画のセッション: PREFILTER 段が取り除いた粒 (RESYNTH) か、フレームが持つコーデックの粒のパラメータ (PRESERVE と RESYNTH) を、SDR で見えていた量で PQ に描き戻します ({{src:src/core/grain.c}})。</li>
+</ul>
+
+<h2>色</h2>
+<p>{{src:src/core/color.c}} は入力の色を原色とチャネルごとの伝達特性で持ちます。色域の拡張は、ソースの境界に近い色を Oklab の LCh で明度と色相を固定して外へ写し、無彩色・パステル・暗い色・肌・記憶色を守ります。彩度は同じマッピングの中でクロマを掛けます。どちらも入力の符号値の上の 33³ の LUT に焼き、輝度の比は LUT の出力に掛けるので、目標の内側の色と無彩色は変わらずに通ります。</p>
+
+<h2>決定性</h2>
+<p>走査はスレッド数によらず同じに仕事を分け、決まった順に足し合わせ、ディザを {{src:src/foundation/include/hdrgrading/foundation/hash.h|hash.h}} から、超越関数を {{src:src/foundation/include/hdrgrading/foundation/fmath.h|fmath.h}} から取ります。同じビルドと同じ SIMD の階層ならエンコード前の出力はバイトまで同じ (L0)、FMA の階層をまたげば 1 コード以内 (L0x)、GPU 版は CPU と L2 の許容誤差で一致します ({{dev:verification#determinism|決定性の水準}})。</p>

@@ -1,0 +1,15 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ * Copyright (c) 2026 Go Kudo <zeriyoshi@gmail.com>
+ */
+
+/*
+ * C-compatibility shim: standalone jpegli's public headers unconditionally
+ * include <cstddef>/<cstdio> although the API is extern "C". This directory
+ * is on the include path only for our C translation units.
+ */
+#ifdef __cplusplus
+#include_next <cstddef>
+#else
+#include <stddef.h>
+#endif

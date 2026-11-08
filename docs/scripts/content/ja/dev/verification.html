@@ -1,0 +1,58 @@
+<p class="lead">テストは Unity ({{src:third_party/unity}}) で書き、CTest で走らせます。どの構成でもテストの一式を全部走らせます: 保証がモジュールをまたぐので、変えた所でテストを選びません。</p>
+
+<h2>テストの一式</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>ディレクトリ</th><th>確かめること</th></tr></thead>
+<tbody>
+<tr><td>{{src:tests/unit}}</td><td>モジュール単体: ノイズの推定、色、プランと光、描画、Y'CbCr の変換、セッションの約束、輝度の規則の評価の基準、SIMD のカーネルと scalar の比較 (checkasm 型)、数学・ハッシュ・スレッド・プール。Metal と Vulkan の下位層。</td></tr>
+<tr><td>{{src:tests/conformance}}</td><td>外から見たライブラリ: 出力の形、ゲインマップ、HAGC、色域、決定性 (スレッド数・FTZ・SIMD の階層)、確保のつり合いと失敗の掃引、プラグインと段の実行器、MCTF、補間、粒、拡大、動的メタデータ、AVIF、HEIF、GPU 版と CPU の比較 (WebGPU・Metal・Vulkan)、fuzz のシード。</td></tr>
+<tr><td>{{src:tests/plugins}}</td><td>テスト用のプラグインのモジュール (scaler、新しすぎる・古すぎる ABI)。</td></tr>
+<tr><td>{{src:tests/ffmpeg}}・{{src:tests/gstreamer}}・{{src:tests/vapoursynth}}</td><td>バインディング: どのフレームもセッションの出力とバイトまで同じ。色・メタデータ・タイムスタンプ・遅延・出力のレート。</td></tr>
+<tr><td>{{src:tests/wasm}}</td><td>node の上のブラウザのモジュール (同じビルドの hdrg-cli とバイトまで同じ)。</td></tr>
+<tr><td>{{src:tests/install}}</td><td>共有ライブラリの公開する記号が <code>HDRG_API</code> の一覧と同じ。install した物を CMake のパッケージと pkg-config で使うプログラムが組める。</td></tr>
+<tr><td>{{src:tests/tools}}</td><td>hdrg-video の HDR10+ と ST 2094-50 の JSON。</td></tr>
+<tr><td>{{src:tests/fuzz}}</td><td><code>fuzz_convert</code> (<code>hdrg_convert</code> の libFuzzer) と <code>fuzz_seeds</code> (シードのコーパス。<code>test_seeds</code> も使う)。</td></tr>
+</tbody></table></div>
+
+<h2>3 つの段階</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>段階</th><th>いつ</th><th>何を走らせるか</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>編集のたび</td><td><code>dev</code> と <code>temporal</code> (時間方向の機能は既定で OFF) の全テスト</td></tr>
+<tr><td>2</td><td>コミットの前</td><td><code>dev</code>・<code>temporal</code>・<code>release</code>・<code>asan-ubsan</code> と、変更の種類に応じた構成 (下の表)</td></tr>
+<tr><td>3</td><td>節目 (フェーズの終わり・push の前)</td><td>全構成: Linux 17・macOS 9・x86 2・WASM 5 の構成と、FFmpeg のバインディング (macOS)・FFmpeg のフィルタ (macOS と Linux)・hdrg-gui (macOS と、Linux の GStreamer 版と FFmpeg 版) (Valgrind・coverage・fuzz を含む)。ここで見つかった問題は修正のコミットを足して直す</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<thead><tr><th>変更の種類</th><th>段階 2 で足す構成</th></tr></thead>
+<tbody>
+<tr><td>内蔵プラグインの組み込み・既定値</td><td><code>minimal</code></td></tr>
+<tr><td>時間方向の処理 (STATS のフィルタ・補間・多フレームの拡大)</td><td><code>HDRG_WITH_TEMPORAL</code> を ON にした <code>tsan</code> と <code>asan-ubsan</code></td></tr>
+<tr><td>並行・非同期のジョブ・GPU の完了</td><td><code>tsan</code></td></tr>
+<tr><td>SIMD のカーネル・fmath</td><td>x86 (Rosetta) と <code>wasm</code></td></tr>
+<tr><td>WebGPU</td><td>Linux (lavapipe)</td></tr>
+<tr><td>ICC・色</td><td><code>nolcms2</code></td></tr>
+<tr><td>バインディング</td><td>Linux の <code>dev</code></td></tr>
+<tr><td>HEIF・AVIF・静止画の容器</td><td>macOS と Linux の <code>heif</code> と <code>avif</code></td></tr>
+<tr><td>install・CMake のパッケージ</td><td>macOS と Linux の <code>release</code> と <code>dev</code> の <code>test_install</code></td></tr>
+</tbody></table></div>
+<p><code>minimal</code> は任意の内蔵プラグインのないビルドでテストの一式を走らせます。外したもののテストは ignore にするか ({{src:tests/test_util.h}} の <code>HDRG_TEST_REQUIRE_BUILTIN</code>・<code>HDRG_TEST_BUILTIN_STATUS</code>)、組みません ({{src:CMakeLists.txt}} の <code>hdrg_builtins_have</code>)。テストの前に空きメモリを見ます: {{src:scripts/jobs.sh}} が並列の数を決め、空きメモリに 1 ジョブ分の余裕もなければ警告して 1 ジョブずつ走らせます。Valgrind は CI のナイトリー ({{src:.github/workflows/nightly.yml}}) だけで、<code>-O0</code> のままです。</p>
+
+<h2>CI</h2>
+<ul>
+<li>{{src:.github/workflows/ci.yml}}: 規約と書式の検査 (シェーダ・Actions の Lockfile・ドキュメントの検査も)、Linux (amd64 / arm64、GCC / Clang、Debug / Release、lcms2 なし、時間方向の機能あり)、サニタイザ、fuzz、FFmpeg のフィルタ、WASM、11 のプラットフォームのカバレッジとその合算、macOS、Windows、GUI。</li>
+<li>{{src:.github/workflows/nightly.yml}}: Valgrind。</li>
+<li>{{src:.github/workflows/pages.yml}}: GitHub Pages (サイトとしてのこのドキュメント・デモ・合算のカバレッジ)。</li>
+</ul>
+<p>実行ごとに変わらないものは Actions のキャッシュに置き、プルリクエストの外でだけ書きます: 開発イメージのレイヤ、FFmpeg のタグの clone とそのコンパイルの ccache (フィルタのジョブ)、WASM のビルドごと (とデモ) の Emscripten のキャッシュ、実行をまたいで育つ fuzz のコーパス (クラッシュの入力は artifact として上げます)。</p>
+
+<h2 id="determinism">決定性の水準</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>水準</th><th>対象</th><th>約束</th></tr></thead>
+<tbody>
+<tr><td>L0 (公開の保証)</td><td>CPU の経路のエンコード前の画素・ゲインマップ・メタデータ</td><td>同じ入力・設定・ビルド・SIMD の階層なら、スレッド数・実行・FP の環境によらずバイト一致</td></tr>
+<tr><td>L0x</td><td>SIMD の階層・コンパイラ・OS の間</td><td>scalar の参照との許容誤差 (実測: 最大 1 コード、ずれる標本はごくわずか)</td></tr>
+<tr><td>L2</td><td>GPU 版と CPU の間</td><td>許容誤差。基準はいつも CPU の scalar の参照</td></tr>
+<tr><td>約束しない</td><td>エンコード後のバイト列 (jpegli と libjxl は命令を選び、システムの libaom は版で、版によってはスレッド数でも違う)、機器に固有のフィルタ (MetalFX)</td><td>&mdash;</td></tr>
+<tr><td>動画</td><td>セッションの出力</td><td>L0 の下で、WINDOWED・TWO_PASS・STATIC は入力の列と設定の純関数: シークしても同じ。RECURSIVE は違う</td></tr>
+</tbody></table></div>
+<p>{{src:tests/conformance/test_determinism.c}} がスレッド数と FTZ、exact な SIMD の階層が scalar と同じことを確かめ、{{src:tests/unit/test_kernels.c}} がどの階層のカーネルも scalar のものと比べます。</p>
