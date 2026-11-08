@@ -1,0 +1,14 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ * Copyright (c) 2026 Go Kudo <zeriyoshi@gmail.com>
+ */
+
+#ifndef HDRGRADING_VERSION_H
+#define HDRGRADING_VERSION_H
+
+#define HDRG_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define HDRG_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define HDRG_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#define HDRG_VERSION_STRING "@PROJECT_VERSION@"
+
+#endif /* HDRGRADING_VERSION_H */

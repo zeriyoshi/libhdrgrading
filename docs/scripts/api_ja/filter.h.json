@@ -1,0 +1,1452 @@
+[
+ {
+  "key": "a9e0270ff07bc08e",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading plugin ABI: the API table, the filters (this header) and the",
+   "codecs (codec.h, which this one includes).",
+   "",
+   "A plugin includes only the public headers (this one and those it",
+   "includes) and never links the library: it calls the host through the API",
+   "table its entry point receives. Everything the host owns is an opaque",
+   "handle. The library's internal layers (src/foundation, src/gpu) are not part",
+   "of the ABI, but for the GPU share (hdrgrading/foundation/gpu_share.h:",
+   "filter_gpu_share, the frames on the device), versioned on its own",
+   "(HDRG_GPU_SHARE_VERSION).",
+   "",
+   "- Strings always travel as (pointer, byte length). The host validates",
+   "  them inside the call (length limits, UTF-8, character sets, SPDX syntax),",
+   "  copies them and never keeps a pointer into plugin memory; invalid input",
+   "  is rejected, never truncated.",
+   "- No enums or bools cross the boundary: constants are uint32_t, flags",
+   "  0 / 1 are uint8_t. The host's objects stay opaque; what a stage hands",
+   "  over (a light's record, a frame's statistics) is a plain struct of",
+   "  fixed-size integers, floats and pointers laid out as this header has it.",
+   "- The ABI is not frozen yet: it stays at HDRG_PLUGIN_ABI_VERSION 1 and",
+   "  may change in any way until it is. A module must be built against the",
+   "  library's own header; one reporting another version is rejected at load",
+   "  before it can touch the table.",
+   "- Registration functions work only inside the entry point; after it",
+   "  returns the plugin is frozen (HDRG_ERR_INVALID_STATE)."
+  ],
+  "ja": [
+   "libhdrgrading のプラグインの ABI: API 表、フィルタ (このヘッダ) とコーデック (このヘッダが include する codec.h)。",
+   "",
+   "プラグインは公開ヘッダ (このヘッダとそれが include するもの) だけを include し、ライブラリをリンクしません: 入口が受け取る API 表を通してホストを呼びます。ホストが持つものはどれも中の見えないハンドルです。ライブラリの内部の層 (src/foundation、src/gpu) は ABI に含まれません。ただし GPU の共有 (hdrgrading/foundation/gpu_share.h: filter_gpu_share と device の上のフレーム) は含まれ、自分の版 (HDRG_GPU_SHARE_VERSION) を持ちます。",
+   "",
+   "- 文字列はいつも (ポインタ, バイト数) で渡ります。ホストは呼び出しの中でそれを検証し (長さの上限・UTF-8・文字の集合・SPDX の構文)、複製して、プラグインのメモリを指すポインタを持ち続けません。不正な入力は切り詰めずに拒否します。",
+   "- 境界を enum と bool は渡りません: 定数は uint32_t、0 / 1 のフラグは uint8_t です。ホストのオブジェクトは中が見えないままで、段が渡すもの (光の記録、フレームの統計) は、大きさの決まった整数・浮動小数点数・ポインタをこのヘッダのとおりに並べた素の構造体です。",
+   "- ABI はまだフリーズしていません: HDRG_PLUGIN_ABI_VERSION 1 のままで、フリーズするまではどのようにも変わりえます。モジュールはライブラリ自身のヘッダで組まなければなりません。別の版を報告するモジュールは、表に触れる前に読み込みで拒否されます。",
+   "- 登録の関数は入口の中でだけ働きます。入口が戻るとプラグインはフリーズします (HDRG_ERR_INVALID_STATE)。"
+  ]
+ },
+ {
+  "key": "a46c1d5d7efadb58",
+  "of": "HDRG_PLUGIN_EXPORT",
+  "en": [
+   "Platform dependent: one of these, by the build and the compiler."
+  ],
+  "ja": [
+   "プラットフォームに依存します: ビルドとコンパイラに応じて、これらのどれかです。"
+  ]
+ },
+ {
+  "key": "a5dbb8bb667ccb19",
+  "of": "HDRG_FORMAT_RGB16",
+  "en": [
+   "Pixel formats of a job's frames (filter_set_input, nego_set_output): the",
+   "source's code values (its transfer and primaries), samples in native byte",
+   "order. The host converts from and to RGB16, its own (8-bit sources are",
+   "widened as v * 257). A whole frame's planes (a filter without BANDS, a",
+   "window's frames) have strides of multiples of 256 bytes from a base",
+   "aligned to 16 KiB; a band's rows are packed.",
+   "  RGB16         interleaved R, G, B uint16_t",
+   "  RGBA16        interleaved R, G, B, A uint16_t (A = 65535 in, ignored out)",
+   "  RGB16_PLANAR  planes R, G, B of uint16_t",
+   "  RGBF16_PLANAR planes R, G, B of IEEE 754 half floats, code / 65535",
+   "                (out: clamped to [0, 1], NaN = 0)",
+   "  P016          Y'CbCr 4:2:0: a Y' plane and a CbCr plane of interleaved",
+   "                uint16_t pairs, chroma sited at the left (MPEG-2) and of the",
+   "                matrix and range filter_set_input declared; the top 10 bits",
+   "                are P010. Whole frames only (no BANDS). Chroma row r goes",
+   "                with luma rows 2r and 2r + 1",
+   "  RGBA8         interleaved R, G, B, A uint8_t (rounded; A = 255)",
+   "  RGB10A2       a uint32_t a pixel: R in bits 0-9, G 10-19, B 20-29, A 30-31",
+   "                (DXGI R10G10B10A2_UNORM, MTLPixelFormatRGB10A2Unorm)",
+   "  RGBF32_PLANAR planes R, G, B of IEEE 754 single floats, code / 65535 (an",
+   "                inference runtime's NCHW float32 tensor; out: clamped to",
+   "                [0, 1], NaN = 0, rounded to the nearest code)"
+  ],
+  "ja": [
+   "ジョブのフレームの画素の形式 (filter_set_input、nego_set_output): ソースの符号値 (その伝達特性と原色) で、標本はネイティブのバイト順です。ホストは自分の形式である RGB16 との間で変換します (8bit のソースは v * 257 で広げます)。全画面のプレーン (BANDS のないフィルタ、ウィンドウのフレーム) は、16 KiB にそろえた先頭から 256 バイトの倍数の行の幅で並び、帯の行は詰めてあります。",
+   "  RGB16         R, G, B の uint16_t の交互の並び",
+   "  RGBA16        R, G, B, A の uint16_t の交互の並び (A は入力で 65535、出力では無視)",
+   "  RGB16_PLANAR  uint16_t の R, G, B のプレーン",
+   "  RGBF16_PLANAR IEEE 754 の半精度の浮動小数点数の R, G, B のプレーン、符号値 / 65535",
+   "                (出力: [0, 1] に収め、NaN = 0)",
+   "  P016          Y'CbCr 4:2:0: Y' のプレーンと、uint16_t の組を交互に並べた CbCr の",
+   "                プレーン。色差のサンプル位置は左 (MPEG-2)、行列とレンジは",
+   "                filter_set_input が申告したもの。上位 10bit は P010。",
+   "                全画面だけ (BANDS なし)。色差の行 r は輝度の行 2r と",
+   "                2r + 1 に対応",
+   "  RGBA8         R, G, B, A の uint8_t の交互の並び (丸める。A = 255)",
+   "  RGB10A2       1 画素に 1 つの uint32_t: R はビット 0-9、G は 10-19、B は 20-29、A は 30-31",
+   "                (DXGI R10G10B10A2_UNORM、MTLPixelFormatRGB10A2Unorm)",
+   "  RGBF32_PLANAR IEEE 754 の単精度の浮動小数点数の R, G, B のプレーン、符号値 / 65535 (推論の",
+   "                ランタイムの NCHW の float32 のテンソル。出力: [0, 1] に収め、",
+   "                NaN = 0、いちばん近い符号値に丸める)"
+  ]
+ },
+ {
+  "key": "98b6e28a1805d2cf",
+  "of": "HDRG_JOB_FIRST",
+  "en": [
+   "job_frame flags"
+  ],
+  "ja": [
+   "job_frame のフラグ"
+  ]
+ },
+ {
+  "key": "a1d229747da528ea",
+  "of": "HDRG_JOB_FIRST",
+  "en": [
+   "the first frame of the session or of its clip: state resets"
+  ],
+  "ja": [
+   "セッションかそのクリップの最初のフレーム: 状態を初めに戻す"
+  ]
+ },
+ {
+  "key": "3029b6e0dc414e38",
+  "of": "hdrg_filter_t",
+  "en": [
+   "a filter instance in a conversion"
+  ],
+  "ja": [
+   "変換の中のフィルタのインスタンス"
+  ]
+ },
+ {
+  "key": "16bbc920d97693c0",
+  "of": "hdrg_lights_t",
+  "en": [
+   "a frame's judged lights (HDRG_STAGE_ANALYZE)"
+  ],
+  "ja": [
+   "フレームの判定した光 (HDRG_STAGE_ANALYZE)"
+  ]
+ },
+ {
+  "key": "063397adba2a5672",
+  "of": "hdrg_rendering_t",
+  "en": [
+   "a frame rendering (HDRG_STAGE_STATS)"
+  ],
+  "ja": [
+   "描くフレーム (HDRG_STAGE_STATS)"
+  ]
+ },
+ {
+  "key": "d2fab46380fd76a3",
+  "of": "HDRG_LIGHT_FEATURES",
+  "en": [
+   "HDRG_STAGE_ANALYZE: a judged light of the frame (lights_get), its core's",
+   "box in the analyzed frame's pixels (lights_frame's), the rules' boost",
+   "(a share of the headroom, 0..1) and its features, in order: the core's",
+   "area (log2(1 + its cells) / 8), mean and brightest La, brightest channel",
+   "and mean chroma (the largest less the smallest channel); its surround's",
+   "mean La (2 cells around the core's box) and the core's contrast to it; the",
+   "boost; the frame's key (log2 of the log-average La / 8) and p99.5 of La.",
+   "La: the analysis' linear luminance of the SDR source (white 1)"
+  ],
+  "ja": [
+   "HDRG_STAGE_ANALYZE: フレームの判定した光 (lights_get) の、解析したフレームの画素 (lights_frame のもの) での芯の箱、規則の上乗せ (ヘッドルームに対する割合、0..1) と特徴量。特徴量は順に、芯の面積 (log2(1 + そのセルの数) / 8)、平均と最大の La、最も明るいチャネルと平均の色差 (最大のチャネルから最小のチャネルを引いたもの)、周り (芯の箱の周りの 2 セル) の平均の La とそれに対する芯のコントラスト、上乗せ、フレームの key (log 平均の La の log2 / 8) と La の p99.5 です。La: 解析での SDR のソースの線形の輝度 (白が 1)"
+  ]
+ },
+ {
+  "key": "08a11c668d8452b2",
+  "of": "hdrg_stats_session_t",
+  "en": [
+   "HDRG_STAGE_STATS: a video session's statistics across its frames, its",
+   "temporal mode (hdrg_session_config_t.temporal: WINDOWED with a window,",
+   "RECURSIVE, TWO_PASS). The session as created (filter_stats_session, from",
+   "create on): the mode, latency profile and windows (the future resolved),",
+   "the first frame's number, the frames' size, the frames back its scene-cut",
+   "test reads, the rate (frames a second) and a TWO_PASS second pass's first",
+   "pass (NULL: none)"
+  ],
+  "ja": [
+   "HDRG_STAGE_STATS: 動画のセッションの、時間モード (hdrg_session_config_t.temporal: ウィンドウのある WINDOWED、RECURSIVE、TWO_PASS) のフレームをまたぐ統計。作ったときのセッション (filter_stats_session、create 以降): モード、遅延のプロファイルとウィンドウ (未来は解決したもの)、最初のフレームの番号、フレームの寸法、シーンの切れ目の判定が読む前のフレームの数、レート (1 秒のフレーム数) と TWO_PASS の 2 パス目の 1 パス目 (NULL: なし)"
+  ]
+ },
+ {
+  "key": "a026f925fee0ec7a",
+  "of": "hdrg_stats_light_t",
+  "en": [
+   "a judged light: its core's box in the light planes' cells (inclusive), its boost"
+  ],
+  "ja": [
+   "判定した光: 光のプレーンのセルでの芯の箱 (両端を含む)、その上乗せ"
+  ]
+ },
+ {
+  "key": "5d5068d2f56155dc",
+  "of": "hdrg_stats_sent_t",
+  "en": [
+   "a frame as sent, from its first analysis (fade): its number, the",
+   "session's scene cut before it, its p99.5 and log-average of La (linear)"
+  ],
+  "ja": [
+   "送ったときのフレームで、最初の解析から (fade): 番号、その前のセッションのシーンの切れ目、La の p99.5 と log 平均 (線形)"
+  ]
+ },
+ {
+  "key": "39bf89ddc7fa0fdf",
+  "of": "hdrg_stats_fade_t",
+  "en": [
+   "... what the class makes of it: run, the frames of the darkening run up",
+   "to it (0: none), and from, the run's first frame; hold, whether it",
+   "renders with the statistics the frame from rendered with (a fade-out);",
+   "cut, its scene cut (the session's, or a TWO_PASS second pass's first's);",
+   "dim, in a run, the dimming its analysis runs again with (the lights'",
+   "thresholds scaled by it, at most 1)"
+  ],
+  "ja": [
+   "... クラスがそれから作るもの: run はそれまでの暗くなる走りのフレームの数 (0: なし)、from はその走りの最初のフレーム。hold はフレーム from が描いた統計で描くか (フェードアウト)。cut はそのシーンの切れ目 (セッションのもの、または TWO_PASS の 2 パス目なら 1 パス目のもの)。dim は走りの中で、その解析をやり直すときの暗くなり方 (光の閾値をそれで縮める、最大 1)"
+  ]
+ },
+ {
+  "key": "bfb38ac8a551316a",
+  "of": "hdrg_stats_frame_t",
+  "en": [
+   "a frame's analysis (frame at its send, stats_queued at another's",
+   "render): its number, its cells (width x height, each 2^cell_shift of the",
+   "frame's pixels), scene cut, p99.5 and log-average La (its first analysis),",
+   "its cells' mean Y (the first analysis'; NULL: none), and the analysis it",
+   "renders from (a run's second): per cell the boost of the light it holds or",
+   "is near, 1 + that light's index (0: none), and its lights"
+  ],
+  "ja": [
+   "フレームの解析 (送るときの frame、ほかのフレームの render のときの stats_queued): 番号、セル (width x height、それぞれフレームの 2^cell_shift 画素)、シーンの切れ目、La の p99.5 と log 平均 (最初の解析のもの)、セルの平均 Y (最初の解析のもの。NULL: なし)、そして描くもとになる解析 (走りの中なら 2 回目のもの) の、セルごとの持っているか近くにある光の上乗せと 1 + その光の番号 (0: なし)、およびその光の一覧"
+  ]
+ },
+ {
+  "key": "d103ade652696b9e",
+  "of": "hdrg_stats_head_t",
+  "en": [
+   "the frame rendering (stats_head): its analysis as a frame's; anchor and",
+   "key, the statistics it renders with (the class writes them); its cells'",
+   "and lights' boosts, steadied in place"
+  ],
+  "ja": [
+   "描くフレーム (stats_head): その解析をフレームのものとして持ちます。anchor と key はそれで描く統計 (クラスが書きます)。そのセルと光の上乗せは、その場で安定させたもの"
+  ]
+ },
+ {
+  "key": "2b1f22780596d33c",
+  "of": "hdrg_stats_window_fn_t",
+  "en": [
+   "A STATS class's work (all required, besides create and destroy; no",
+   "configure, process nor submit): the frames, in order, as sent and as each",
+   "renders (the frames sent after one rendering are queued: stats_queued).",
+   "window: the frames before a frame its state reads (*past: the preroll of",
+   "a seek) and the frames after it sent before it renders (*future) under a",
+   "latency profile (HDRG_LATENCY_*); fade: a frame as sent; frame: its",
+   "analysis, once final; render: the frame rendering; fit: its APL factor",
+   "(log2) as planned: *replace and *used the one it renders with instead;",
+   "rendered: what it rendered with (log2: its own anchor, key and factor",
+   "before the class's). Deterministic: the session's bytes are a pure function",
+   "of the frames"
+  ],
+  "ja": [
+   "STATS のクラスの仕事 (create と destroy のほかもすべて必須。configure・process・submit はなし): フレームを順に、送ったときと、それぞれを描くときに受け取ります (あるフレームを描いた後に送ったフレームは待ち行列にあります: stats_queued)。window: 遅延のプロファイル (HDRG_LATENCY_*) での、状態が読むフレームの前の枚数 (*past: シークの preroll) と、フレームを描く前に送られるその後の枚数 (*future)。fade: 送ったときのフレーム。frame: その解析で、最終のもの。render: 描くフレーム。fit: 計画したときの APL の係数 (log2): *replace と *used は代わりに描くときに使うもの。rendered: 描くのに使ったもの (log2: クラスのものの前の、自分の anchor、key と係数)。決定的: セッションのバイト列はフレームの純関数です"
+  ]
+ },
+ {
+  "key": "b7d981dc74fb2ca4",
+  "of": "(prose)",
+  "en": [
+   "Callbacks receive the API table as their last argument, so a plugin needs",
+   "no global state to call the host. An instance lives as long as the",
+   "conversion or the video session it runs in (create once, then configure",
+   "before each frame), so it may keep a model, a device or buffers across",
+   "frames."
+  ],
+  "ja": [
+   "コールバックは最後の引数に API 表を受け取るので、プラグインはホストを呼ぶのに大域の状態が要りません。インスタンスは、それが動く変換か動画のセッションと同じだけ生きるので (create は 1 回、その後はフレームごとにその前に configure)、フレームをまたいでモデル・device・バッファを持っていられます。"
+  ]
+ },
+ {
+  "key": "b9c9e25fb0269c53",
+  "of": "hdrg_filter_create_fn_t",
+  "en": [
+   "required: makes the instance state (*inst) from validated options, which",
+   "are valid only within this call (copy the values the instance keeps)"
+  ],
+  "ja": [
+   "必須: 検証済みのオプションからインスタンスの状態 (*inst) を作ります。オプションはこの呼び出しの中でだけ有効です (インスタンスが持つ値は複製してください)"
+  ]
+ },
+ {
+  "key": "d0a3630555bbec7f",
+  "of": "hdrg_filter_destroy_fn_t",
+  "en": [
+   "required"
+  ],
+  "ja": [
+   "必須"
+  ]
+ },
+ {
+  "key": "ff266cf33e1bb337",
+  "of": "hdrg_filter_configure_fn_t",
+  "en": [
+   "required, before each frame: reads the input with nego_input, declares the output"
+  ],
+  "ja": [
+   "必須、フレームごとにその前に: nego_input で入力を読み、出力を申告します"
+  ]
+ },
+ {
+  "key": "8ef6116996dd8e4b",
+  "of": "hdrg_filter_process_fn_t",
+  "en": [
+   "required without ASYNC: one job = output rows of one band (BANDS) or the whole frame"
+  ],
+  "ja": [
+   "ASYNC でなければ必須: 1 つのジョブ = 1 つの帯の出力の行 (BANDS) か全画面"
+  ]
+ },
+ {
+  "key": "df9d2e899fdf8776",
+  "of": "hdrg_filter_submit_fn_t",
+  "en": [
+   "required with ASYNC (a GPU, an inference runtime): starts the whole",
+   "frame's job and returns; api->job_done(job, status) ends it once, from",
+   "any thread (a driver's completion callback too: the host only signals in",
+   "it, never blocks long nor calls the plugin back), the job and its frames",
+   "valid until then. A failed device still owes every job its job_done (a",
+   "CUDA host function does not run after a context error: end the jobs from",
+   "elsewhere). A failure returned here ends the job without job_done. With",
+   "max_inflight above 1, the next frames' configure and submit come before",
+   "the job ends: keep what a job needs with it. In builds without threads",
+   "(WASM without pthreads) the host cannot wait: job_done must come within",
+   "submit (a job not ended when submit returns fails, and the job is gone)"
+  ],
+  "ja": [
+   "ASYNC なら必須 (GPU、推論のランタイム): 全画面のジョブを始めて戻ります。api->job_done(job, status) が任意のスレッドから 1 回だけジョブを終えます (ドライバの完了のコールバックからも: ホストはその中で知らせるだけで、長く止まらず、プラグインを呼び返しません)。それまでジョブとそのフレームは有効です。失敗した device も、どのジョブにも job_done を呼ばなければなりません (CUDA の host function はコンテキストのエラーの後には動きません: ほかの場所からジョブを終えてください)。ここで失敗を返すと、job_done なしでジョブが終わります。max_inflight が 1 より大きいと、ジョブが終わる前に次のフレームの configure と submit が来ます: ジョブに要るものはジョブと一緒に持ってください。スレッドのないビルド (pthreads のない WASM) ではホストは待てません: job_done は submit の中で来なければなりません (submit が戻るときに終わっていないジョブは失敗し、ジョブはなくなります)"
+  ]
+ },
+ {
+  "key": "cbd7b42e9bd4abe1",
+  "of": "hdrg_filter_analyze_fn_t",
+  "en": [
+   "required of an ANALYZE class, its work (no configure, process nor submit):",
+   "per frame with judged lights, the chance each is a light",
+   "(lights_set_chance) from their records (lights_get) and the frame",
+   "(lights_frame). The library scales a light's boost by (1 - amount) +",
+   "amount x chance (amount: hdrg_params_t.light_predictor): a class lowers",
+   "a doubtful light, never raises one. Deterministic chances keep the",
+   "library's bytes (integers); a model on a GPU or an NPU matches within its",
+   "tolerance"
+  ],
+  "ja": [
+   "ANALYZE のクラスに必須の、その仕事 (configure・process・submit はなし): 判定した光のあるフレームごとに、光の記録 (lights_get) とフレーム (lights_frame) から、それぞれが光である確からしさを渡します (lights_set_chance)。ライブラリは光の上乗せを (1 - amount) + amount x chance 倍にします (amount: hdrg_params_t.light_predictor): クラスは疑わしい光を下げるだけで、上げません。決定的な確からしさならライブラリのバイト列は保たれ (整数)、GPU や NPU の上のモデルはその許容誤差の内で一致します"
+  ]
+ },
+ {
+  "key": "56571a94322bb096",
+  "of": "hdrg_filter_input_rows_fn_t",
+  "en": [
+   "optional: input rows [*in_begin, *in_end) needed for output rows",
+   "[out_begin, out_end). Must be pure and monotonic (a sub-range never needs",
+   "rows outside the range's). NULL: scaled range widened by the halo."
+  ],
+  "ja": [
+   "任意: 出力の行 [out_begin, out_end) に要る入力の行 [*in_begin, *in_end)。純粋で単調でなければなりません (部分の範囲が、範囲全体の行の外の行を要ることはない)。NULL: 比で写した範囲をのりしろで広げたもの。"
+  ]
+ },
+ {
+  "key": "b94031e85eac6904",
+  "of": "hdrg_filter_frame_alloc_fn_t",
+  "en": [
+   "optional, without BANDS: the whole frames of the filter's jobs (inputs,",
+   "a window's frames, outputs) in memory of its own, such as an IOSurface's",
+   "CVPixelBuffer or pinned CUDA host memory: planes and strides (each at",
+   "least a packed row, both multiples of the format's sample: 2 bytes, 1 for",
+   "RGBA8, 4 for RGB10A2) of a frame of format and size, and *handle, what the",
+   "jobs give back (job_input_handle / job_output_handle). The host keeps a",
+   "frame until it frees it. Classes registering the same alloc and free make",
+   "frames any of their instances uses and frees: in a session the host hands",
+   "a frame one such filter output on to the next one's input without a copy,",
+   "and the frame may outlive the instance that made it (not the plugin)"
+  ],
+  "ja": [
+   "任意、BANDS なし: フィルタのジョブの全画面のフレーム (入力、ウィンドウのフレーム、出力) を、IOSurface の CVPixelBuffer や CUDA の pinned の host のメモリのような自分のメモリに: 形式 format と寸法のフレームのプレーンと行の幅 (それぞれ少なくとも詰めた行の大きさで、どちらも形式の標本の倍数: 2 バイト、RGBA8 は 1、RGB10A2 は 4) と、ジョブが返すもの *handle (job_input_handle / job_output_handle)。ホストはフレームを解放するまで持ちます。同じ alloc と free を登録したクラスは、そのどのインスタンスも使って解放できるフレームを作ります: セッションでは、ホストはそうしたフィルタが出力したフレームを写さずに次のフィルタの入力へ渡し、フレームはそれを作ったインスタンスより長く生きることがあります (プラグインより長くは生きません)"
+  ]
+ },
+ {
+  "key": "9bb1bf107c31fb54",
+  "of": "hdrg_filter_cancel_fn_t",
+  "en": [
+   "optional, ASYNC: end the jobs in flight soon (job_done with their results",
+   "or a failure). The host calls it before it waits for them when it stops",
+   "early: a session destroyed or failing with frames in flight"
+  ],
+  "ja": [
+   "任意、ASYNC: 飛行中のジョブを早く終えます (結果か失敗で job_done)。ホストは早く止めるとき、ジョブを待つ前にこれを呼びます: 飛行中のフレームがあるまま壊すか失敗するセッション"
+  ]
+ },
+ {
+  "key": "374b9ef3152c6aac",
+  "of": "hdrg_filter_device_release_fn_t",
+  "en": [
+   "required with filter_set_device: the host is done with a device frame the filter gave"
+  ],
+  "ja": [
+   "filter_set_device を使うなら必須: フィルタが渡した device のフレームをホストが使い終えた"
+  ]
+ },
+ {
+  "key": "ccf624c8e20a20da",
+  "of": "hdrg_plugin_deinit_fn_t",
+  "en": [
+   "optional: releases what the entry point set up, when the plugin is",
+   "unregistered; user: its plugin_set_user pointer (NULL = none)"
+  ],
+  "ja": [
+   "任意: プラグインの登録を外すときに、入口が用意したものを解放します。user: その plugin_set_user のポインタ (NULL = なし)"
+  ]
+ },
+ {
+  "key": "a521538e0feeaf0b",
+  "of": "hdrg_plugin_api / the plugin (entry point only) (title)",
+  "en": [
+   "the plugin (entry point only)"
+  ],
+  "ja": [
+   "プラグイン (入口でだけ)"
+  ]
+ },
+ {
+  "key": "036a574b517d3d97",
+  "of": "hdrg_plugin_api.plugin_set_info",
+  "en": [
+   "id: reverse domain, [a-z0-9._-]; version: SemVer characters"
+  ],
+  "ja": [
+   "id: 逆ドメイン、[a-z0-9._-]。version: SemVer の文字"
+  ]
+ },
+ {
+  "key": "8b07e9d393ce0473",
+  "of": "hdrg_plugin_api.plugin_set_license",
+  "en": [
+   "expression: SPDX license expression; a LicenseRef- needs its text"
+  ],
+  "ja": [
+   "expression: SPDX のライセンス式。LicenseRef- にはその本文が要る"
+  ]
+ },
+ {
+  "key": "7ffe7a338c4c650a",
+  "of": "hdrg_plugin_api.plugin_add_component",
+  "en": [
+   "bundled libraries, model weights, data: each with its own license"
+  ],
+  "ja": [
+   "同梱のライブラリ・モデルの重み・データ: それぞれ自分のライセンスで"
+  ]
+ },
+ {
+  "key": "0dece7f020f4e4ff",
+  "of": "hdrg_plugin_api.plugin_set_user",
+  "en": [
+   "a pointer every filter and codec of the plugin reads back (filter_plugin_user, read_users,",
+   "write_users), such as a device or models shared by its instances. The plugin owns it",
+   "(release it in deinit) and keeps it safe for concurrent instances"
+  ],
+  "ja": [
+   "プラグインのどのフィルタとコーデックも読み返すポインタ (filter_plugin_user、read_users、write_users) で、インスタンスが共有する device やモデルなど。プラグインが持ち (deinit で解放する)、同時に動くインスタンスから安全に使えるようにします"
+  ]
+ },
+ {
+  "key": "ef772fb327ce8b37",
+  "of": "hdrg_plugin_api / memory (any time, any thread) (title)",
+  "en": [
+   "memory (any time, any thread)"
+  ],
+  "ja": [
+   "メモリ (いつでも、どのスレッドからも)"
+  ]
+ },
+ {
+  "key": "e5cdd19ca0d0e4c9",
+  "of": "hdrg_plugin_api / memory (any time, any thread)",
+  "en": [
+   "the context's allocator (hdrg_context_desc_t.allocator): api is the table",
+   "the call received, which names the context. NULL when it fails. An aligned",
+   "block (align a power of two, at least sizeof(void *)) is freed by",
+   "mem_aligned_free alone. Free everything before the plugin's deinit returns"
+  ],
+  "ja": [
+   "コンテキストのアロケータ (hdrg_context_desc_t.allocator): api は呼び出しが受け取った表で、それがコンテキストを示します。失敗すると NULL。そろえたブロック (align は 2 のべき乗で、sizeof(void *) 以上) は mem_aligned_free だけで解放します。プラグインの deinit が戻る前にすべてを解放してください"
+  ]
+ },
+ {
+  "key": "0b45b0422bfb42b8",
+  "of": "hdrg_plugin_api / the context's threads and conversions (any time, any thread) (title)",
+  "en": [
+   "the context's threads and conversions (any time, any thread)"
+  ],
+  "ja": [
+   "コンテキストのスレッドと変換 (いつでも、どのスレッドからも)"
+  ]
+ },
+ {
+  "key": "c2fef94e147c649d",
+  "of": "hdrg_plugin_api / the context's threads and conversions (any time, any thread)",
+  "en": [
+   "workers: how many of a run_parallel's fn calls may run at once (1",
+   "without threads), the bound of their worker argument"
+  ],
+  "ja": [
+   "workers: run_parallel の fn の呼び出しが同時にいくつ動けるか (スレッドがなければ 1)。その worker の引数の上限"
+  ]
+ },
+ {
+  "key": "1f6f636ff65041e1",
+  "of": "hdrg_plugin_api.run_parallel",
+  "en": [
+   "fn(user, i, worker) for every i in [0, count) on the context's threads",
+   "(the calling one among them), returning when all ran; each worker runs",
+   "one at a time. Not from within fn"
+  ],
+  "ja": [
+   "[0, count) のどの i にも fn(user, i, worker) をコンテキストのスレッド (呼び出したスレッドも含む) で呼び、すべてが終わると戻ります。どの worker も一度に 1 つずつ動きます。fn の中からは呼べません"
+  ]
+ },
+ {
+  "key": "3064510611fe8620",
+  "of": "hdrg_plugin_api.yuv_to_rgb16",
+  "en": [
+   "16-bit R'G'B' (the codes x 65535, rows of stride bytes, at least",
+   "width x 3 samples) of the Y'CbCr picture desc describes (HDRG_YUVD_*",
+   "words, planes Y', Cb, Cr with strides in bytes): subsampled chroma",
+   "upsampled bilinearly from its sites, plus the luma's detail where the",
+   "chroma follows the luma (fit: HDRG_CHROMA_FIT_*, the read_limits one",
+   "for a reader's picture). A strip of a larger picture converts as the",
+   "whole one does at rows a few luma rows (8) inside it"
+  ],
+  "ja": [
+   "desc が記述する Y'CbCr の絵 (HDRG_YUVD_* の語、プレーン Y'・Cb・Cr と行の幅はバイトで) の 16bit の R'G'B' (符号値 x 65535、stride バイトの行、少なくとも width x 3 標本): 間引いた色差はそのサンプル位置から双線形に拡大し、色差が輝度に沿うところでは輝度の細部を足します (fit: HDRG_CHROMA_FIT_*、読み手の絵には read_limits のもの)。大きな絵の一部の帯は、その内側に輝度の行で数行 (8) 入った行では、絵全体と同じに変換されます"
+  ]
+ },
+ {
+  "key": "923182a9b5de3523",
+  "of": "hdrg_plugin_api.rgb16_to_yuv",
+  "en": [
+   "rows [y0, y0 + rows) of 16-bit R'G'B' (width x 3 samples a row, rgb's",
+   "first row the row y0) into the Y'CbCr picture desc describes, its",
+   "planes written: 4:4:4 each pixel's, 4:2:0 (y0 even) the chroma of",
+   "each row pair from the [1 2 1] / 4 filter on the even columns and the",
+   "two rows' mean (siting HDRG_CHROMA_LEFT); 4:2:2 is not written"
+  ],
+  "ja": [
+   "16bit の R'G'B' (1 行に width x 3 標本、rgb の最初の行が行 y0) の行 [y0, y0 + rows) を desc が記述する Y'CbCr の絵へ変換し、そのプレーンに書きます: 4:4:4 は画素ごと、4:2:0 (y0 は偶数) は 2 行の組ごとの色差を、偶数の列での [1 2 1] / 4 のフィルタと 2 行の平均から (サンプル位置 HDRG_CHROMA_LEFT)。4:2:2 は書きません"
+  ]
+ },
+ {
+  "key": "af4ac56f0ef37f7e",
+  "of": "hdrg_plugin_api / classes (entry point only). NULL on error (title)",
+  "en": [
+   "classes (entry point only). NULL on error"
+  ],
+  "ja": [
+   "クラス (入口でだけ)。エラーでは NULL"
+  ]
+ },
+ {
+  "key": "2b022b71a805ac1d",
+  "of": "hdrg_plugin_api / classes (entry point only). NULL on error",
+  "en": [
+   "a class is a filter (class_set_stages and the calls below) or a codec",
+   "(class_set_reader / class_set_writer, codec.h), never both; the",
+   "options and class_register are both kinds'"
+  ],
+  "ja": [
+   "クラスはフィルタ (class_set_stages と以下の呼び出し) かコーデック (class_set_reader / class_set_writer、codec.h) で、両方ではありません。オプションと class_register はどちらの種類も使います"
+  ]
+ },
+ {
+  "key": "765b0290d8c8b13a",
+  "of": "hdrg_plugin_api.class_add_option_int",
+  "en": [
+   "key: [a-z0-9_] starting with [a-z]; min <= default <= max"
+  ],
+  "ja": [
+   "key: [a-z] で始まる [a-z0-9_]。min <= default <= max"
+  ]
+ },
+ {
+  "key": "8c75f023fd94f948",
+  "of": "hdrg_plugin_api.class_add_option_string",
+  "en": [
+   "def and every value: UTF-8 without control characters, at most 1 KiB",
+   "(a model file's path, a mode name)"
+  ],
+  "ja": [
+   "def とどの値も: 制御文字のない UTF-8 で、最大 1 KiB (モデルのファイルのパス、モードの名前)"
+  ]
+ },
+ {
+  "key": "9587f2f044a188cc",
+  "of": "hdrg_plugin_api.class_set_analyze",
+  "en": [
+   "an ANALYZE class's analyze"
+  ],
+  "ja": [
+   "ANALYZE のクラスの analyze"
+  ]
+ },
+ {
+  "key": "54071a59b839cb67",
+  "of": "hdrg_plugin_api.class_set_stats",
+  "en": [
+   "a STATS class's work (hdrg_stats_*_fn_t)"
+  ],
+  "ja": [
+   "STATS のクラスの仕事 (hdrg_stats_*_fn_t)"
+  ]
+ },
+ {
+  "key": "233bf7ff5d116421",
+  "of": "hdrg_plugin_api.class_set_frames",
+  "en": [
+   "both or neither; not with BANDS"
+  ],
+  "ja": [
+   "両方か、どちらもなし。BANDS とは併用できない"
+  ]
+ },
+ {
+  "key": "0ae1557d67c21996",
+  "of": "hdrg_plugin_api.class_set_extensions",
+  "en": [
+   "codecs: the file names' extensions, lowercase [a-z0-9] without the dot,",
+   "comma-separated (\"jpg,jpeg\"), the first one a written file's"
+  ],
+  "ja": [
+   "コーデック: ファイル名の拡張子で、点のない小文字の [a-z0-9] をカンマで区切ったもの (\"jpg,jpeg\")。最初のものが書いたファイルの拡張子"
+  ]
+ },
+ {
+  "key": "47e0bdee124079d0",
+  "of": "hdrg_plugin_api.class_set_reader",
+  "en": [
+   "codecs: reads files (both required)"
+  ],
+  "ja": [
+   "コーデック: ファイルを読む (どちらも必須)"
+  ]
+ },
+ {
+  "key": "7b3342fc004c5b0a",
+  "of": "hdrg_plugin_api.class_set_writer",
+  "en": [
+   "codecs: writes files (every callback required). forms:",
+   "HDRG_CODEC_FORM bits; default_form: one of them, the form of",
+   "HDRG_OUTPUT_AUTO; rows: HDRG_CODEC_ROWS_*; color: HDRG_CODEC_COLOR_*;",
+   "max_side: a side's pixels at most (1 to 65535)"
+  ],
+  "ja": [
+   "コーデック: ファイルを書く (どのコールバックも必須)。forms: HDRG_CODEC_FORM のビット。default_form: そのうちの 1 つで、HDRG_OUTPUT_AUTO の形。rows: HDRG_CODEC_ROWS_*。color: HDRG_CODEC_COLOR_*。max_side: 辺の最大の画素数 (1〜65535)"
+  ]
+ },
+ {
+  "key": "c7a950bc6ba2d6dc",
+  "of": "hdrg_plugin_api.class_set_user",
+  "en": [
+   "either kind: a pointer the class's instances read back (filter_class_user, read_users,",
+   "write_users), such as the one of several backends a class of the plugin's runs on; the",
+   "plugin owns it"
+  ],
+  "ja": [
+   "どちらの種類も: クラスのインスタンスが読み返すポインタ (filter_class_user、read_users、write_users) で、プラグインのクラスが動くいくつかのバックエンドのうちの 1 つなど。プラグインが持ちます"
+  ]
+ },
+ {
+  "key": "efb27b0bfa555fa2",
+  "of": "hdrg_plugin_api.class_register",
+  "en": [
+   "checks the class (required callbacks, consistency) and freezes it"
+  ],
+  "ja": [
+   "クラスを確かめ (必須のコールバック、整合性)、フリーズします"
+  ]
+ },
+ {
+  "key": "f9d128583d24fd49",
+  "of": "hdrg_plugin_api / options (create) (title)",
+  "en": [
+   "options (create)"
+  ],
+  "ja": [
+   "オプション (create)"
+  ]
+ },
+ {
+  "key": "950fa86d9c495456",
+  "of": "hdrg_plugin_api.option_get_string",
+  "en": [
+   "the value copied into buf (cap bytes) with a terminating NUL; needed",
+   "receives its size with the NUL, and nothing is written when cap is",
+   "smaller"
+  ],
+  "ja": [
+   "値を終端の NUL 付きで buf (cap バイト) に写します。needed は NUL を含む大きさを受け取り、cap がそれより小さければ何も書きません"
+  ]
+ },
+ {
+  "key": "f7aa4f1cddec8a18",
+  "of": "hdrg_plugin_api / the filter instance (title)",
+  "en": [
+   "the filter instance"
+  ],
+  "ja": [
+   "フィルタのインスタンス"
+  ]
+ },
+ {
+  "key": "d0e79c2e829b4eea",
+  "of": "hdrg_plugin_api.filter_plugin_user",
+  "en": [
+   "any callback: the user pointer of the filter's plugin (NULL = none)"
+  ],
+  "ja": [
+   "どのコールバックでも: フィルタのプラグインのユーザーポインタ (NULL = なし)"
+  ]
+ },
+ {
+  "key": "5bfead21bf84df44",
+  "of": "hdrg_plugin_api.filter_class_user",
+  "en": [
+   "any callback: the user pointer of the filter's class (class_set_user; NULL = none)"
+  ],
+  "ja": [
+   "どのコールバックでも: フィルタのクラスのユーザーポインタ (class_set_user。NULL = なし)"
+  ]
+ },
+ {
+  "key": "58e0f4966f476202",
+  "of": "hdrg_plugin_api.filter_device",
+  "en": [
+   "any callback: the context's device and queue of kind (HDRG_DEVICE_* of",
+   "gpu.h): the app's (hdrg_context_set_device), else for METAL, VULKAN",
+   "and WEBGPU in a build with them the library's own, made on the first",
+   "ask and shared by the context's filters and its core (WEBGPU: no",
+   "queue, the device's); HDRG_ERR_NOT_FOUND when there is none"
+  ],
+  "ja": [
+   "どのコールバックでも: 種類 kind (gpu.h の HDRG_DEVICE_*) のコンテキストの device とキュー: アプリのもの (hdrg_context_set_device)、なければ METAL・VULKAN・WEBGPU は、それらのあるビルドではライブラリ自身のもので、最初に求められたときに作り、コンテキストのフィルタとコアが共有します (WEBGPU: キューは別になく、device のもの)。どれもなければ HDRG_ERR_NOT_FOUND"
+  ]
+ },
+ {
+  "key": "d90f58774296b4f2",
+  "of": "hdrg_plugin_api.filter_gpu_share",
+  "en": [
+   "any callback: the context's device of kind as the library and every",
+   "plugin share it, in share (an hdrg_gpu_share_t of",
+   "hdrgrading/foundation/gpu_share.h, its struct_size and version set by",
+   "the asker): the native device and queue, the queue's lock (VULKAN) and",
+   "the device's thread (WEBGPU), valid until the plugin's deinit.",
+   "HDRG_ERR_UNSUPPORTED: another version, or no device of the kind"
+  ],
+  "ja": [
+   "どのコールバックからでも: ライブラリとどのプラグインも共有する形の、コンテキストの kind の device を share に入れます (hdrgrading/foundation/gpu_share.h の hdrg_gpu_share_t、struct_size と version は聞く側が入れる): ネイティブの device とキュー、キューのロック (VULKAN) と device のスレッド (WEBGPU) で、プラグインの deinit まで有効です。HDRG_ERR_UNSUPPORTED: 別の版、またはその種類の device がない。"
+  ]
+ },
+ {
+  "key": "5f109ac8239801e3",
+  "of": "hdrg_plugin_api.filter_set_device",
+  "en": [
+   "create, without BANDS: the jobs can take their input and give their",
+   "output as frames of the filter's own on a device of kind, kept there",
+   "between it and a neighboring working filter of the chain that declared",
+   "the same kind (job_device). A filter with a clip or max_inflight above",
+   "1 always gets host frames, one with a window too unless the library",
+   "runs the chain on its own device frames (a session's frames kept on",
+   "its GPU, the library's GPU filters alone): then the window's frames",
+   "are on the device as well (job_device_window)"
+  ],
+  "ja": [
+   "create、BANDS なし: ジョブは、種類 kind の device の上のフィルタ自身のフレームで入力を受け取り、出力を渡せます。フレームは、このフィルタと、同じ種類を申告した連鎖の隣り合って働くフィルタとの間で device の上に置いたままにします (job_device)。クリップのあるフィルタと max_inflight が 1 より大きいフィルタはいつも host のフレームを受け取り、ウィンドウのあるフィルタも、ライブラリが連鎖を自分の device のフレームで流すとき (セッションのフレームを GPU に置き、連鎖がライブラリの GPU のフィルタだけ) を除いて同じです: そのときはウィンドウのフレームも device の上にあります (job_device_window)"
+  ]
+ },
+ {
+  "key": "4b4edd8d503d1524",
+  "of": "hdrg_plugin_api.filter_set_input",
+  "en": [
+   "create: the format of the job's input frames (default RGB16); matrix",
+   "(H.273: 1, 5, 6 or 9) and full_range (0 / 1) code P016, in and out",
+   "(default BT.709, limited range)"
+  ],
+  "ja": [
+   "create: ジョブの入力のフレームの形式 (既定 RGB16)。matrix (H.273: 1、5、6 か 9) と full_range (0 / 1) が、入力でも出力でも P016 の符号を決めます (既定 BT.709、リミテッドレンジ)"
+  ]
+ },
+ {
+  "key": "6a09e769e308cdb5",
+  "of": "hdrg_plugin_api.filter_set_window",
+  "en": [
+   "create: the frames t - past .. t + future a job of frame t reads (each",
+   "at most 8 in PREFILTER, 32 in SCALE; default 0 / 0). INTERP: its job's",
+   "frame t and the next one t + 1 the output lies between, and up to 4",
+   "frames before t and after t + 1 (past at most 4, future 1 to 5;",
+   "default 0 / 1) for a model reading more context. A video session",
+   "keeps them for the filter and delays its frames by future; a still's",
+   "job has its own frame alone. A job's output must depend on its",
+   "window's frames alone (a cache keyed by the window keeps that: the",
+   "index and the frames before and after): the host may skip jobs (a",
+   "seek's preroll) but for SEQUENTIAL filters"
+  ],
+  "ja": [
+   "create: フレーム t のジョブが読むフレーム t - past .. t + future (それぞれ PREFILTER では最大 8、SCALE では 32。既定 0 / 0)。INTERP: 出力がその間にある、ジョブのフレーム t と次のフレーム t + 1 に加えて、より多くの文脈を読むモデルのための t の前と t + 1 の後の 4 枚まで (past は最大 4、future は 1〜5。既定 0 / 1)。動画のセッションはそれらをフィルタのために持ち、フレームを future の分だけ遅らせます。静止画のジョブは自分のフレームだけを持ちます。ジョブの出力はウィンドウのフレームだけで決まらなければなりません (ウィンドウを鍵にしたキャッシュならそれを保てます: 番号と前後のフレーム): SEQUENTIAL のフィルタ以外では、ホストはジョブを飛ばすことがあります (シークの preroll)"
+  ]
+ },
+ {
+  "key": "41f4c4fd17d64ee3",
+  "of": "hdrg_plugin_api.filter_set_clip",
+  "en": [
+   "create, instead of a window: the stream is cut into clips of frames",
+   "frames from its first frame, and a job's window is its frame's clip",
+   "and overlap frames more on each side (as much of them as the session",
+   "has; frames - 1 + overlap at most 8 in PREFILTER, 32 in SCALE; frames",
+   "at least 2; not in INTERP). For bidirectional recurrent models",
+   "(BasicVSR), the overlap hiding the seams; the delay is frames - 1 +",
+   "overlap. A SEQUENTIAL filter's jobs come in order, none skipped, the",
+   "clip's first with HDRG_JOB_FIRST"
+  ],
+  "ja": [
+   "create、ウィンドウの代わりに: ストリームを最初のフレームから frames 枚ずつのクリップに切り、ジョブのウィンドウはそのフレームのクリップと、両側にさらに overlap 枚 (セッションにある分だけ。frames - 1 + overlap は PREFILTER では最大 8、SCALE では 32。frames は 2 以上。INTERP では使えない)。双方向の再帰のモデル (BasicVSR) のためのもので、overlap が継ぎ目を隠します。遅延は frames - 1 + overlap です。SEQUENTIAL のフィルタのジョブは順に来て、どれも飛ばされず、クリップの最初のものは HDRG_JOB_FIRST 付きです"
+  ]
+ },
+ {
+  "key": "e84c749afc522240",
+  "of": "hdrg_plugin_api.filter_set_max_inflight",
+  "en": [
+   "create, ASYNC (required: a filter not calling it fails to create):",
+   "the frames a video session may have submitted and not seen end at",
+   "once (1 to 8; 1: each waited for at once). Above 1 a session of",
+   "HDRG_LATENCY_PLAYBACK (and OFFLINE) delays its frames by frames - 1 to",
+   "keep them in flight (INTERP: the jobs of the outputs ahead, each with",
+   "the window it would have alone, submitted once that window's frames",
+   "are there);",
+   "HDRG_LATENCY_LOW waits for each at once"
+  ],
+  "ja": [
+   "create、ASYNC (必須: 呼ばないフィルタは create に失敗します): 動画のセッションが同時に、投入してまだ終わりを見ていないままにできるフレームの数 (1〜8。1: どれもすぐ待つ)。1 より大きいと、HDRG_LATENCY_PLAYBACK (と OFFLINE) のセッションはそれらを飛行中に保つためにフレームを frames - 1 だけ遅らせます (INTERP: 先の出力のジョブを、それぞれ単独のときと同じウィンドウで、そのウィンドウのフレームがそろってから投入します)。HDRG_LATENCY_LOW はどれもすぐ待ちます"
+  ]
+ },
+ {
+  "key": "a7c4e3906086489d",
+  "of": "hdrg_plugin_api / negotiation (configure only) (title)",
+  "en": [
+   "negotiation (configure only)"
+  ],
+  "ja": [
+   "交渉 (configure でだけ)"
+  ]
+ },
+ {
+  "key": "3258234195cb69ad",
+  "of": "hdrg_plugin_api.nego_input",
+  "en": [
+   "the input's size and the format the jobs see it in (filter_set_input)"
+  ],
+  "ja": [
+   "入力の寸法と、ジョブがそれを見る形式 (filter_set_input)"
+  ]
+ },
+ {
+  "key": "6e4d0b1bb98b43d4",
+  "of": "hdrg_plugin_api.nego_input_color",
+  "en": [
+   "the color of the input's code values: the primaries and the white as",
+   "CIE xy {rx, ry, gx, gy, bx, by, wx, wy}, the transfer (HDRG_TRANSFER_*",
+   "of hdrgrading.h, 2 = another curve) and the bits per sample of the",
+   "source before they were widened to 16"
+  ],
+  "ja": [
+   "入力の符号値の色: CIE xy の原色と白 {rx, ry, gx, gy, bx, by, wx, wy}、伝達特性 (hdrgrading.h の HDRG_TRANSFER_*、2 = ほかの曲線) と、16 に広げる前のソースの標本のビット数"
+  ]
+ },
+ {
+  "key": "cc903c31db01f4a1",
+  "of": "hdrg_plugin_api.nego_side_data",
+  "en": [
+   "the input frame's side data of type copied into buf (cap bytes);",
+   "version and needed receive its version and size, and nothing is",
+   "written when cap is smaller. HDRG_ERR_NOT_FOUND when the frame has",
+   "none of that type"
+  ],
+  "ja": [
+   "種類 type の入力のフレームのサイドデータを buf (cap バイト) に写します。version と needed はその版と大きさを受け取り、cap がそれより小さければ何も書きません。フレームにその種類のものがなければ HDRG_ERR_NOT_FOUND"
+  ]
+ },
+ {
+  "key": "66fcf8f71ff8cddd",
+  "of": "hdrg_plugin_api.nego_requested_size",
+  "en": [
+   "SCALE: the size the host asks for. A filter without BANDS may give",
+   "another (nego_set_output: a model's fixed factor, 2x or 4x): the host",
+   "fits its whole output to the size asked for with its Lanczos",
+   "(hdrg.scale.lanczos)"
+  ],
+  "ja": [
+   "SCALE: ホストが求める寸法。BANDS のないフィルタは別の寸法を出してもかまいません (nego_set_output: モデルの固定の倍率、2 倍か 4 倍): ホストがその全画面の出力を自分の Lanczos (hdrg.scale.lanczos) で求めた寸法に合わせます"
+  ]
+ },
+ {
+  "key": "f24dfc85802b26ac",
+  "of": "hdrg_plugin_api.nego_set_output",
+  "en": [
+   "any HDRG_FORMAT_* (P016 without BANDS)"
+  ],
+  "ja": [
+   "どの HDRG_FORMAT_* も (P016 は BANDS なしで)"
+  ]
+ },
+ {
+  "key": "7bb57648c8d61f0f",
+  "of": "hdrg_plugin_api.nego_set_halo",
+  "en": [
+   "input rows needed beyond the scaled range on each side"
+  ],
+  "ja": [
+   "比で写した範囲の外に両側で要る入力の行"
+  ]
+ },
+ {
+  "key": "494b251c66d840af",
+  "of": "hdrg_plugin_api.nego_set_passthrough",
+  "en": [
+   "the filter leaves this frame as it is (its side data shows nothing to",
+   "do). The output size must be the input's; the host then passes the",
+   "frame on without a job (none is made for it) or drops the stage"
+  ],
+  "ja": [
+   "フィルタはこのフレームをそのままにします (サイドデータからすることがないと分かる)。出力の寸法は入力のものでなければなりません。ホストはそのフレームをジョブなしで渡すか (ジョブを作りません)、段を外します"
+  ]
+ },
+ {
+  "key": "2871c57a7152b467",
+  "of": "hdrg_plugin_api / jobs (process / submit, any thread). Call once per job, not per pixel (title)",
+  "en": [
+   "jobs (process / submit, any thread). Call once per job, not per pixel"
+  ],
+  "ja": [
+   "ジョブ (process / submit、どのスレッドからも)。画素ごとでなくジョブごとに 1 回呼ぶ"
+  ]
+ },
+ {
+  "key": "ddb8ed88905abe51",
+  "of": "hdrg_plugin_api.job_input",
+  "en": [
+   "data points at the plane's row of input row *row_begin (a 4:2:0 chroma",
+   "plane: row *row_begin / 2); rows [*row_begin, *row_end) are readable"
+  ],
+  "ja": [
+   "data は入力の行 *row_begin のプレーンの行を指します (4:2:0 の色差のプレーン: 行 *row_begin / 2)。行 [*row_begin, *row_end) を読めます"
+  ]
+ },
+ {
+  "key": "bcd4ed66e5ca9c9c",
+  "of": "hdrg_plugin_api.job_window",
+  "en": [
+   "the job's frame: its index in the stream (a session's start counts; a",
+   "still: 0) and the frames before and after it the job may read (fewer",
+   "at the stream's ends, a clip's at its own)"
+  ],
+  "ja": [
+   "ジョブのフレーム: ストリームでの番号 (セッションの start も数える。静止画: 0) と、ジョブが読めるその前後のフレームの数 (ストリームの端では少なく、クリップでは自分の端で少ない)"
+  ]
+ },
+ {
+  "key": "838d33006eaaf965",
+  "of": "hdrg_plugin_api.job_shot",
+  "en": [
+   "of the frames job_window gives, those before and after the job's frame",
+   "in its shot (no scene cut between them and it): a multi-frame model",
+   "reading across a cut mixes two shots. A session's SCALE and INTERP jobs",
+   "(INTERP's frame t + 1 always: the host does not interpolate across a",
+   "cut) and a still's (0, 0); HDRG_ERR_NOT_FOUND in PREFILTER, whose",
+   "frames come before the cuts are judged"
+  ],
+  "ja": [
+   "job_window が渡すフレームのうち、ジョブのフレームと同じショットにある (それとの間にシーンの切れ目がない) その前後のフレームの数: 切れ目をまたいで読む多フレームのモデルは 2 つのショットを混ぜてしまいます。セッションの SCALE と INTERP のジョブ (INTERP のフレーム t + 1 はいつもその内: ホストは切れ目をまたいで補間しません) と静止画のもの (0, 0)。PREFILTER では HDRG_ERR_NOT_FOUND (そのフレームは切れ目を判定する前に来ます)"
+  ]
+ },
+ {
+  "key": "47af3a3a93912824",
+  "of": "hdrg_plugin_api.job_frame",
+  "en": [
+   "the job's frame: its pts (a session's frame's; a still: 0) and HDRG_JOB_* flags"
+  ],
+  "ja": [
+   "ジョブのフレーム: その pts (セッションのフレームのもの。静止画: 0) と HDRG_JOB_* のフラグ"
+  ]
+ },
+ {
+  "key": "c994aaa53ce142b9",
+  "of": "hdrg_plugin_api.job_phase",
+  "en": [
+   "INTERP: where the output lies between the job's frame (job_input, 0)",
+   "and the next one (job_input_frame offset 1, 65536), in 1/65536 of",
+   "the interval; 0 on the other stages"
+  ],
+  "ja": [
+   "INTERP: ジョブのフレーム (job_input、0) と次のフレーム (job_input_frame の offset 1、65536) の間の出力の位置を、間隔の 1/65536 単位で。ほかの段では 0"
+  ]
+ },
+ {
+  "key": "653c3ca33ffd0822",
+  "of": "hdrg_plugin_api.job_phases",
+  "en": [
+   "INTERP: the phases of every output the session makes between the job's",
+   "frame and the next one, ascending (job_phase's among them): *count of",
+   "them, the first cap written to phases (NULL with cap 0: the count). A",
+   "model making them together (a generative one's sequence) keeps the",
+   "others for their jobs, keyed by the frame's index and phase, but makes",
+   "any it is asked for alone too: the host may skip jobs (a seek's",
+   "preroll). Other stages: 0 phases"
+  ],
+  "ja": [
+   "INTERP: ジョブのフレームと次のフレームの間にセッションが作るすべての出力の位相を昇順で (job_phase のものも含む): *count がその数で、最初の cap 個を phases に書きます (NULL で cap 0: 数だけ)。まとめて作るモデル (生成モデルの系列) は、ほかのものをそのジョブのためにフレームの番号と位相を鍵にして持ちますが、単独で求められたものも作ります: ホストはジョブを飛ばすことがあります (シークの preroll)。ほかの段: 位相は 0 個"
+  ]
+ },
+ {
+  "key": "9fec578b65ac5ec7",
+  "of": "hdrg_plugin_api.job_set_side_data",
+  "en": [
+   "the output frame's side data of type: version, size bytes (copied,",
+   "replacing any of the type the job gave). HDRG_SD_MOTION (checked:",
+   "HDRG_ERR_INVALID_ARG when its layout is not) of INTERP's jobs and of",
+   "PREFILTER's whole-frame jobs (not BANDS, at most a frame in flight);",
+   "other stages and types HDRG_ERR_UNSUPPORTED (not yet). Before",
+   "job_done, from any thread"
+  ],
+  "ja": [
+   "種類 type の出力のフレームのサイドデータ: 版 version、size バイト (複製し、ジョブが渡したその種類のものを置き換えます)。INTERP のジョブと PREFILTER の全画面のジョブ (BANDS でなく、飛行中は 1 枚まで) の HDRG_SD_MOTION (検査します: 配置が合わなければ HDRG_ERR_INVALID_ARG)。ほかの段と種類は HDRG_ERR_UNSUPPORTED (まだ)。job_done の前に、任意のスレッドから"
+  ]
+ },
+ {
+  "key": "3925c22573824e7e",
+  "of": "hdrg_plugin_api.job_input_frame",
+  "en": [
+   "job_input's rows of frame t + offset (offset 0: job_input's own)"
+  ],
+  "ja": [
+   "フレーム t + offset の job_input の行 (offset 0: job_input 自身のもの)"
+  ]
+ },
+ {
+  "key": "7afe73e23b8eb008",
+  "of": "hdrg_plugin_api.job_output",
+  "en": [
+   "data points at the plane's row of output row begin of job_rows; only",
+   "the job's rows are writable"
+  ],
+  "ja": [
+   "data は job_rows の begin の出力の行のプレーンの行を指します。書けるのはジョブの行だけです"
+  ]
+ },
+ {
+  "key": "ec4f07f3c92274ce",
+  "of": "hdrg_plugin_api.job_scratch",
+  "en": [
+   "the job's scratch memory: size bytes at *data, aligned to 64 bytes, its",
+   "contents undefined, valid until the job returns. Only process's jobs",
+   "(HDRG_ERR_UNSUPPORTED in submit's, which outlive the call). The host",
+   "keeps it for the worker that runs the job and grows it when a job asks",
+   "for more, so a filter's jobs allocate nothing once their size is",
+   "reached. One block a job: a later call replaces an earlier one's.",
+   "HDRG_ERR_NOMEM when it cannot grow"
+  ],
+  "ja": [
+   "ジョブの作業領域: *data に size バイト、64 バイトにそろえ、中身は不定で、ジョブが戻るまで有効です。process のジョブだけ (submit のジョブは呼び出しより長く生きるので HDRG_ERR_UNSUPPORTED)。ホストはジョブを走らせるワーカーのためにそれを持ち続け、ジョブがより多くを求めれば広げるので、フィルタのジョブはその大きさに届いた後は何も確保しません。ジョブに 1 つ: 後の呼び出しが前の呼び出しのものを置き換えます。広げられなければ HDRG_ERR_NOMEM"
+  ]
+ },
+ {
+  "key": "0fb6056732c90af8",
+  "of": "hdrg_plugin_api.job_input_handle",
+  "en": [
+   "the frame_alloc handle of input frame t + offset (offset 0: the job's",
+   "own) / of the output; NULL without frame_alloc"
+  ],
+  "ja": [
+   "入力のフレーム t + offset (offset 0: ジョブ自身のもの) / 出力の frame_alloc のハンドル。frame_alloc がなければ NULL"
+  ]
+ },
+ {
+  "key": "3b196cfdb2bc31c0",
+  "of": "hdrg_plugin_api.job_device",
+  "en": [
+   "the job's frames on the device (hdrg_gpu_share_frame_t of",
+   "hdrgrading/foundation/gpu_share.h for HDRG_FILTER_GPU_FRAMES; else",
+   "what the filters of the kind agree on): *in, the previous filter's (and",
+   "*ready, the value it gave with it), NULL when the input is the host's",
+   "(job_input; HDRG_ERR_NOT_FOUND when it is on the device); *out_wanted",
+   "1 when the output goes to the next filter on the device",
+   "(job_set_output_device; job_output has no planes then)"
+  ],
+  "ja": [
+   "device の上のジョブのフレーム (HDRG_FILTER_GPU_FRAMES では hdrgrading/foundation/gpu_share.h の hdrg_gpu_share_frame_t、ほかはその種類のフィルタどうしが決めたもの): *in は前のフィルタのもの (と、それと一緒に渡された値 *ready)、入力がホストのものなら NULL (job_input。device の上にあるときは HDRG_ERR_NOT_FOUND)。*out_wanted は出力が device の上の次のフィルタへ行くとき 1 (job_set_output_device。そのとき job_output にプレーンはない)。"
+  ]
+ },
+ {
+  "key": "7ac3891c640997b0",
+  "of": "hdrg_plugin_api.job_device_window",
+  "en": [
+   "frame t + offset of the job's window on the device (offset 0:",
+   "job_device's input), an hdrg_gpu_share_frame_t; *frame NULL when the",
+   "window is the host's (job_input_frame). HDRG_ERR_NOT_FOUND outside the",
+   "window (job_window)"
+  ],
+  "ja": [
+   "device の上のジョブの窓のフレーム t + offset (offset 0: job_device の入力)、hdrg_gpu_share_frame_t です。窓がホストのものなら *frame は NULL (job_input_frame)。窓の外は HDRG_ERR_NOT_FOUND (job_window)。"
+  ]
+ },
+ {
+  "key": "333a040b74df1e43",
+  "of": "hdrg_plugin_api.job_set_output_device",
+  "en": [
+   "the output as a device frame of the filter's own (released with device_release)"
+  ],
+  "ja": [
+   "フィルタ自身の device のフレームとしての出力 (device_release で解放する)"
+  ]
+ },
+ {
+  "key": "2ba07523a7cf5ba0",
+  "of": "hdrg_plugin_api.job_done",
+  "en": [
+   "any thread, once per submitted job: its end (HDRG_OK or the failure)"
+  ],
+  "ja": [
+   "任意のスレッドから、投入したジョブごとに 1 回: その終わり (HDRG_OK か失敗)"
+  ]
+ },
+ {
+  "key": "ff194c7405d3107f",
+  "of": "hdrg_plugin_api / analyzing (an ANALYZE class's analyze) (title)",
+  "en": [
+   "analyzing (an ANALYZE class's analyze)"
+  ],
+  "ja": [
+   "解析 (ANALYZE のクラスの analyze)"
+  ]
+ },
+ {
+  "key": "71a8e5ba4aba3959",
+  "of": "hdrg_plugin_api.lights_get",
+  "en": [
+   "the frame's judged lights (*count of them: 1 or more)"
+  ],
+  "ja": [
+   "フレームの判定した光 (*count がその数: 1 以上)"
+  ]
+ },
+ {
+  "key": "bf473bbd4f25a103",
+  "of": "hdrg_plugin_api.lights_frame",
+  "en": [
+   "the analyzed frame (a session's analysis proxy too): interleaved 16-bit",
+   "R'G'B' (the codes x 65535 / their largest, an alpha dropped), rows of",
+   "*stride bytes, made on the first ask and valid within analyze;",
+   "HDRG_ERR_NOT_FOUND where the frame is on the GPU alone"
+  ],
+  "ja": [
+   "解析したフレーム (セッションの解析の縮小画も): 交互に並べた 16bit の R'G'B' (符号値 x 65535 / その最大値、アルファは捨てる)、*stride バイトの行で、最初に求めたときに作り、analyze の中で有効。フレームが GPU の上だけにあるときは HDRG_ERR_NOT_FOUND"
+  ]
+ },
+ {
+  "key": "babae96b8d4d461a",
+  "of": "hdrg_plugin_api.lights_set_chance",
+  "en": [
+   "light index's chance, 0..1 (one not set: 1, as judged)"
+  ],
+  "ja": [
+   "光 index の確からしさ、0..1 (設定しないもの: 判定のとおり 1)"
+  ]
+ },
+ {
+  "key": "e704cd5c7b50303b",
+  "of": "hdrg_plugin_api / a session's statistics (a STATS class's work) (title)",
+  "en": [
+   "a session's statistics (a STATS class's work)"
+  ],
+  "ja": [
+   "セッションの統計 (STATS のクラスの仕事)"
+  ]
+ },
+ {
+  "key": "7d2e78b9d33565b4",
+  "of": "hdrg_plugin_api.filter_stats_session",
+  "en": [
+   "create and after: the session the filter runs in (hdrg_stats_session_t, the session's)"
+  ],
+  "ja": [
+   "create とその後: フィルタが動くセッション (hdrg_stats_session_t、セッションのもの)"
+  ]
+ },
+ {
+  "key": "1ec23691d3c743f9",
+  "of": "hdrg_plugin_api.stats_head",
+  "en": [
+   "render: the frame rendering"
+  ],
+  "ja": [
+   "render: 描くフレーム"
+  ]
+ },
+ {
+  "key": "adcfc66e52c1e46c",
+  "of": "hdrg_plugin_api.stats_queued",
+  "en": [
+   "render: the k-th frame queued after it (1 the next), valid within the",
+   "render; HDRG_ERR_NOT_FOUND past the queue"
+  ],
+  "ja": [
+   "render: その後に待ち行列にある k 番目のフレーム (1 が次)、render の中で有効。待ち行列の先は HDRG_ERR_NOT_FOUND"
+  ]
+ },
+ {
+  "key": "c67a7a56016c98e6",
+  "of": "hdrg_plugin_api / reading (a reader's read) (title)",
+  "en": [
+   "reading (a reader's read)"
+  ],
+  "ja": [
+   "読み (読み手の read)"
+  ]
+ },
+ {
+  "key": "ad31e9105195cd58",
+  "of": "hdrg_plugin_api.read_users",
+  "en": [
+   "the pointers of the reader's plugin (plugin_set_user) and class (class_set_user); NULL: skip"
+  ],
+  "ja": [
+   "読み手のプラグイン (plugin_set_user) とクラス (class_set_user) のポインタ。NULL: 受け取らない"
+  ]
+ },
+ {
+  "key": "886e38818b873465",
+  "of": "hdrg_plugin_api.read_limits",
+  "en": [
+   "the context's max_pixels and the conversion's chroma fit (HDRG_CHROMA_FIT_*)"
+  ],
+  "ja": [
+   "コンテキストの max_pixels と変換の色差の当てはめ (HDRG_CHROMA_FIT_*)"
+  ]
+ },
+ {
+  "key": "cd0cd2bf28f82393",
+  "of": "hdrg_plugin_api.read_image",
+  "en": [
+   "once: the picture's buffer of interleaved R'G'B', width x height,",
+   "samples of bits 8 or 16 (native order), rows of *stride bytes;",
+   "HDRG_ERR_LIMIT above max_pixels before anything is allocated"
+  ],
+  "ja": [
+   "1 回: 交互に並べた R'G'B' の絵のバッファ、width x height、bits が 8 か 16 の標本 (ネイティブの順)、*stride バイトの行。max_pixels を超えると、何かを確保する前に HDRG_ERR_LIMIT"
+  ]
+ },
+ {
+  "key": "9b74315e9f676b55",
+  "of": "hdrg_plugin_api.read_set_cicp",
+  "en": [
+   "the color of the code values: H.273 primaries and transfer",
+   "(HDRG_PRIMARIES_* / HDRG_TRANSFER_*); HDRG_ERR_UNSUPPORTED for a pair",
+   "the library does not take (the color stays unset)"
+  ],
+  "ja": [
+   "符号値の色: H.273 の原色と伝達特性 (HDRG_PRIMARIES_* / HDRG_TRANSFER_*)。ライブラリが受け付けない組は HDRG_ERR_UNSUPPORTED (色は設定されないまま)"
+  ]
+ },
+ {
+  "key": "009987400f741a02",
+  "of": "hdrg_plugin_api.read_set_xy",
+  "en": [
+   "the color as chromaticities and a curve: the primaries and the white",
+   "{rx, ry, gx, gy, bx, by, wx, wy} (NULL: sRGB's), a pure gamma (the",
+   "decoding exponent; 0: the sRGB curve); HDRG_ERR_INVALID_ARG for unusable",
+   "ones (out of range, in a line, a white outside), the color then unset"
+  ],
+  "ja": [
+   "色度と曲線での色: 原色と白 {rx, ry, gx, gy, bx, by, wx, wy} (NULL: sRGB のもの)、純粋なガンマ (復号の指数。0: sRGB の曲線)。使えないもの (範囲外、一直線、外にある白) は HDRG_ERR_INVALID_ARG で、そのとき色は設定されません"
+  ]
+ },
+ {
+  "key": "5f1b993aeac2b151",
+  "of": "hdrg_plugin_api.read_set_icc",
+  "en": [
+   "an ICC profile (copied): the color it describes wins over read_set_cicp / xy"
+  ],
+  "ja": [
+   "ICC プロファイル (複製する): それが記述する色が read_set_cicp / xy より優先"
+  ]
+ },
+ {
+  "key": "bbccb887c36445b6",
+  "of": "hdrg_plugin_api.read_set_exif",
+  "en": [
+   "the Exif (copied; TIFF, without \"Exif\\0\\0\"): its orientation unless",
+   "read_set_orientation, its DCF Adobe RGB when no color is set; the",
+   "output carries it with the orientation 1"
+  ],
+  "ja": [
+   "Exif (複製する。TIFF で、\"Exif\\0\\0\" なし): read_set_orientation がなければその向きを、色が設定されていなければその DCF の Adobe RGB を使います。出力は向きを 1 にしてそれを運びます"
+  ]
+ },
+ {
+  "key": "17e613a0e7d15c42",
+  "of": "hdrg_plugin_api.read_set_orientation",
+  "en": [
+   "the EXIF orientation (1 to 8) of the picture as decoded: the host turns it upright"
+  ],
+  "ja": [
+   "復号したままの絵の EXIF の向き (1〜8): ホストが正しい向きに直します"
+  ]
+ },
+ {
+  "key": "043244091f2b5f23",
+  "of": "hdrg_plugin_api / writing (a writer's create, rows and finish) (title)",
+  "en": [
+   "writing (a writer's create, rows and finish)"
+  ],
+  "ja": [
+   "書き (書き手の create・rows・finish)"
+  ]
+ },
+ {
+  "key": "62d8fee8b75c80ee",
+  "of": "hdrg_plugin_api.write_users",
+  "en": [
+   "the pointers of the writer's plugin (plugin_set_user) and class (class_set_user); NULL: skip"
+  ],
+  "ja": [
+   "書き手のプラグイン (plugin_set_user) とクラス (class_set_user) のポインタ。NULL: 受け取らない"
+  ]
+ },
+ {
+  "key": "4fae73656af212f0",
+  "of": "hdrg_plugin_api.write_image",
+  "en": [
+   "the file: its size, form (HDRG_OUTPUT_GAINMAP / HYBRID / PQ), the",
+   "base's color as H.273 code points (primaries 1 sRGB, 12 Display P3, 9",
+   "BT.2020; transfer 13 sRGB, 16 PQ), the threads the writer may use"
+  ],
+  "ja": [
+   "ファイル: 寸法、形 (HDRG_OUTPUT_GAINMAP / HYBRID / PQ)、H.273 の符号点での基本の画像の色 (原色は 1 が sRGB、12 が Display P3、9 が BT.2020。伝達特性は 13 が sRGB、16 が PQ)、書き手が使えるスレッドの数"
+  ]
+ },
+ {
+  "key": "0628f668ce9184da",
+  "of": "hdrg_plugin_api.write_exif",
+  "en": [
+   "the Exif to carry (TIFF, its orientation 1); HDRG_ERR_NOT_FOUND: none"
+  ],
+  "ja": [
+   "運ぶ Exif (TIFF、向きは 1)。HDRG_ERR_NOT_FOUND: なし"
+  ]
+ },
+ {
+  "key": "d190b02135647824",
+  "of": "hdrg_plugin_api.write_icc",
+  "en": [
+   "HDRG_CODEC_COLOR_ICC: the base's profile copied into buf (cap bytes;",
+   "needed receives its size, nothing is written when cap is smaller):",
+   "Display P3 for a P3 SDR base, \"P3 PQ\" with its cicp tag for a PQ one",
+   "(hagc 1: with the ST 2094-50 curve back to the SDR original in its",
+   "'HAGC' tag, finish only; lumi_nits > 0: a luminance tag).",
+   "HDRG_ERR_NOT_FOUND for an sRGB base (no profile)"
+  ],
+  "ja": [
+   "HDRG_CODEC_COLOR_ICC: 基本の画像のプロファイルを buf (cap バイト) に写します (needed は大きさを受け取り、cap がそれより小さければ何も書きません): P3 の SDR の基本の画像には Display P3、PQ のものには cicp のタグ付きの \"P3 PQ\" (hagc 1: 元の SDR へ戻す ST 2094-50 の曲線を 'HAGC' のタグに入れる、finish でだけ。lumi_nits > 0: 輝度のタグ)。sRGB の基本の画像には HDRG_ERR_NOT_FOUND (プロファイルなし)"
+  ]
+ },
+ {
+  "key": "10cd5533f45d72ce",
+  "of": "hdrg_plugin_api.write_gainmap",
+  "en": [
+   "finish, GAINMAP and HYBRID (else HDRG_ERR_NOT_FOUND): the 8-bit",
+   "monochrome gain map (rows of *stride bytes) and its HDRG_GAINMAP_VALUES",
+   "values; the alternate rendition's color (H.273 primaries, transfer)",
+   "and bits"
+  ],
+  "ja": [
+   "finish、GAINMAP と HYBRID (ほかは HDRG_ERR_NOT_FOUND): 8bit の単色のゲインマップ (*stride バイトの行) とその HDRG_GAINMAP_VALUES 個の値。代替の描画の色 (H.273 の原色、伝達特性) とビット数"
+  ]
+ },
+ {
+  "key": "a34128d8bfb8ca1f",
+  "of": "hdrg_plugin_api.write_iso21496",
+  "en": [
+   "finish: the gain map's ISO 21496-1 metadata (its GainMapMetadata, the",
+   "versions first, one channel, the base's color space) into buf, as",
+   "write_icc"
+  ],
+  "ja": [
+   "finish: ゲインマップの ISO 21496-1 のメタデータ (その GainMapMetadata で、版が先、チャネルは 1 つ、基本の画像の色空間) を write_icc と同じように buf へ"
+  ]
+ },
+ {
+  "key": "b0385baf34cbde70",
+  "of": "hdrg_plugin_api.write_apple_xmp",
+  "en": [
+   "finish, GAINMAP: Apple's HDRGainMap XMP packet (its headroom the",
+   "alternate's) into buf, as write_icc"
+  ],
+  "ja": [
+   "finish、GAINMAP: Apple の HDRGainMap の XMP のパケット (ヘッドルームは代替のもの) を write_icc と同じように buf へ"
+  ]
+ },
+ {
+  "key": "17a6aa0f97ec4c82",
+  "of": "hdrg_plugin_api.write_light",
+  "en": [
+   "finish, HYBRID and PQ (else 0 and 0): the PQ base's measured MaxCLL and",
+   "MaxFALL (cd/m^2); peak: the rendition's ceiling (the mastering",
+   "display's maximum)"
+  ],
+  "ja": [
+   "finish、HYBRID と PQ (ほかは 0 と 0): PQ の基本の画像の測った MaxCLL と MaxFALL (cd/m^2)。peak: 描画の上限 (マスタリングディスプレイの最大)"
+  ]
+ },
+ {
+  "key": "a4063aae1c12bfaf",
+  "of": "hdrg_plugin_api.write_output",
+  "en": [
+   "finish: appends bytes to the file (copied)"
+  ],
+  "ja": [
+   "finish: ファイルにバイト列を足します (複製する)"
+  ]
+ },
+ {
+  "key": "42219ceebf595e67",
+  "of": "HDRG_PLUGIN_DEFINE",
+  "en": [
+   "Defines the module exports of a dynamically loaded plugin: the ABI",
+   "version it was built with (checked before anything else) and the entry",
+   "point calling init. A plugin linked into the host passes init to",
+   "hdrg_context_register_plugin instead."
+  ],
+  "ja": [
+   "動的に読み込むプラグインのモジュールが書き出すものを定義します: 組んだときの ABI の版 (ほかの何よりも先に照合します) と、init を呼ぶ入口。ホストにリンクしたプラグインは、代わりに init を hdrg_context_register_plugin に渡します。"
+  ]
+ }
+]

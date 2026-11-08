@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+name: Dev image
+description: >
+  Builds the .devcontainer image for the runner's uid/gid (layers cached in the GitHub Actions
+  cache, written only outside pull requests) and loads it as hdrg-dev:<arch>, the tag
+  scripts/docker_dev.sh runs.
+inputs:
+  arch:
+    description: amd64 or arm64 (must match the runner)
+    required: true
+runs:
+  using: composite
+  steps:
+    - id: ids
+      shell: bash
+      run: |
+        echo "uid=$(id -u)" >> "$GITHUB_OUTPUT"
+        echo "gid=$(id -g)" >> "$GITHUB_OUTPUT"
+    - uses: docker/setup-buildx-action@v4.4.1
+    - uses: docker/build-push-action@v7.4.0
+      with:
+        context: .devcontainer
+        file: .devcontainer/Dockerfile
+        platforms: linux/${{ inputs.arch }}
+        build-args: |
+          USER_UID=${{ steps.ids.outputs.uid }}
+          USER_GID=${{ steps.ids.outputs.gid }}
+        tags: hdrg-dev:${{ inputs.arch }}
+        load: true
+        cache-from: type=gha,scope=hdrg-dev-${{ inputs.arch }}
+        cache-to: ${{ github.event_name != 'pull_request' && format('type=gha,mode=max,scope=hdrg-dev-{0}', inputs.arch) || '' }}

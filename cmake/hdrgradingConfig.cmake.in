@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# The CMake package of libhdrgrading: find_package(hdrgrading) gives hdrgrading::hdrgrading, and for
+# a plugin's project (src/plugins/<name>) hdrgrading::headers, hdrgrading::foundation,
+# hdrgrading::gpu, hdrgrading::plugin_shared and hdrg_plugin (HdrgPlugin.cmake: a loadable module)
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Threads)
+if(@HDRG_DAWN@)
+    find_dependency(Dawn CONFIG HINTS "@Dawn_DIR@")
+endif()
+if(@HDRG_WITH_VULKAN@)
+    find_dependency(Vulkan)
+endif()
+# a static library links the system's dependencies it was built with (the bundled are inside it)
+if(@HDRG_PACKAGE_PNG@)
+    find_dependency(ZLIB)
+    find_dependency(PNG)
+endif()
+if(@HDRG_PACKAGE_GIF@)
+    find_dependency(GIF)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/hdrgradingTargets.cmake")
+
+# the GPU layers of the installed build, for the plugins' GPU parts
+set(HDRG_WITH_WEBGPU @HDRG_WITH_WEBGPU@)
+set(HDRG_WITH_METAL @HDRG_WITH_METAL@)
+set(HDRG_WITH_VULKAN @HDRG_WITH_VULKAN@)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+include("${CMAKE_CURRENT_LIST_DIR}/HdrgPlugin.cmake")
+check_required_components(hdrgrading)

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 530" width="1060" height="530" class="hd-svg" role="img" aria-labelledby="session-title" lang="en">
+<title id="session-title">A video session: send_frame and receive_frame</title>
+<desc>Sent frames are converted, prefiltered, analyzed and queued; received frames take their scene&#x27;s statistics, are planned, limited, scaled and applied.</desc>
+<style>
+.hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+@media (prefers-color-scheme: dark) {
+  .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+  html[data-theme="light"] .hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+}
+html[data-theme="dark"] .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+.hd-svg .hd-bg { fill: var(--hd-bg); }
+.hd-svg text { font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", sans-serif; fill: var(--hd-ink); }
+.hd-svg .hd-mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+.hd-svg .hd-label { font-size: 13px; font-weight: 600; }
+.hd-svg .hd-sub { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-gtitle { font-size: 12px; font-weight: 700; fill: var(--hd-muted); }
+.hd-svg .hd-note { font-size: 11.5px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel-bg { fill: var(--hd-bg); opacity: .92; }
+.hd-svg .hd-group { fill: var(--hd-group); stroke: var(--hd-group-stroke); stroke-width: 1; }
+.hd-svg .hd-edge { fill: none; stroke: var(--hd-line); stroke-width: 1.4; }
+.hd-svg .hd-edge.hd-dashed { stroke-dasharray: 5 4; }
+.hd-svg .hd-edge.hd-accent { stroke: var(--hd-accent); stroke-width: 1.8; }
+.hd-svg .hd-arrow { fill: var(--hd-line); }
+.hd-svg .hd-arrow.hd-accent { fill: var(--hd-accent); }
+.hd-svg .hd-k-app rect.hd-box { fill: var(--hd-app-fill); stroke: var(--hd-app-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-api rect.hd-box { fill: var(--hd-api-fill); stroke: var(--hd-api-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-entry rect.hd-box { fill: var(--hd-entry-fill); stroke: var(--hd-entry-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-core rect.hd-box { fill: var(--hd-core-fill); stroke: var(--hd-core-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-io rect.hd-box { fill: var(--hd-io-fill); stroke: var(--hd-io-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-plugin rect.hd-box { fill: var(--hd-plugin-fill); stroke: var(--hd-plugin-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-filter rect.hd-box { fill: var(--hd-filter-fill); stroke: var(--hd-filter-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-gpu rect.hd-box { fill: var(--hd-gpu-fill); stroke: var(--hd-gpu-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-common rect.hd-box { fill: var(--hd-common-fill); stroke: var(--hd-common-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box { fill: var(--hd-ext-fill); stroke: var(--hd-ext-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-data rect.hd-box { fill: var(--hd-data-fill); stroke: var(--hd-data-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box, .hd-svg .hd-k-data rect.hd-box { stroke-dasharray: 4 3; }
+</style>
+<rect class="hd-bg" x="0" y="0" width="1060" height="530"/>
+<rect class="hd-group" x="20" y="30" width="1020" height="150" rx="10"/>
+<text class="hd-gtitle" x="32" y="48">hdrg_session_send_frame</text>
+<rect class="hd-group" x="20" y="220" width="1020" height="170" rx="10"/>
+<text class="hd-gtitle" x="32" y="238">hdrg_session_receive_frame</text>
+<polyline class="hd-edge" points="185.0,113.0 201.0,113.0"/>
+<polygon class="hd-arrow" points="207.0,113.0 200.0,109.5 200.0,116.5"/>
+<polyline class="hd-edge" points="352.0,113.0 368.0,113.0"/>
+<polygon class="hd-arrow" points="374.0,113.0 367.0,109.5 367.0,116.5"/>
+<polyline class="hd-edge" points="519.0,113.0 535.0,113.0"/>
+<polygon class="hd-arrow" points="541.0,113.0 534.0,109.5 534.0,116.5"/>
+<polyline class="hd-edge" points="686.0,113.0 702.0,113.0"/>
+<polygon class="hd-arrow" points="708.0,113.0 701.0,109.5 701.0,116.5"/>
+<polyline class="hd-edge" points="853.0,113.0 869.0,113.0"/>
+<polygon class="hd-arrow" points="875.0,113.0 868.0,109.5 868.0,116.5"/>
+<polyline class="hd-edge" points="207.0,312.0 191.0,312.0"/>
+<polygon class="hd-arrow" points="185.0,312.0 192.0,308.5 192.0,315.5"/>
+<polyline class="hd-edge" points="374.0,312.0 358.0,312.0"/>
+<polygon class="hd-arrow" points="352.0,312.0 359.0,308.5 359.0,315.5"/>
+<polyline class="hd-edge" points="541.0,312.0 525.0,312.0"/>
+<polygon class="hd-arrow" points="519.0,312.0 526.0,308.5 526.0,315.5"/>
+<polyline class="hd-edge" points="708.0,312.0 692.0,312.0"/>
+<polygon class="hd-arrow" points="686.0,312.0 693.0,308.5 693.0,315.5"/>
+<polyline class="hd-edge" points="875.0,312.0 859.0,312.0"/>
+<polygon class="hd-arrow" points="853.0,312.0 860.0,308.5 860.0,315.5"/>
+<polyline class="hd-edge" points="947.5,156.0 947.5,256.0"/>
+<polygon class="hd-arrow" points="947.5,262.0 944.0,255.0 951.0,255.0"/>
+<g class="hd-k-data">
+<rect class="hd-box" x="40.0" y="70" width="145.0" height="86" rx="7"/>
+<text class="hd-label" x="112.5" y="103.0" text-anchor="middle">Frame</text>
+<text class="hd-sub" x="112.5" y="118.0" text-anchor="middle">host planes or</text>
+<text class="hd-sub" x="112.5" y="132.0" text-anchor="middle">a GPU frame</text>
+</g>
+<g class="hd-k-entry">
+<rect class="hd-box" x="207.0" y="70" width="145.0" height="86" rx="7"/>
+<text class="hd-label" x="279.5" y="103.0" text-anchor="middle">Ingest</text>
+<text class="hd-sub" x="279.5" y="118.0" text-anchor="middle">Y&#x27;CbCr → RGB16</text>
+<text class="hd-sub" x="279.5" y="132.0" text-anchor="middle">(CPU or GPU)</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="374.0" y="70" width="145.0" height="86" rx="7"/>
+<text class="hd-label" x="446.5" y="103.0" text-anchor="middle">PREFILTER chain</text>
+<text class="hd-sub" x="446.5" y="118.0" text-anchor="middle">time windows,</text>
+<text class="hd-sub" x="446.5" y="132.0" text-anchor="middle">ASYNC in flight</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="541.0" y="70" width="145.0" height="86" rx="7"/>
+<text class="hd-label" x="613.5" y="96.0" text-anchor="middle">Analysis</text>
+<text class="hd-sub" x="613.5" y="111.0" text-anchor="middle">proxy ≤ 960 px</text>
+<text class="hd-sub" x="613.5" y="125.0" text-anchor="middle">(REALTIME), noise,</text>
+<text class="hd-sub" x="613.5" y="139.0" text-anchor="middle">lights</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="708.0" y="70" width="145.0" height="86" rx="7"/>
+<text class="hd-label" x="780.5" y="103.0" text-anchor="middle">Scene cut test</text>
+<text class="hd-sub" x="780.5" y="118.0" text-anchor="middle">histogram + log</text>
+<text class="hd-sub" x="780.5" y="132.0" text-anchor="middle">average, fades</text>
+</g>
+<g class="hd-k-data">
+<rect class="hd-box" x="875.0" y="70" width="145.0" height="86" rx="7"/>
+<text class="hd-label" x="947.5" y="103.0" text-anchor="middle">Queue</text>
+<text class="hd-sub" x="947.5" y="118.0" text-anchor="middle">the queue&#x27;s depth</text>
+<text class="hd-sub" x="947.5" y="132.0" text-anchor="middle">+ 1 frames</text>
+</g>
+<g class="hd-k-data">
+<rect class="hd-box" x="40.0" y="262" width="145.0" height="100" rx="7"/>
+<text class="hd-label" x="112.5" y="302.0" text-anchor="middle">Output</text>
+<text class="hd-sub" x="112.5" y="317.0" text-anchor="middle">PQ R&#x27;G&#x27;B&#x27; or 4:2:0,</text>
+<text class="hd-sub" x="112.5" y="331.0" text-anchor="middle">HDR10+, ST 2094-50</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="207.0" y="262" width="145.0" height="100" rx="7"/>
+<text class="hd-label" x="279.5" y="302.0" text-anchor="middle">Apply (pass C)</text>
+<text class="hd-sub" x="279.5" y="317.0" text-anchor="middle">CPU kernels</text>
+<text class="hd-sub" x="279.5" y="331.0" text-anchor="middle">or the GPU</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="374.0" y="262" width="145.0" height="100" rx="7"/>
+<text class="hd-label" x="446.5" y="302.0" text-anchor="middle">SCALE / INTERP</text>
+<text class="hd-sub" x="446.5" y="317.0" text-anchor="middle">output size,</text>
+<text class="hd-sub" x="446.5" y="331.0" text-anchor="middle">out_rate</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="541.0" y="262" width="145.0" height="100" rx="7"/>
+<text class="hd-label" x="613.5" y="309.0" text-anchor="middle">Flash limiter</text>
+<text class="hd-sub" x="613.5" y="324.0" text-anchor="middle">ITU-R BT.1702-3</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="708.0" y="262" width="145.0" height="100" rx="7"/>
+<text class="hd-label" x="780.5" y="302.0" text-anchor="middle">Plan + render</text>
+<text class="hd-sub" x="780.5" y="317.0" text-anchor="middle">pass B, display</text>
+<text class="hd-sub" x="780.5" y="331.0" text-anchor="middle">caps</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="875.0" y="262" width="145.0" height="100" rx="7"/>
+<text class="hd-label" x="947.5" y="295.0" text-anchor="middle">STATS stage</text>
+<text class="hd-sub" x="947.5" y="310.0" text-anchor="middle">statistics across</text>
+<text class="hd-sub" x="947.5" y="324.0" text-anchor="middle">frames, fades,</text>
+<text class="hd-sub" x="947.5" y="338.0" text-anchor="middle">steady lights</text>
+</g>
+<text class="hd-note" x="40" y="420" text-anchor="start">Latency (hdrg_session_latency): the statistics window&#x27;s future, the filters&#x27; time windows&#x27; future and their ASYNC frames in flight; LOW waits for each job.</text>
+<text class="hd-note" x="40" y="440" text-anchor="start">Seeking: start = n − p, preroll = p (hdrg_session_preroll) renders frame n byte for byte as a session from the first frame (WINDOWED, TWO_PASS, STATIC).</text>
+<text class="hd-note" x="40" y="460" text-anchor="start">Frames on the GPU (HDRG_GPU_AUTO, Y&#x27;CbCr input, the library&#x27;s GPU filters alone, no SCALE): ingest to apply stay on the device; the analysis reads back a proxy and noise windows.</text>
+<text class="hd-note" x="40" y="480" text-anchor="start">Each receive also reports late (the rate is not kept), shed, synthetic / phase (out_rate) and the motion fields; hdrg_session_latency_report says what to change.</text>
+<text class="hd-note" x="40" y="510" text-anchor="start">A session is used by one thread at a time: send until HDRG_ERR_AGAIN, receive until HDRG_ERR_AGAIN, …; send NULL at the end, then receive until HDRG_EOF.</text>
+</svg>

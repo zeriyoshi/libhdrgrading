@@ -1,0 +1,459 @@
+[
+ {
+  "key": "0996d139435149d3",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading — the app's GPU: the device the app shares with the library",
+   "and its filters (hdrg_context_set_device), the frames a session takes and",
+   "gives on that GPU (hdrg_device_frame_t), and the shaders and the state to",
+   "run the apply pass on the app's own GPU (hdrg_shader, hdrg_apply_state_t)"
+  ],
+  "ja": [
+   "libhdrgrading — アプリの GPU: アプリがライブラリとそのフィルタと共有する device (hdrg_context_set_device)、その GPU の上でセッションが受け取り返すフレーム (hdrg_device_frame_t)、アプリ自身の GPU で適用を走らせるためのシェーダと状態 (hdrg_shader・hdrg_apply_state_t)"
+  ]
+ },
+ {
+  "key": "3812bfdd3689de21",
+  "of": "HDRG_DEVICE_CUDA",
+  "en": [
+   "GPU APIs whose device the app shares with the filters (hdrg_context_set_device)"
+  ],
+  "ja": [
+   "アプリが device をフィルタと共有する GPU の API (hdrg_context_set_device)"
+  ]
+ },
+ {
+  "key": "addb1b211c0c7440",
+  "of": "HDRG_DEVICE_CUDA",
+  "en": [
+   "device: CUcontext, queue: CUstream"
+  ],
+  "ja": [
+   "device: CUcontext、queue: CUstream"
+  ]
+ },
+ {
+  "key": "0f0301fc1e41a745",
+  "of": "HDRG_DEVICE_METAL",
+  "en": [
+   "id<MTLDevice>, id<MTLCommandQueue>"
+  ],
+  "ja": [
+   "id<MTLDevice>、id<MTLCommandQueue>"
+  ]
+ },
+ {
+  "key": "2d5ef5253e077700",
+  "of": "HDRG_DEVICE_VULKAN",
+  "en": [
+   "const hdrg_vulkan_device_t *, VkQueue"
+  ],
+  "ja": [
+   "const hdrg_vulkan_device_t *、VkQueue"
+  ]
+ },
+ {
+  "key": "9055ec026673b967",
+  "of": "HDRG_DEVICE_WEBGPU",
+  "en": [
+   "WGPUDevice, WGPUQueue (its instance has TimedWaitAny)"
+  ],
+  "ja": [
+   "WGPUDevice、WGPUQueue (そのインスタンスは TimedWaitAny を持つ)"
+  ]
+ },
+ {
+  "key": "3e656bd3560a6efc",
+  "of": "hdrg_vulkan_device_t",
+  "en": [
+   "HDRG_DEVICE_VULKAN's device (Vulkan 1.1 or later): the handles the app",
+   "made it with, kept alive by the app as the device is. The queue (VkQueue,",
+   "of queue_family, compute) takes the library's submissions from its own",
+   "threads: lock_queue (NULL: none, the app submits nothing to the queue",
+   "meanwhile) is called around each, lock true then false. extensions: the",
+   "device's enabled ones, VK_KHR_push_descriptor among them;",
+   "VK_KHR_external_memory_fd and VK_EXT_external_memory_dma_buf for dma-buf",
+   "frames (HDRG_FRAME_DMABUF). The handles' types are Vulkan's"
+  ],
+  "ja": [
+   "HDRG_DEVICE_VULKAN の device (Vulkan 1.1 以上): アプリがその device を作ったハンドルで、アプリが device と同じだけ生かしておきます。キュー (queue_family の compute の VkQueue) は、ライブラリが自分のスレッドから投入するものを受け取ります: 投入ごとにその前後で lock_queue (NULL: なし。そのときアプリはその間キューに何も投入しません) を、lock を true、次に false で呼びます。extensions: device の有効な拡張で、VK_KHR_push_descriptor を含みます。dma-buf のフレーム (HDRG_FRAME_DMABUF) には VK_KHR_external_memory_fd と VK_EXT_external_memory_dma_buf。ハンドルの型は Vulkan のものです"
+  ]
+ },
+ {
+  "key": "57dfa71266289e6b",
+  "of": "hdrg_vulkan_device_t.struct_size",
+  "en": [
+   "sizeof(hdrg_vulkan_device_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_vulkan_device_t)"
+  ]
+ },
+ {
+  "key": "3e84bc17eba5c119",
+  "of": "hdrg_vulkan_device_t.api_version",
+  "en": [
+   "the device's VK_API_VERSION"
+  ],
+  "ja": [
+   "device の VK_API_VERSION"
+  ]
+ },
+ {
+  "key": "9ddfa32df59e4616",
+  "of": "hdrg_vulkan_device_t.queue_family",
+  "en": [
+   "the queue's"
+  ],
+  "ja": [
+   "キューのもの"
+  ]
+ },
+ {
+  "key": "e67d703bddd75d35",
+  "of": "hdrg_vulkan_device_t.get_instance_proc_addr",
+  "en": [
+   "PFN_vkGetInstanceProcAddr (NULL: the system's loader's)"
+  ],
+  "ja": [
+   "PFN_vkGetInstanceProcAddr (NULL: システムのローダーのもの)"
+  ]
+ },
+ {
+  "key": "db66f893d213668f",
+  "of": "hdrg_vulkan_device_t.instance",
+  "en": [
+   "VkInstance, VkPhysicalDevice, VkDevice"
+  ],
+  "ja": [
+   "VkInstance、VkPhysicalDevice、VkDevice"
+  ]
+ },
+ {
+  "key": "9a652986dfd395f0",
+  "of": "HDRG_FRAME_BUFFERS",
+  "en": [
+   "the kinds of a frame on the app's GPU (hdrg_device_frame_t.kind)"
+  ],
+  "ja": [
+   "アプリの GPU の上のフレームの種類 (hdrg_device_frame_t.kind)"
+  ]
+ },
+ {
+  "key": "82f5a76f380cbcd3",
+  "of": "HDRG_FRAME_BUFFERS",
+  "en": [
+   "buffers of the context's device"
+  ],
+  "ja": [
+   "コンテキストの device のバッファ"
+  ]
+ },
+ {
+  "key": "97b5282cc4c8cf02",
+  "of": "HDRG_FRAME_CVPIXELBUFFER",
+  "en": [
+   "Apple: a CVPixelBufferRef (IOSurface)"
+  ],
+  "ja": [
+   "Apple: CVPixelBufferRef (IOSurface)"
+  ]
+ },
+ {
+  "key": "f5551390cd35730b",
+  "of": "HDRG_FRAME_DMABUF",
+  "en": [
+   "Linux: dma-buf fds (Vulkan)"
+  ],
+  "ja": [
+   "Linux: dma-buf の fd (Vulkan)"
+  ]
+ },
+ {
+  "key": "fb48ec898743385d",
+  "of": "HDRG_FRAME_AHARDWAREBUFFER",
+  "en": [
+   "Android: an AHardwareBuffer (Vulkan)"
+  ],
+  "ja": [
+   "Android: AHardwareBuffer (Vulkan)"
+  ]
+ },
+ {
+  "key": "fa3c3cf8211070c4",
+  "of": "hdrg_device_frame_t",
+  "en": [
+   "A frame on the app's GPU (hdrg_session_config_t.device), its Y'CbCr",
+   "planes (Y, Cb, Cr; Y, CbCr interleaved) or its R'G'B' (plane 0):",
+   "HDRG_FRAME_BUFFERS: plane i is rows of pitches[i] bytes from offsets[i]",
+   "  in handles[i] (planes may share a buffer; offsets and pitches whole",
+   "  words: multiples of 4), the buffers of the context's device of the",
+   "  kind (hdrg_context_set_device): HDRG_DEVICE_METAL an id<MTLBuffer>,",
+   "  HDRG_DEVICE_VULKAN a VkBuffer of storage usage of sizes[i] bytes (Vulkan",
+   "  cannot tell them), HDRG_DEVICE_WEBGPU a WGPUBuffer of Storage usage.",
+   "HDRG_FRAME_DMABUF: as HDRG_FRAME_BUFFERS, handles[i] a dma-buf's fd cast",
+   "  to a pointer ((void *)(intptr_t)fd; planes may share one), its layout",
+   "  linear (DRM_FORMAT_MOD_LINEAR), sizes[i] its bytes (0: the dma-buf's",
+   "  own), imported while the library reads or writes it (the fd stays the",
+   "  app's); the context's device HDRG_DEVICE_VULKAN (its own or the app's,",
+   "  with VK_EXT_external_memory_dma_buf).",
+   "HDRG_FRAME_CVPIXELBUFFER: handles[0] a CVPixelBufferRef backed by an",
+   "  IOSurface (a decoder's, an encoder's pool), its planes and pitches its",
+   "  own, its pixel format the side's (420v / 420f / x420 / xf20 / y420 and",
+   "  their 4:2:2 and 4:4:4 kinds; any device on Apple: HDRG_DEVICE_METAL or",
+   "  HDRG_DEVICE_WEBGPU, the context's own too). Not locked by the library.",
+   "HDRG_FRAME_AHARDWAREBUFFER: handles[0] an AHardwareBuffer * (a decoder's",
+   "  image, an encoder's input; Android 8 / API 26 and later), its planes",
+   "  and pitches its own (offsets, pitches and sizes not read), its format",
+   "  one of Vulkan's own (AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420 for an NV12",
+   "  side: 4:2:0, 8 bits, interleaved; AHARDWAREBUFFER_FORMAT_YCbCr_P010",
+   "  for a P010 side: 10 bits, msb; a vendor's external format alone:",
+   "  HDRG_ERR_UNSUPPORTED), its size the frame's (even sides: the formats'",
+   "  4:2:0; odd ones HDRG_ERR_UNSUPPORTED); the context's device",
+   "  HDRG_DEVICE_VULKAN (its own, or the app's with",
+   "  VK_ANDROID_external_memory_android_hardware_buffer,",
+   "  VK_EXT_queue_family_foreign and the samplerYcbcrConversion feature).",
+   "  Imported while the library reads or writes it, taken from and given",
+   "  back to its producer outside Vulkan (VK_QUEUE_FAMILY_FOREIGN_EXT, layout",
+   "  GENERAL): the app waits for the producer's fence before the send, and",
+   "  the receive returns once the output is written. Not locked by the",
+   "  library"
+  ],
+  "ja": [
+   "アプリの GPU の上のフレーム (hdrg_session_config_t.device)。その Y'CbCr の面 (Y、Cb、Cr。交互なら Y、CbCr) か R'G'B' (面 0):",
+   "HDRG_FRAME_BUFFERS: 面 i は handles[i] の offsets[i] からの pitches[i] バイトの行です (面はバッファを共有してもよく、オフセットとピッチは語の単位: 4 の倍数)。バッファはその種類のコンテキストの device (hdrg_context_set_device) のもので、HDRG_DEVICE_METAL は id<MTLBuffer>、HDRG_DEVICE_VULKAN は sizes[i] バイトで storage の用途の VkBuffer (Vulkan からは大きさが分かりません)、HDRG_DEVICE_WEBGPU は Storage の用途の WGPUBuffer です。",
+   "HDRG_FRAME_DMABUF: HDRG_FRAME_BUFFERS と同じで、handles[i] はポインタにキャストした dma-buf の fd ((void *)(intptr_t)fd。面は 1 つを共有してもよい)、レイアウトは線形 (DRM_FORMAT_MOD_LINEAR)、sizes[i] はそのバイト数 (0: dma-buf 自身の大きさ)。ライブラリが読み書きするときに取り込みます (fd はアプリのもののまま)。コンテキストの device は HDRG_DEVICE_VULKAN (自前のものかアプリのもので、VK_EXT_external_memory_dma_buf があるもの)。",
+   "HDRG_FRAME_CVPIXELBUFFER: handles[0] は IOSurface を裏に持つ CVPixelBufferRef (デコーダのもの、エンコーダのプールのもの) で、面とピッチはそれ自身のもの、画素の形式はその側のもの (420v / 420f / x420 / xf20 / y420 とその 4:2:2 と 4:4:4 の種類。Apple ではどの device でも: HDRG_DEVICE_METAL か HDRG_DEVICE_WEBGPU、コンテキストの自前のものも)。ライブラリはロックしません。",
+   "HDRG_FRAME_AHARDWAREBUFFER: handles[0] は AHardwareBuffer * (デコーダの画像、エンコーダの入力。Android 8 / API 26 以降) で、面とピッチはそれ自身のもの (offsets・pitches・sizes は読みません)、形式は Vulkan の形式のどれか (NV12 の側は AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420: 4:2:0、8bit、交互。P010 の側は AHARDWAREBUFFER_FORMAT_YCbCr_P010: 10bit、msb。ベンダーの外部の形式だけのものは HDRG_ERR_UNSUPPORTED)、大きさはフレームのもの (辺は偶数: 形式が 4:2:0 なので。奇数は HDRG_ERR_UNSUPPORTED)。コンテキストの device は HDRG_DEVICE_VULKAN (自前のもの、または VK_ANDROID_external_memory_android_hardware_buffer・VK_EXT_queue_family_foreign・samplerYcbcrConversion の機能のあるアプリのもの)。ライブラリが読み書きするときに取り込み、Vulkan の外の生産者から受け取って返します (VK_QUEUE_FAMILY_FOREIGN_EXT、レイアウト GENERAL): アプリは送る前に生産者のフェンスを待ち、受け取りは出力を書き終えてから戻ります。ライブラリはロックしません。"
+  ]
+ },
+ {
+  "key": "72074c1d16f47e21",
+  "of": "hdrg_device_frame_t.kind",
+  "en": [
+   "HDRG_FRAME_*"
+  ],
+  "ja": [
+   "HDRG_FRAME_*"
+  ]
+ },
+ {
+  "key": "6dcd0ed915f6aa77",
+  "of": "hdrg_device_frame_t.sizes",
+  "en": [
+   "the handles' bytes where the API cannot tell them (else 0)"
+  ],
+  "ja": [
+   "API から分からないときのハンドルのバイト数 (ほかは 0)"
+  ]
+ },
+ {
+  "key": "06d90ab8a3004a53",
+  "of": "HDRG_SHADER_LAYOUT",
+  "en": [
+   "the shaders' layout (hdrg_shader, hdrg_apply_state_t): their bindings and uniforms"
+  ],
+  "ja": [
+   "シェーダのレイアウト (hdrg_shader、hdrg_apply_state_t): バインディングと uniform"
+  ]
+ },
+ {
+  "key": "5fa8abcb11333990",
+  "of": "HDRG_SHADER_WGSL",
+  "en": [
+   "hdrg_shader's languages"
+  ],
+  "ja": [
+   "hdrg_shader の言語"
+  ]
+ },
+ {
+  "key": "ae6bd920b70caf75",
+  "of": "HDRG_SHADER_WGSL",
+  "en": [
+   "a module's text: its entry points all (WebGPU)"
+  ],
+  "ja": [
+   "モジュールのテキスト: その入口すべて (WebGPU)"
+  ]
+ },
+ {
+  "key": "2e74ebd21d2e8a1f",
+  "of": "HDRG_SHADER_SPIRV",
+  "en": [
+   "an entry point's SPIR-V words (Vulkan)"
+  ],
+  "ja": [
+   "入口の SPIR-V の語 (Vulkan)"
+  ]
+ },
+ {
+  "key": "f67482d1a538d714",
+  "of": "HDRG_SHADER_HLSL",
+  "en": [
+   "an entry point's HLSL text (Direct3D)"
+  ],
+  "ja": [
+   "入口の HLSL のテキスト (Direct3D)"
+  ]
+ },
+ {
+  "key": "7abf1f26a30bd893",
+  "of": "HDRG_SHADER_APPLY",
+  "en": [
+   "hdrg_shader's modules and their entry points"
+  ],
+  "ja": [
+   "hdrg_shader のモジュールとその入口"
+  ]
+ },
+ {
+  "key": "152c1385ac47721b",
+  "of": "HDRG_SHADER_APPLY",
+  "en": [
+   "the apply pass: \"apply\", \"yuv\""
+  ],
+  "ja": [
+   "適用の走査: \"apply\"、\"yuv\""
+  ]
+ },
+ {
+  "key": "e2aa676c70aa2e80",
+  "of": "HDRG_SHADER_CONVERT",
+  "en": [
+   "Y'CbCr input to 16-bit R'G'B': \"sites\", \"slopes\", \"pixels\""
+  ],
+  "ja": [
+   "Y'CbCr の入力から 16bit の R'G'B' へ: \"sites\"、\"slopes\"、\"pixels\""
+  ]
+ },
+ {
+  "key": "2ea03f3ccd3edb0a",
+  "of": "hdrg_apply_state_t",
+  "en": [
+   "A frame's work for the app's own GPU (hdrg_session_receive_state): the",
+   "state to run the shaders of hdrg_shader with over the app's copy of the",
+   "frame sent, the bindings of group 0 (SPIR-V: set 0; HLSL: Tint's space 0",
+   "registers, the uniform a cbuffer, the storage byte address buffers) as",
+   "below, every workgroup 64 x 1. Bytes and pitches in bytes.",
+   "Y'CbCr input first: HDRG_SHADER_CONVERT with",
+   "  0 uniform: convert_params, convert_params_size bytes",
+   "  1 read-only storage: the frame sent, its planes packed into yuv_size",
+   "    bytes: Y' rows of yuv_y_pitch from 0, Cb rows of yuv_c_pitch from",
+   "    yuv_cb_at, Cr from yuv_cr_at (interleaved input: Cb, Cr alternating in",
+   "    the rows from yuv_cb_at = yuv_cr_at), the samples as the session's",
+   "  2, 3, 4 storage: base_size, knots_size, values_size bytes (the GPU's)",
+   "  5 storage: the 16-bit R'G'B' rows, source_pitch each: the apply's 1",
+   "and entry points \"sites\", \"slopes\", \"pixels\" over convert_groups (a",
+   "group of 0 x 0: none). Then HDRG_SHADER_APPLY with",
+   "  0 uniform: params, params_size bytes",
+   "  1 read-only storage: the frame sent (R'G'B' input: its rows packed to",
+   "    source_pitch bytes, the session's format: its bit depth and alpha) or",
+   "    the conversion's rows",
+   "  2 read-only storage: luts (the same bytes while luts_serial stays)",
+   "  3 read-only storage: frame",
+   "  4 storage: the PQ R'G'B' output, dst_size bytes, rows of dst_pitch",
+   "  5 storage: 4 bytes (not written)",
+   "  6 storage: the 4:2:0 output, planes_size bytes (4 when none): Y' rows",
+   "    of y_pitch from 0, Cb rows of c_pitch from cb_at, Cr from cr_at (the",
+   "    output interleaved: Cb, Cr alternating in the rows from cb_at = cr_at)",
+   "and entry point \"apply\" over groups and, for 4:2:0 output, \"yuv\" over",
+   "yuv_groups"
+  ],
+  "ja": [
+   "アプリ自身の GPU のためのフレームの仕事 (hdrg_session_receive_state): アプリが写した送ったフレームの上で hdrg_shader のシェーダを走らせるための状態。group 0 のバインディング (SPIR-V: set 0。HLSL: Tint の space 0 のレジスタで、uniform は cbuffer、storage はバイトアドレスバッファ) は下のとおりで、ワークグループはどれも 64 x 1。大きさとピッチはバイト単位です。",
+   "Y'CbCr の入力では先に HDRG_SHADER_CONVERT を、次のバインディングで",
+   "  0 uniform: convert_params、convert_params_size バイト",
+   "  1 読み取り専用の storage: 送ったフレーム。面を yuv_size バイトに詰めたもの: 0 から yuv_y_pitch の Y' の行、yuv_cb_at から yuv_c_pitch の Cb の行、yuv_cr_at から Cr (交互の入力: yuv_cb_at = yuv_cr_at からの行に Cb、Cr が交互)、標本はセッションの形式のとおり",
+   "  2, 3, 4 storage: base_size、knots_size、values_size バイト (GPU のもの)",
+   "  5 storage: 16bit の R'G'B' の行、各 source_pitch: 適用の 1",
+   "入口 \"sites\"、\"slopes\"、\"pixels\" を convert_groups で走らせます (0 x 0 のグループ: なし)。次に HDRG_SHADER_APPLY を、次のバインディングで",
+   "  0 uniform: params、params_size バイト",
+   "  1 読み取り専用の storage: 送ったフレーム (R'G'B' の入力: 行を source_pitch バイトに詰め、セッションの形式のビット深度と α で) か変換の行",
+   "  2 読み取り専用の storage: luts (luts_serial が変わらない間は同じバイト)",
+   "  3 読み取り専用の storage: frame",
+   "  4 storage: PQ の R'G'B' の出力、dst_size バイト、dst_pitch の行",
+   "  5 storage: 4 バイト (書かない)",
+   "  6 storage: 4:2:0 の出力、planes_size バイト (なければ 4): 0 から y_pitch の Y' の行、cb_at から c_pitch の Cb の行、cr_at から Cr (交互の出力: cb_at = cr_at からの行に Cb、Cr が交互)",
+   "入口 \"apply\" を groups で、4:2:0 の出力では \"yuv\" を yuv_groups で走らせます"
+  ]
+ },
+ {
+  "key": "6a64e6b8bde4a0da",
+  "of": "hdrg_apply_state_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_apply_state_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_apply_state_t) にする"
+  ]
+ },
+ {
+  "key": "928b5b5f5ab2d874",
+  "of": "hdrg_apply_state_t.layout",
+  "en": [
+   "HDRG_SHADER_LAYOUT"
+  ],
+  "ja": [
+   "HDRG_SHADER_LAYOUT"
+  ]
+ },
+ {
+  "key": "c11e2e1d07501b39",
+  "of": "hdrg_apply_state_t.convert_params",
+  "en": [
+   "Y'CbCr input (else NULL)"
+  ],
+  "ja": [
+   "Y'CbCr の入力 (ほかは NULL)"
+  ]
+ },
+ {
+  "key": "b012b9df1e8dd520",
+  "of": "hdrg_apply_state_t.yuv_groups",
+  "en": [
+   "0 x 0: none"
+  ],
+  "ja": [
+   "0 x 0: なし"
+  ]
+ },
+ {
+  "key": "9121ebf5d370f451",
+  "of": "hdrg_apply_state_t.convert_groups",
+  "en": [
+   "sites, slopes, pixels (0 x 0: none)"
+  ],
+  "ja": [
+   "sites、slopes、pixels (0 x 0: なし)"
+  ]
+ },
+ {
+  "key": "c24e75e3ee309a45",
+  "of": "hdrg_context_set_device",
+  "en": [
+   "The app's device and queue of a GPU API (HDRG_DEVICE_*) for the filters",
+   "of the following conversions and sessions (device NULL: none): the",
+   "plugins' (filter_device), and of a kind the build has (Metal, Vulkan,",
+   "WebGPU) the library's own GPU filters and its core's GPU passes, in place",
+   "of a device of the library's own. The app keeps them alive and usable from",
+   "the library's and the filters' threads while the context is."
+  ],
+  "ja": [
+   "以後の変換とセッションのフィルタのための、GPU の API (HDRG_DEVICE_*) のアプリの device とキュー (device が NULL: なし): プラグインのもの (filter_device) と、ビルドにある種類 (Metal・Vulkan・WebGPU) ではライブラリ自身の GPU のフィルタとコアの GPU のパスのためのもので、ライブラリ自身の device の代わりになります。アプリはコンテキストがある間、それらを生かしておき、ライブラリとフィルタのスレッドから使えるようにしておきます。"
+  ]
+ },
+ {
+  "key": "a71f07353e1f5463",
+  "of": "hdrg_shader",
+  "en": [
+   "A shader of hdrg_apply_state_t in lang (HDRG_SHADER_*): module's WGSL",
+   "(entry not read) or entry's SPIR-V or HLSL, the library's; text",
+   "NUL-terminated, *size its bytes (before the NUL; NULL: not wanted). NULL:",
+   "none of those"
+  ],
+  "ja": [
+   "lang (HDRG_SHADER_*) での hdrg_apply_state_t のシェーダ: module の WGSL (entry は読みません)、または entry の SPIR-V か HLSL で、ライブラリのもの。テキストは NUL で終わり、*size はそのバイト数 (NUL の前まで。NULL: 要らない)。NULL: そのどれでもない"
+  ]
+ }
+]

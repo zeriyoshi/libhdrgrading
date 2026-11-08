@@ -1,0 +1,50 @@
+<p class="lead">The GPU is optional everywhere: every built-in GPU filter but MetalFX has a CPU version, and a context without a device runs on the CPU. Shaders are written once in WGSL; filters and the core are written once over WebGPU, or once over the common layer of Metal and Vulkan.</p>
+
+{{fig:gpu}}
+
+<h2>Turning it on</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>{{api:hdrg_context_desc_t.gpu|hdrg_context_desc_t.gpu}}</th><th>Runs on the GPU</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_GPU_OFF}} (default)</td><td>Nothing.</td></tr>
+<tr><td>{{api:HDRG_GPU_FILTERS}}</td><td>The built-in PREFILTER filters, the SCALE stage's built-in scaler and the INTERP stage's default, when a GPU version and a device exist.</td></tr>
+<tr><td>{{api:HDRG_GPU_AUTO}}</td><td>As FILTERS, plus a session's Y'CbCr ingest and, without a SCALE stage, its apply pass, and, when every stage allows it, the frames kept on the GPU from the ingest to the apply.</td></tr>
+</tbody></table></div>
+<p>The built-in filters are taken with the kind of the session's {{api:hdrg_session_config_t.device|config.device}} first, if any, then in the order Metal &rarr; Vulkan &rarr; WebGPU, and the CPU version is kept for a missing device ({{src:src/host/defaults.c}}). {{api:hdrg_context_desc_t.gpu_analysis|gpu_analysis}} chooses where a session's analysis adds up its pixels: {{api:HDRG_GPU_ANALYSIS_EXACT}} on the CPU (the GPU only moves the pixels, the statistics are bit for bit the CPU's) or {{api:HDRG_GPU_ANALYSIS_FAST}} on the GPU.</p>
+
+<h2>Shaders</h2>
+<ul>
+<li>WGSL is the source of truth, beside its consumer: each plugin's <code>wgsl/</code> (for example {{src:src/plugins/deband/wgsl}}) for the filters, {{src:src/core/wgsl}} for the core (apply, convert, gather, io, analyze).</li>
+<li>{{src:scripts/gen_shaders.sh}} runs Tint's CLI (built by <code>scripts/build_dawn.sh --tint</code>) over every compute entry point and writes MSL and SPIR-V beside the WGSL (<code>msl/</code>, <code>spirv/</code>: {{src:src/plugins/deband/msl}}, {{src:src/core/spirv}}) and, for the core's apply and convert, HLSL ({{src:src/core/hlsl|core/hlsl/}}). The generated files are committed; CI's format job runs <code>--check</code>.</li>
+<li>CMake embeds every shader as an array (a plugin's by <code>hdrg_plugin</code>: its WGSL <code>hdrg_wgsl_&lt;name&gt;</code>, its entry points' MSL and SPIR-V as the shaders <code>hdrg_gk_&lt;name&gt;_&lt;entry&gt;</code>), so nothing is read from disk at run time.</li>
+</ul>
+
+<h2>Backends</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Backend</th><th>Build option</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>WebGPU ({{src:src/gpu/webgpu.c}})</td><td><code>HDRG_WITH_WEBGPU</code>: on when Dawn is found (<code>scripts/build_dawn.sh</code>); in the browser with <code>HDRG_WASM_WEBGPU</code></td><td>Every WebGPU call runs on one device thread (<code>hdrg_gpu_run</code> / <code>hdrg_gpu_call</code>); the same device and API table are shared. In the single-threaded browser build the work runs inline and waits suspend through JSPI.</td></tr>
+<tr><td>Metal ({{src:src/gpu/metal.m}})</td><td><code>HDRG_WITH_METAL</code>: on by default on Apple</td><td>The only Objective-C file (ARC; its header is plain C). Tint's MSL in safe math mode; completion handlers end the passes; MetalFX Spatial for <code>hdrg.metal.metalfx</code>.</td></tr>
+<tr><td>Vulkan ({{src:src/gpu/vulkan.c}})</td><td><code>HDRG_WITH_VULKAN</code>: on when Vulkan's headers are found (not on Apple, not in the browser)</td><td>The loader is opened at run time (<code>libvulkan.so.1</code>, or the app's <code>vkGetInstanceProcAddr</code>); needs Vulkan 1.1 and <code>VK_KHR_push_descriptor</code>; takes dma-bufs (<code>VK_EXT_external_memory_dma_buf</code>) and, on Android, AHardwareBuffers (<code>VK_ANDROID_external_memory_android_hardware_buffer</code>) where the device has them. Tested on Mesa's lavapipe.</td></tr>
+<tr><td>Common layer ({{src:src/gpu/include/hdrgrading/gpu/gk.h|gk.h}})</td><td>with Metal or Vulkan</td><td>Buffers, kernels, passes and completions as a function table ({{src:src/gpu/gk_metal.c|gk_metal.c}}, {{src:src/gpu/gk_vulkan.c|gk_vulkan.c}}): the Metal and Vulkan filters (each plugin's <code>gk_&lt;name&gt;.c</code> over {{src:src/gpu/filter_gk.c|filter_gk.c}}) and the core ({{src:src/core/gpu_core_gk.c}}) are written once.</td></tr>
+<tr><td>CVPixelBuffer ({{src:src/gpu/apple.c}})</td><td>Apple, with Metal or WebGPU</td><td>The pixel formats and planes of an IOSurface-backed pixel buffer.</td></tr>
+</tbody></table></div>
+
+<h2>GPU filters</h2>
+<p>The WebGPU, Metal and Vulkan versions of deblock, dering, defringe, deband, the spatial NR, MCTF, Lanczos, the edge-adaptive scaler, FSR 1, NIS and the motion-compensated interpolation are classes <code>hdrg.webgpu.&lt;name&gt;</code>, <code>hdrg.metal.&lt;name&gt;</code> and <code>hdrg.vulkan.&lt;name&gt;</code> of their family's plugin ({{page:plugins}}), wrapping the context's native device of their kind in their own GPU layer (below) and declaring {{api:HDRG_FILTER_GPU_FRAMES}}. Deblock, dering, defringe, Lanczos, MCTF and the interpolation give the CPU version's bytes; deband and the NR agree within the L2 tolerance ({{dev:verification#determinism|the determinism levels}}); the edge scaler, FSR 1 and NIS within a code or two. MetalFX is a different scaler with no such promise. Neighboring GPU filters of a chain of one frame in flight pass frames on the device without reading them back.</p>
+
+<h2>The core on the GPU</h2>
+<ul>
+<li>{{src:src/core/gpu_core.c}}: one device per session (the context's: Metal, else Vulkan, else WebGPU), the core's shaders as programs made on first use, 40 numbered buffer slots (host-visible and GPU-only; the app's planes; the frames kept on the GPU; the analysis).</li>
+<li>{{src:src/core/gpu_convert.c}}: Y'CbCr input to 16-bit R'G'B' in the CPU's order of operations, within L2 (LINEAR within 2 codes, SEGMENTED within 16, few samples beyond 1).</li>
+<li>{{src:src/core/gpu_apply.c}}: the session's pass C (PQ R'G'B' 16 / 8-bit or 4:2:0, the light statistics, the grain), within L2 of the CPU, falling back to the CPU on failure (not with a SCALE stage: its bands stay on the CPU).</li>
+<li>{{src:src/core/gpu_analyze.c}}, {{src:src/core/gpu_gather.c}}: the analysis sums under FAST, and the proxy and noise windows read back from frames kept on the GPU.</li>
+</ul>
+<p>Frames stay on the GPU from the ingest to the apply (the latency report's <code>frames_on_gpu</code>) under HDRG_GPU_AUTO with Y'CbCr input and a PREFILTER chain of the library's GPU filters alone, without SCALE or an output rate. By default WebGPU keeps them there, Metal and Vulkan under LOW only (under any profile with the app's frames, config.device).</p>
+
+<h2>Devices and the app's frames</h2>
+<ul>
+<li>{{api:hdrg_context_set_device}} gives the context the app's device and queue ({{api:HDRG_DEVICE_METAL}}, {{api:HDRG_DEVICE_VULKAN}} with an {{api:hdrg_vulkan_device_t}}, {{api:HDRG_DEVICE_WEBGPU}}). Without one, the library makes its own on first use. Either way the library and every plugin of the context share that device: a plugin's GPU classes ask for it with <code>filter_gpu_share</code>, which gives the native device and queue with what using them together takes (a Vulkan queue's lock, WebGPU's device thread), and the frames on the device pass between the filters as native buffers (<code>hdrg_gpu_share_frame_t</code>, {{src:src/foundation/include/hdrgrading/foundation/gpu_share.h|gpu_share.h}}). The share has a version (<code>HDRG_GPU_SHARE_VERSION</code>): a module built against another gets {{api:HDRG_ERR_UNSUPPORTED}}, and its GPU classes do not run. A plugin on a GPU API of its own takes the bare device and queue with <code>filter_device</code>.</li>
+<li>A session with {{api:hdrg_session_config_t.device|config.device}} (under HDRG_GPU_AUTO with Y'CbCr input, when the frames can stay on the GPU; else {{api:HDRG_ERR_UNSUPPORTED}}) takes and gives frames on the GPU ({{api:hdrg_device_frame_t}}): {{api:HDRG_FRAME_BUFFERS}} (MTLBuffer, VkBuffer, WGPUBuffer of the context's device), {{api:HDRG_FRAME_CVPIXELBUFFER}} (VideoToolbox's decoder output or an encoder's pool; on WebGPU input only), {{api:HDRG_FRAME_DMABUF}} (Vulkan, linear dma-bufs) and {{api:HDRG_FRAME_AHARDWAREBUFFER}} (Vulkan on Android: an NV12 or P010 AHardwareBuffer of a format of Vulkan's own and of even sides, imported as an image once per frame and its planes copied in one pass, taken from and given back to its producer outside Vulkan once).</li>
+<li>Or the app runs the apply itself: {{api:hdrg_shader}} and {{api:hdrg_session_receive_state}} (see "The app's own GPU" in {{page:video}}).</li>
+</ul>

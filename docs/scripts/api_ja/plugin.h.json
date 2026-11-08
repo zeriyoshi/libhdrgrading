@@ -1,0 +1,541 @@
+[
+ {
+  "key": "3fb9715430bc881b",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading — the host side of plugins: registering plugins on a context",
+   "(an init function linked in, or a module loaded from an explicit path),",
+   "listing what they report, adding their filters to the stages a conversion",
+   "or a session runs, and choosing the codec a conversion writes. Plugins",
+   "themselves implement include/hdrgrading/filter.h (filters) and",
+   "include/hdrgrading/codec.h (codecs)."
+  ],
+  "ja": [
+   "libhdrgrading — プラグインのホストの側: コンテキストへのプラグインの登録 (リンクした init 関数か、明示したパスから読み込むモジュール)、プラグインが報告するものの一覧、そのフィルタを変換やセッションが動かす段へ足すこと、変換が書くコーデックの選択。プラグインそのものは include/hdrgrading/filter.h (フィルタ) と include/hdrgrading/codec.h (コーデック) を実装します。"
+  ]
+ },
+ {
+  "key": "ed109e10d1451913",
+  "of": "(prose)",
+  "en": [
+   "Plugins implement include/hdrgrading/filter.h and codec.h and never link",
+   "the library; the host registers them on a context, adds filters by id to",
+   "the stages hdrg_convert and the sessions run, reads the files its codecs",
+   "recognize and writes the one chosen. Strings returned here are",
+   "validated copies, NUL terminated, valid until the context is destroyed.",
+   "Registration is not thread-safe: do it before converting."
+  ],
+  "ja": [
+   "プラグインは include/hdrgrading/filter.h と codec.h を実装し、ライブラリをリンクしません。ホストはプラグインをコンテキストに登録し、hdrg_convert とセッションが動かす段へ ID でフィルタを足し、自分のコーデックが認識するファイルを読み、選んだコーデックで書きます。ここで返す文字列は検証した複製で、NUL 終端され、コンテキストを壊すまで有効です。登録はスレッドセーフではありません: 変換の前に行います。"
+  ]
+ },
+ {
+  "key": "4ed56f1a2d491fae",
+  "of": "HDRG_PLUGIN_CALL",
+  "en": [
+   "the calling convention across the plugin boundary (__cdecl on 32-bit x86 Windows)"
+  ],
+  "ja": [
+   "プラグインの境界をまたぐ関数の呼び出し規約 (32bit の x86 の Windows では __cdecl)"
+  ]
+ },
+ {
+  "key": "a46c1d5d7efadb58",
+  "of": "HDRG_PLUGIN_CALL",
+  "en": [
+   "Platform dependent: one of these, by the build and the compiler."
+  ],
+  "ja": [
+   "プラットフォームに依存します: ビルドとコンパイラに応じて、これらのどれかです。"
+  ]
+ },
+ {
+  "key": "ae26c4ce8808d4d7",
+  "of": "HDRG_STAGE_ANALYZE",
+  "en": [
+   "stages (insertion points): bits. PREFILTER, INTERP and SCALE run filters on",
+   "frames, ANALYZE judges a frame's lights (filter.h: hdrg_filter_analyze_fn_t),",
+   "STATS a video session's statistics across its frames (hdrg_stats_class_t)"
+  ],
+  "ja": [
+   "段 (挿入点): ビット。PREFILTER・INTERP・SCALE はフレームにフィルタを動かし、ANALYZE はフレームの光を判定し (filter.h: hdrg_filter_analyze_fn_t)、STATS は動画のセッションのフレームをまたぐ統計を持ちます (hdrg_stats_class_t)"
+  ]
+ },
+ {
+  "key": "9f3cc9451d463890",
+  "of": "HDRG_PREFILTER_MAX",
+  "en": [
+   "filters of the PREFILTER stage"
+  ],
+  "ja": [
+   "PREFILTER の段のフィルタ"
+  ]
+ },
+ {
+  "key": "710f127eb41eee8b",
+  "of": "HDRG_FILTER_PURE",
+  "en": [
+   "filter properties: bits"
+  ],
+  "ja": [
+   "フィルタの性質: ビット"
+  ]
+ },
+ {
+  "key": "c52a6695ed945999",
+  "of": "HDRG_FILTER_PURE",
+  "en": [
+   "jobs may run concurrently on one instance"
+  ],
+  "ja": [
+   "1 つのインスタンスでジョブを並行して動かせます"
+  ]
+ },
+ {
+  "key": "d291652566cd2540",
+  "of": "HDRG_FILTER_BANDS",
+  "en": [
+   "works on row bands (else whole frames)"
+  ],
+  "ja": [
+   "行の帯で働きます (でなければ全画面)"
+  ]
+ },
+ {
+  "key": "bc371c50d826d95a",
+  "of": "HDRG_FILTER_DETERMINISTIC",
+  "en": [
+   "same output for any band split / threads"
+  ],
+  "ja": [
+   "帯の分け方・スレッドによらず同じ出力"
+  ]
+ },
+ {
+  "key": "841a77832354f367",
+  "of": "HDRG_FILTER_ASYNC",
+  "en": [
+   "submits whole-frame jobs ended by job_done"
+  ],
+  "ja": [
+   "全画面のジョブを投入し、job_done で終えます"
+  ]
+ },
+ {
+  "key": "0a383792808e1681",
+  "of": "HDRG_FILTER_SEQUENTIAL",
+  "en": [
+   "jobs keep state within a clip (filter_set_clip)"
+  ],
+  "ja": [
+   "ジョブがクリップの中で状態を持ちます (filter_set_clip)"
+  ]
+ },
+ {
+  "key": "57a92957f745139f",
+  "of": "HDRG_FILTER_GPU_FRAMES",
+  "en": [
+   "its device jobs (filter_set_device) take and give the frames on the device the library and",
+   "its plugins share (hdrg_gpu_share_frame_t of hdrgrading/foundation/gpu_share.h: native buffers",
+   "of the context's device, filter_gpu_share): the library may run a chain of such filters on its",
+   "own device frames (a session's frames kept on its GPU), the time windows too",
+   "(job_device_window)"
+  ],
+  "ja": [
+   "その device のジョブ (filter_set_device) が、ライブラリとそのプラグインが device の上で共有するフレーム (hdrgrading/foundation/gpu_share.h の hdrg_gpu_share_frame_t: コンテキストの device のネイティブのバッファ、filter_gpu_share) を受け渡します: ライブラリはそのようなフィルタの連鎖を自分の device のフレーム (GPU に置いたセッションのフレーム) で流せます。時間の窓も同じです (job_device_window)。"
+  ]
+ },
+ {
+  "key": "d03f1226e76b04db",
+  "of": "HDRG_FILTER_NO_MOTION",
+  "en": [
+   "INTERP: its frames between take each pixel from the same place of the frames around them (a",
+   "repeat, a blend), moving nothing: a session does not cap their gain by the motion of the job",
+   "(a motion-compensated filter's frames between are capped where its motion is not sure)"
+  ],
+  "ja": [
+   "INTERP: その間のフレームは、各画素を前後のフレームの同じ場所から取り (繰り返し、混合)、何も動かしません: セッションはジョブの動きでそのゲインを頭打ちにしません (動き補償のフィルタの間のフレームは、その動きが確かでない所で頭打ちにします)。"
+  ]
+ },
+ {
+  "key": "73085c243d71f688",
+  "of": "(prose)",
+  "en": [
+   "plugin status and reasons"
+  ],
+  "ja": [
+   "プラグインの状態と理由"
+  ]
+ },
+ {
+  "key": "78c37ea2364cb719",
+  "of": "HDRG_PLUGIN_READY",
+  "en": [
+   "DEGRADED works through a fallback (reason, status_message: which); UNAVAILABLE stays listed"
+  ],
+  "ja": [
+   "DEGRADED は代わりの手段で動きます (どれかは reason と status_message が示します)。UNAVAILABLE も一覧に残ります"
+  ]
+ },
+ {
+  "key": "74271df925263d1a",
+  "of": "HDRG_REASON_HOST_TOO_OLD",
+  "en": [
+   "set by the host at load"
+  ],
+  "ja": [
+   "読み込むときにホストが設定する"
+  ]
+ },
+ {
+  "key": "c1c9b837ff31f7b8",
+  "of": "HDRG_REASON_REJECTED",
+  "en": [
+   "set by the host: invalid report or policy"
+  ],
+  "ja": [
+   "ホストが設定する: 不正な報告か方針"
+  ]
+ },
+ {
+  "key": "41106d51499cc48a",
+  "of": "HDRG_OPTION_INT",
+  "en": [
+   "option types"
+  ],
+  "ja": [
+   "オプションの型"
+  ]
+ },
+ {
+  "key": "d9f5e4add18f7615",
+  "of": "hdrg_plugin_init_fn_t",
+  "en": [
+   "the plugin's entry point (HDRG_PLUGIN_DEFINE, or passed directly when linked in)"
+  ],
+  "ja": [
+   "プラグインの入口 (HDRG_PLUGIN_DEFINE、またはリンクしたときは直接渡す)"
+  ]
+ },
+ {
+  "key": "8659775b7fe8c235",
+  "of": "hdrg_plugin_info_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_plugin_info_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_plugin_info_t) にする"
+  ]
+ },
+ {
+  "key": "c2b985a9c6848572",
+  "of": "hdrg_plugin_info_t.license",
+  "en": [
+   "SPDX license expression"
+  ],
+  "ja": [
+   "SPDX のライセンス式"
+  ]
+ },
+ {
+  "key": "4642cb90d186d269",
+  "of": "hdrg_plugin_info_t.status_message",
+  "en": [
+   "plugin's status text, or why it was rejected"
+  ],
+  "ja": [
+   "プラグインの状態の文、または拒否した理由"
+  ]
+ },
+ {
+  "key": "022960e228d79883",
+  "of": "hdrg_plugin_info_t.abi_version",
+  "en": [
+   "filter.h version the plugin was built with"
+  ],
+  "ja": [
+   "プラグインを組んだ filter.h の版"
+  ]
+ },
+ {
+  "key": "377de0af77657ef7",
+  "of": "hdrg_plugin_info_t.status",
+  "en": [
+   "HDRG_PLUGIN_READY / DEGRADED / UNAVAILABLE"
+  ],
+  "ja": [
+   "HDRG_PLUGIN_READY / DEGRADED / UNAVAILABLE"
+  ]
+ },
+ {
+  "key": "6bb876472df261bc",
+  "of": "hdrg_plugin_info_t.reason",
+  "en": [
+   "HDRG_REASON_*"
+  ],
+  "ja": [
+   "HDRG_REASON_*"
+  ]
+ },
+ {
+  "key": "754a8cebbe3e6aa9",
+  "of": "hdrg_plugin_info_t.internal",
+  "en": [
+   "built into the library"
+  ],
+  "ja": [
+   "ライブラリに内蔵"
+  ]
+ },
+ {
+  "key": "0ee57bb6c7b8c166",
+  "of": "hdrg_plugin_info_t.accepted",
+  "en": [
+   "usable: validated, accepted by the policy, not UNAVAILABLE"
+  ],
+  "ja": [
+   "使える: 検証済みで、方針が受け入れ、UNAVAILABLE でない"
+  ]
+ },
+ {
+  "key": "abc30e3fdc59cdbf",
+  "of": "hdrg_component_info_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_component_info_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_component_info_t) にする"
+  ]
+ },
+ {
+  "key": "5f57b7dd9213a994",
+  "of": "hdrg_filter_info_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_filter_info_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_filter_info_t) にする"
+  ]
+ },
+ {
+  "key": "7607eec32c096443",
+  "of": "hdrg_filter_info_t.stages",
+  "en": [
+   "HDRG_STAGE_* bits"
+  ],
+  "ja": [
+   "HDRG_STAGE_* のビット"
+  ]
+ },
+ {
+  "key": "b774e60f5a2d167c",
+  "of": "hdrg_filter_info_t.flags",
+  "en": [
+   "HDRG_FILTER_* bits"
+  ],
+  "ja": [
+   "HDRG_FILTER_* のビット"
+  ]
+ },
+ {
+  "key": "fcb100a236fb303e",
+  "of": "HDRG_CODEC_READ",
+  "en": [
+   "a codec's roles (hdrg_codec_info_t.roles)"
+  ],
+  "ja": [
+   "コーデックの役割 (hdrg_codec_info_t.roles)"
+  ]
+ },
+ {
+  "key": "25a39a0626454474",
+  "of": "hdrg_codec_info_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_codec_info_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_codec_info_t) にする"
+  ]
+ },
+ {
+  "key": "b43016cb3824db9e",
+  "of": "hdrg_codec_info_t.extensions",
+  "en": [
+   "\"jpg,jpeg\": the first one is a written file's"
+  ],
+  "ja": [
+   "\"jpg,jpeg\": 最初の 1 つが書いたファイルのもの"
+  ]
+ },
+ {
+  "key": "2b00abe834441a8c",
+  "of": "hdrg_codec_info_t.roles",
+  "en": [
+   "HDRG_CODEC_READ / WRITE bits"
+  ],
+  "ja": [
+   "HDRG_CODEC_READ / WRITE のビット"
+  ]
+ },
+ {
+  "key": "f51974797f0d1cf4",
+  "of": "hdrg_codec_info_t.forms",
+  "en": [
+   "a writer's: bits 1 << HDRG_OUTPUT_*"
+  ],
+  "ja": [
+   "書き手のもの: ビット 1 << HDRG_OUTPUT_*"
+  ]
+ },
+ {
+  "key": "fa46b1032403e3dc",
+  "of": "hdrg_codec_info_t.default_form",
+  "en": [
+   "a writer's HDRG_OUTPUT_AUTO"
+  ],
+  "ja": [
+   "書き手の HDRG_OUTPUT_AUTO"
+  ]
+ },
+ {
+  "key": "37e5067e331e1624",
+  "of": "hdrg_codec_info_t.option_count",
+  "en": [
+   "a writer's options"
+  ],
+  "ja": [
+   "書き手のオプション"
+  ]
+ },
+ {
+  "key": "a42c3bdcf7863fe5",
+  "of": "hdrg_option_info_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_option_info_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_option_info_t) にする"
+  ]
+ },
+ {
+  "key": "1634607b1e84df4e",
+  "of": "hdrg_option_info_t.default_text",
+  "en": [
+   "STRING, else NULL"
+  ],
+  "ja": [
+   "STRING のとき、ほかは NULL"
+  ]
+ },
+ {
+  "key": "c0707ebe248800e2",
+  "of": "hdrg_option_info_t.type",
+  "en": [
+   "HDRG_OPTION_INT / FLOAT / STRING"
+  ],
+  "ja": [
+   "HDRG_OPTION_INT / FLOAT / STRING"
+  ]
+ },
+ {
+  "key": "b88c0be97932f41c",
+  "of": "hdrg_plugin_policy_fn_t",
+  "en": [
+   "Called once per external plugin after its entry point returned and the",
+   "report validated, before it is frozen; it may inspect the plugin through",
+   "the hdrg_context_plugin_* / filter_* functions. HDRG_OK accepts."
+  ],
+  "ja": [
+   "外部のプラグインごとに 1 回、その入口が戻って報告を検証した後、フリーズする前に呼ばれます。hdrg_context_plugin_* / filter_* の関数でプラグインを調べられます。HDRG_OK で受け入れます。"
+  ]
+ },
+ {
+  "key": "ed0f391fea68edb5",
+  "of": "hdrg_context_register_plugin",
+  "en": [
+   "the plugin stays listed (with the reason) even when rejected"
+  ],
+  "ja": [
+   "拒否しても、プラグインは (理由とともに) 一覧に残ります"
+  ]
+ },
+ {
+  "key": "ae33c693388a78d2",
+  "of": "hdrg_context_load_plugin",
+  "en": [
+   "path is UTF-8; nothing is searched. HDRG_ERR_UNSUPPORTED without dynamic loading"
+  ],
+  "ja": [
+   "path は UTF-8 で、何も探しません。動的な読み込みがなければ HDRG_ERR_UNSUPPORTED"
+  ]
+ },
+ {
+  "key": "917406fb5c941805",
+  "of": "hdrg_context_error",
+  "en": [
+   "detail of the last failed plugin / filter / option call, \"\" if none"
+  ],
+  "ja": [
+   "最後に失敗したプラグイン / フィルタ / オプションの呼び出しの詳細、なければ \"\""
+  ]
+ },
+ {
+  "key": "cf113b85671ea946",
+  "of": "hdrg_context_codec_count",
+  "en": [
+   "the codecs of the context's usable plugins, the built-in ones first"
+  ],
+  "ja": [
+   "コンテキストの使えるプラグインのコーデック、内蔵のものが先"
+  ]
+ },
+ {
+  "key": "1a1b654a6d17a2f9",
+  "of": "hdrg_options_create",
+  "en": [
+   "Filter options as key=value text, as a CLI passes them: hdrg_context_add_filter",
+   "parses each value with the type and range the filter declared and rejects",
+   "unknown keys. Keys are [a-z0-9_] starting with [a-z], at most 64 bytes; at",
+   "most 128 per set."
+  ],
+  "ja": [
+   "CLI が渡すような、key=value の文字列のフィルタのオプション: hdrg_context_add_filter は、各値をフィルタが申告した型と範囲で読み取り、知らないキーを拒否します。キーは [a-z] で始まる [a-z0-9_] で、64 バイトまで、1 つの組に 128 個までです。"
+  ]
+ },
+ {
+  "key": "83b5be9a9261abfe",
+  "of": "hdrg_context_add_filter",
+  "en": [
+   "Adds a filter of a usable plugin to a stage of the following conversions:",
+   "HDRG_STAGE_SCALE takes one, HDRG_STAGE_PREFILTER up to HDRG_PREFILTER_MAX",
+   "that run in the order added, each on the previous one's output, all with",
+   "the side data of the frame as it came. PREFILTER filters run whatever the",
+   "params and replace the built-in ones (deblock, dering, defringe, deband,",
+   "MCTF, the noise reduction). HDRG_STAGE_INTERP takes one: the frames a video",
+   "session synthesizes between two input frames at another output rate",
+   "(hdrg_session_config_t.out_rate_num; default hdrg.interp.mc where the",
+   "build has it). HDRG_STAGE_ANALYZE takes one: the check of the judged lights",
+   "(hdrg_params_t.light_predictor > 0; default hdrg.analyze.predict).",
+   "HDRG_STAGE_STATS takes one: a video session's statistics across frames",
+   "(its temporal mode but STATIC and a WINDOWED without windows; default",
+   "hdrg.stats.temporal where the build has it). options may be NULL",
+   "(defaults) and is copied."
+  ],
+  "ja": [
+   "使えるプラグインのフィルタを、以後の変換の段に足します: HDRG_STAGE_SCALE は 1 つ、HDRG_STAGE_PREFILTER は HDRG_PREFILTER_MAX までで、足した順に、それぞれ前のものの出力の上で、どれも入ってきたときのフレームのサイドデータとともに動きます。PREFILTER のフィルタは params によらず動き、内蔵のもの (deblock・dering・defringe・deband・MCTF・ノイズ低減) の代わりになります。HDRG_STAGE_INTERP は 1 つ: 動画のセッションが別の出力のレートで 2 つの入力のフレームの間に合成するフレーム (hdrg_session_config_t.out_rate_num。既定はビルドにあれば hdrg.interp.mc)。HDRG_STAGE_ANALYZE は 1 つ: 判定した光の確かめ (hdrg_params_t.light_predictor > 0。既定は hdrg.analyze.predict)。HDRG_STAGE_STATS は 1 つ: 動画のセッションのフレームをまたぐ統計 (STATIC とウィンドウのない WINDOWED を除く時間モード。既定はビルドにあれば hdrg.stats.temporal)。options は NULL (既定) でもよく、複製します。"
+  ]
+ },
+ {
+  "key": "347873a4773f6890",
+  "of": "hdrg_context_set_writer",
+  "en": [
+   "The codec the following conversions write (hdrg_convert, hdrg_convert_raw):",
+   "a writer of a usable plugin by id (NULL: hdrg.jpeg, the default) with its",
+   "options (NULL: the defaults; parsed as hdrg_context_add_filter does,",
+   "copied). HDRG_ERR_NOT_FOUND for an id no usable writer has"
+  ],
+  "ja": [
+   "以後の変換 (hdrg_convert、hdrg_convert_raw) が書くコーデック: 使えるプラグインの書き手を、ID (NULL: 既定の hdrg.jpeg) とそのオプション (NULL: 既定。hdrg_context_add_filter と同じく読み取り、複製します) で。使える書き手のどれも持たない ID には HDRG_ERR_NOT_FOUND"
+  ]
+ }
+]

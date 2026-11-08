@@ -1,0 +1,35 @@
+<p class="lead">ツールはライブラリの公開 API の上の小さなプログラムです。{{src:tools}} の hdrg-cli・hdrg-video・hdrg-ffmpeg・hdrg-inspect は install します。hdrg-gui ({{src:tools/gui}}) は求めたときだけ組み、install しません。開発者向けの 2 つは {{src:tests/tools}} にあり、内部のヘッダを読み、install しません。</p>
+
+{{fig:tools}}
+
+<h2>hdrg-cli: 静止画</h2>
+<p>{{src:tools/hdrg-cli.c}} は {{api:hdrg_convert}} を、すべての設定をオプションにして動かします (ライブラリの名前での <code>--set name=value</code> も。3 つの CLI は <code>--set</code> と列挙のオプションを同じように解釈し、hdrg-cli と hdrg-video はフィルタの <code>--filter</code>・<code>--filter-opt</code> も: {{src:tools/common.c}})。書き手は <code>--format</code> のもの (<code>hdrg.jxl</code> のような ID、その名前か拡張子。<code>--jpeg</code>・<code>--jxl</code>・<code>--avif</code>・<code>--heif</code> も同じ)、なければ出力の拡張子のもの (<code>.jxl</code>・<code>.avif</code>・<code>.heic</code>)、ほかは JPEG です。<code>--format-opt key=value</code> がそのオプションを渡し、<code>--list-formats</code> がコーデックとオプションを一覧します。AVIF と HEIF のモジュールはプログラムの隣から読み込みます。</p>
+<pre><code>hdrg-cli --stats in.jpg out.jpg                 # ゲインマップの JPEG (既定)
+hdrg-cli --hybrid in.jpg out.jpg                # PQ の基本 + SDR を戻すゲインマップ
+hdrg-cli --pq in.jpg out.jpg                    # 単層 PQ
+hdrg-cli in.jpg out.jxl                         # JPEG XL: PQ の基本 + SDR を戻すゲインマップ
+hdrg-cli --format-opt quality=95 in.jpg out.jxl # 書き手のオプション
+hdrg-cli --preset anime in.png out.avif         # 10bit の AVIF (モジュール)、ANIME の出発点
+hdrg-cli --output-size 3840x0 in.jpg out.jpg    # SCALE 段
+hdrg-cli --plugin ./my.so --filter scale=org.example.scaler --filter-opt taps=4 in.jpg out.jpg</code></pre>
+<p>オプションは設定の名前 (<code>--diffuse-max</code>・<code>--apl-peak-fraction</code>・<code>--peak-nits</code>・<code>--effort</code>・<code>--deband</code> …) で、ほかに <code>--gpu auto|filters</code>・<code>--threads</code>・<code>--list-filters</code>・<code>--stats</code> があります。</p>
+
+<h2>hdrg-video: パイプのフレーム</h2>
+<p>{{src:tools/hdrg-video.c}} は y4m のストリーム (<code>--size</code> を付ければ raw RGB) をセッションに通し、PQ (raw RGB、または <code>--y4m</code> で 4:2:0 10bit の BT.2020) を書きます。セッションの選択肢を出します: <code>--temporal</code> (two-pass は入力を 2 回読む)・<code>--latency</code>・<code>--past</code> / <code>--future</code>・<code>--proxy</code>・<code>--out-rate</code>・<code>--output-size</code>・<code>--filter</code>・<code>--gpu</code>・<code>--shed</code>・<code>--set name=value</code>。遅延のレポートと x265 の形の MaxCLL / MaxFALL を出し、x265 向けの HDR10+ の JSON (<code>--hdr10plus-json</code>)・ST 2094-50 の JSON・STATIC のマッピングの <code>.cube</code> の LUT (<code>--export-lut</code>) を書けます。</p>
+<pre><code>ffmpeg -i in.mp4 -f yuv4mpegpipe -strict -1 - | hdrg-video --y4m - - |
+  ffmpeg -i - -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -c:v libx265 out.mp4</code></pre>
+
+<h2>hdrg-ffmpeg: ファイル</h2>
+<p>{{src:tools/hdrg-ffmpeg.c}} は FFmpeg のライブラリ (動的リンク) と {{src:tools/ffmpeg}} で、ファイルを demux・デコード・グレーディング・エンコードします: 4:2:0 10bit の PQ / BT.2020 (既定 libsvtav1、なければ libx265)、ストリームにマスタリングディスプレイ、パケットに HDR10+ と ST 2094-50、音声はコピー。AV1 の粒はデコーダからパラメータで受け取り、セッションが PQ の出力に戻します。<code>--hwaccel videotoolbox</code> と <code>*_videotoolbox</code> のエンコーダでは、セッションがフレームを GPU に置くとき (<code>--latency playback</code> か <code>low</code>) はピクセルバッファを GPU の上で受け渡し、既定の <code>--latency offline</code> では写さずにそのまま CPU から読み書きします。</p>
+
+<h2>hdrg-gui</h2>
+<p>{{src:tools/gui}} (CMake の <code>HDRG_BUILD_GUI=ON</code>): SDL3 と Dear ImGui。静止画と動画を OS のデコーダ (AVFoundation / ImageIO、Media Foundation / WIC、GStreamer、Linux で <code>HDRG_GUI_MEDIA=ffmpeg</code> なら FFmpeg) で開き、HDR のウィンドウ (拡張リニアのスワップチェーン、ウィンドウのヘッドルームが表示能力になる) で再生し、表示は HDR (処理済み)・元の SDR・並べる (左に元の SDR、右に HDR) から選び、すべての設定を変え (欄は設定の表から作る)、静止画 (設定の形式かファイルの拡張子で: JPEG・JPEG XL、隣にモジュールがあれば AVIF / HEIF) と動画を書き出します。動画は VideoToolbox (macOS) か Media Foundation (Windows) の HEVC 10bit の PQ で音声なし、Linux は FFmpeg 版が hdrg-ffmpeg を使い (libsvtav1、なければ libx265、音声はコピー)、GStreamer 版は静止画だけを書き出します。</p>
+
+<h2>内部と開発者向けのツール</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>ツール</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>{{src:tools/hdrg-inspect.c|hdrg-inspect}}</td><td>ファイルの HDR の信号 (ICC・cicp・HAGC・ゲインマップのメタデータ・AVIF の CICP / clli・HEIF の箱・JPEG XL の色と強度の目標と jhgm のゲインマップ) を出し、HDR の信号があれば 0 で終わる。install する。公開ヘッダだけを読む (内部のライブラリをリンクするのは同梱の libjxl のためだけ)。</td></tr>
+<tr><td>{{src:tests/tools/hdrg-bench.c|hdrg-bench}}</td><td>段ごと (デコード・走査 A / B / C・描画・色の LUT) の時間の中央値。</td></tr>
+<tr><td>{{src:tests/tools/hdrg-predictor-data.c|hdrg-predictor-data}}</td><td>光の予測器の学習の材料 (判定した光ごとの特徴量と画素)。{{src:scripts/predictor}} が使う。</td></tr>
+</tbody></table></div>

@@ -1,0 +1,36 @@
+<p class="lead">公開 API は 8 つのヘッダです。下の各ページは、ヘッダの宣言をヘッダの順にそのコメントと一緒に並べ、コメントが名指しする識別子をすべてリンクします。各項目の説明はヘッダのコメントを日本語に訳したもので、その下に英語の原文を開けます。</p>
+
+<div class="table-wrap"><table>
+<thead><tr><th>ヘッダ</th><th>対象</th><th>主な項目</th></tr></thead>
+<tbody>
+<tr><td>{{page:api/hdrgrading}}</td><td>だれでも</td><td>{{api:hdrg_context_create}}・{{api:hdrg_convert}}・{{api:hdrg_convert_raw}}・{{api:hdrg_params_init}}・{{api:hdrg_setting_set}}・{{api:hdrg_params_t}}・{{api:hdrg_display_caps_t}}・{{api:hdrg_encode_params_t}}・{{api:hdrg_context_desc_t}}</td></tr>
+<tr><td>{{page:api/video}}</td><td>動画</td><td>{{api:hdrg_session_create}}・{{api:hdrg_session_send_frame}}・{{api:hdrg_session_receive_frame}}・{{api:hdrg_session_preroll}}・{{api:hdrg_session_latency_report}}・{{api:hdrg_session_config_t}}・{{api:hdrg_session_output_t}}・{{api:hdrg_lut3d_export}}・{{api:hdrg_hdr10plus_t35}}</td></tr>
+<tr><td>{{page:api/gpu}}</td><td>GPU を共有するアプリ</td><td>{{api:hdrg_context_set_device}}・{{api:hdrg_device_frame_t}}・{{api:hdrg_shader}}・{{api:hdrg_apply_state_t}}・{{api:hdrg_vulkan_device_t}}</td></tr>
+<tr><td>{{page:api/metadata}}</td><td>動画と静止画の HDR のメタデータ</td><td>{{api:hdrg_hdr10plus_t}}・{{api:hdrg_st2094_50_t}}・{{api:hdrg_hdr10plus_t35}}・{{api:hdrg_st2094_50_t35}}</td></tr>
+<tr><td>{{page:api/sidedata}}</td><td>フレームのサイドデータをやり取りするアプリとフィルタ</td><td>{{api:HDRG_SD_NOISE}}・{{api:HDRG_SD_MOTION}}・{{api:HDRG_SD_FILM_GRAIN}}</td></tr>
+<tr><td>{{page:api/plugin}}</td><td>プラグインを使うアプリ</td><td>{{api:hdrg_context_register_plugin}}・{{api:hdrg_context_load_plugin}}・{{api:hdrg_context_add_filter}}・{{api:hdrg_context_set_device}}・{{api:hdrg_options_create}}</td></tr>
+<tr><td>{{page:api/filter}}</td><td>プラグインを書く人</td><td>{{api:hdrg_plugin_api}}・{{api:HDRG_PLUGIN_DEFINE}}・{{api:HDRG_FORMAT_RGB16}}・{{api:hdrg_filter_submit_fn_t}}・{{api:HDRG_STAGE_PREFILTER}}</td></tr>
+<tr><td>{{page:api/codec}}</td><td>コーデックのプラグインを書く人</td><td>{{api:hdrg_codec_probe_fn_t}}・{{api:hdrg_codec_read_fn_t}}・{{api:hdrg_codec_create_fn_t}}・{{api:hdrg_codec_rows_fn_t}}・{{api:HDRG_CODEC_FORM}}・{{api:HDRG_CODEC_ROWS_RGB16}}</td></tr>
+</tbody></table></div>
+<p><code>version.h</code> (CMake が <code>version.h.in</code> から作る) は <code>HDRG_VERSION_MAJOR</code>・<code>HDRG_VERSION_MINOR</code>・<code>HDRG_VERSION_PATCH</code>・<code>HDRG_VERSION_STRING</code> を定義します。{{api:hdrg_version}} は実行時にライブラリの版の文字列を返します。</p>
+
+<h2>API の約束</h2>
+<ul>
+<li>失敗しうる関数は {{api:hdrg_status_t}} を返します (いくつかは代わりに NULL か 0)。{{api:hdrg_status_string}} が状態の名前を返し、{{api:hdrg_context_error}} が失敗したプラグイン・フィルタ・オプションの呼び出しの詳細を返します。</li>
+<li>設定の構造体は <code>*_init</code> で初期化し (既定値はライブラリの中にあるので調整し直せる)、<code>struct_size</code> を持ちます。NULL は既定値です。</li>
+<li>コンテキストは 1 度に 1 つのスレッドから使い、別のコンテキストは独立です。セッションも同じです。</li>
+<li>ライブラリが返すバッファは、コンテキストを壊した後も {{api:hdrg_free}} で解放します。</li>
+<li>定数は決まった整数 (<code>UINT32_C</code> / <code>UINT8_C</code>) で、番号を振り直しません。状態の値は足すだけです。</li>
+<li>ライブラリは 0.x です: minor が上がると API が壊れえます。フィルタの ABI ({{api:HDRG_PLUGIN_ABI_VERSION}} 1) はフリーズしていません。</li>
+</ul>
+
+<h2>一生のあらまし</h2>
+<pre><code>hdrg_context_desc_init(&amp;desc);            /* アロケータ・スレッド・SIMD の上限・GPU */
+hdrg_context_create(&amp;desc, &amp;ctx);
+  hdrg_context_load_plugin(ctx, path);     /* 任意: プラグイン・フィルタ・device */
+  hdrg_context_add_filter(ctx, HDRG_STAGE_SCALE, "hdrg.scale.edge", NULL);
+  hdrg_convert(ctx, ...);                  /* 静止画、何回でも */
+  hdrg_session_create(ctx, ..., &amp;session); /* 動画 */
+    hdrg_session_send_frame / hdrg_session_receive_frame ...
+  hdrg_session_destroy(session);
+hdrg_context_destroy(ctx);</code></pre>

@@ -1,0 +1,36 @@
+{
+    "name": "libhdrgrading (Debian 13)",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "args": {
+            "LLVM_VERSION": "23"
+        }
+    },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/libhdrgrading,type=bind",
+    "workspaceFolder": "/workspaces/libhdrgrading",
+    "mounts": [
+        "source=hdrg-dev-${devcontainerId}-cache,target=/home/dev/.cache,type=volume"
+    ],
+    "runArgs": [
+        "--cap-add=SYS_PTRACE",
+        "--security-opt=seccomp=unconfined"
+    ],
+    "remoteUser": "dev",
+    "updateRemoteUserUID": true,
+    "postCreateCommand": "sudo chown \"$(id -u):$(id -g)\" /home/dev/.cache && scripts/fetch_deps.sh",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "llvm-vs-code-extensions.vscode-clangd",
+                "ms-vscode.cmake-tools",
+                "github.vscode-github-actions"
+            ],
+            "settings": {
+                "clangd.path": "/usr/local/bin/clangd",
+                "cmake.generator": "Ninja",
+                "cmake.useCMakePresets": "always",
+                "C_Cpp.intelliSenseEngine": "disabled"
+            }
+        }
+    }
+}

@@ -1,0 +1,80 @@
+<p class="lead">セッション ({{api:hdrg_session_t}}、{{src:src/session}}) は、同じ寸法と色のフレームの列を単層 PQ へグレーディングします。系列の状態は 1 回だけ作り、フレームは送ったときに解析し、受け取るときに、そのシーンの周りのフレームの統計から描きます。</p>
+
+{{fig:session}}
+
+<h2>セッションの使い方</h2>
+<pre><code>hdrg_session_config_t config;
+hdrg_session_t *session;
+hdrg_session_format_t format = {0};   /* 幅・高さ・原色・伝達特性。R'G'B' の入力はビット深度・行の幅・α も */
+
+hdrg_session_config_init(&amp;config);              /* WINDOWED (STATS のフィルタがあれば過去 8 枚)、PLAYBACK */
+config.rate_num = 24000;
+config.rate_den = 1001;
+config.input.layout = HDRG_YUV_420;              /* 平面の Y'CbCr から… */
+config.input.matrix = HDRG_MATRIX_BT709;
+config.input.bits = 10;
+config.output.layout = HDRG_YUV_420;             /* …BT.2020 の PQ の Y'CbCr 4:2:0 10bit へ */
+config.output.matrix = HDRG_MATRIX_BT2020;
+config.output.bits = 10;
+/* Y'CbCr の出力には caps.gamut = HDRG_GAMUT_BT2020 が要る */
+status = hdrg_session_create(ctx, &amp;format, &amp;params, &amp;caps, &amp;config, &amp;session);
+
+/* HDRG_ERR_AGAIN まで送り、HDRG_ERR_AGAIN まで受け取る、をくり返す */
+status = hdrg_session_send_frame(session, &amp;frame);       /* 終わりに NULL */
+status = hdrg_session_receive_frame(session, &amp;output);   /* … HDRG_EOF まで */
+hdrg_session_destroy(session);</code></pre>
+<p>セッションは 1 度に 1 つのスレッドから使います。呼び出し元の面はフレームの <code>release</code> が呼ばれるまで読みます。Y'CbCr の入力と、PREFILTER の連鎖があるときの入力は、送ったときに 16bit の R'G'B' へ変換する (取り込み) ので面はすぐ返し、連鎖のない R'G'B' の入力はそのフレームの出力を描くまでその場で読みます。</p>
+
+<h2>入出力の画素</h2>
+<ul>
+<li>入力 ({{api:hdrg_session_pixfmt_t}}): 詰めた R'G'B' (8 か 16bit)、または平面の Y'CbCr 4:2:0 / 4:2:2 / 4:4:4 の 8〜16bit、BT.709 / BT.601 / BT.2020 の行列、ビデオかフルのレンジ、H.273 の 6 つの色差のサンプル位置、Cb / Cr が面ごとか交互 (NV12・P010。上位詰めは <code>msb</code>)。間引いた色差は輝度の細部を使って拡大します (chroma from luma、{{api:hdrg_params_t.chroma_fit|chroma_fit}})。</li>
+<li>出力: PQ の R'G'B' (8bit はディザ付き、または 16bit)、または BT.2020 の行列の PQ の Y'CbCr 4:2:0 (BT.2020 の入れ物で、色は Display P3 の内側)。</li>
+<li>アプリの GPU の上: {{api:hdrg_session_config_t.device|config.device}} と {{api:hdrg_device_frame_t}} &mdash; コンテキストの Metal・Vulkan・WebGPU の device のバッファ、Apple の CVPixelBuffer、Linux の dma-buf の fd、Android の AHardwareBuffer ({{api:HDRG_GPU_AUTO}} と Y'CbCr の入力で、フレームを GPU に置けるとき。ほかは {{api:HDRG_ERR_UNSUPPORTED}})。{{page:gpu}}を参照。</li>
+</ul>
+
+<h2>時間方向の統計</h2>
+<p>フレームの解析では、前のフレームとの間のシーンの切れ目も調べます (シーンのヒストグラムと対数平均の輝度。フェードはヒストグラムを変化の分だけずらして比べ、ストロボは 1 つのシーンに保ちます)。描くとき、アンカーの統計 (p99.5 と key) と APL の係数は、そのシーンのフレームを追います。このフレームをまたぐ仕事は STATS の段 ({{api:HDRG_STAGE_STATS}}、{{page:plugins}}) のもので、段に足したフィルタ、なければ内蔵の <code>hdrg.stats.temporal</code> ({{src:src/plugins/stats}}) が行います。そのモードは次のとおりです:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>{{api:hdrg_session_config_t.temporal|temporal}}</th><th>統計</th><th>光の安定化</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_TEMPORAL_WINDOWED}} (既定)</td><td>シーンのフレームの [t − past, t + future] の対数での平均 (APL は [t − past, t])。ウィンドウがなければ (past も future も 0)、段なしで各フレームを自分の統計で描く。</td><td>PLAYBACK と OFFLINE: 場所 (セル) ごとに、カメラの動きを追って (光の近くのセルは、いちばん合う平行移動で動いた先の各フレームの判定の中央の半分の平均。過去 8 枚と未来のウィンドウ、OFFLINE は前後 24 枚)。LOW: 光ごとに、過去 8 枚までの判定の中央値。</td></tr>
+<tr><td>{{api:HDRG_TEMPORAL_RECURSIVE}}</td><td>対数での非対称な EMA (暗くなる向き 0.15 秒、明るくなる向き 0.6 秒)、切れ目で初期化。遅延なし。</td><td>光ごとに、過去 8 枚までの判定の中央値。</td></tr>
+<tr><td>{{api:HDRG_TEMPORAL_TWO_PASS}}</td><td>1 パス目のシーンごとに一定 (フェードアウトは平均から外す)。1 パス目の記録 ({{api:hdrg_session_pass_t}}) を作るときに渡す。</td><td>1 パス目のショットの中の光の追跡の中央値。</td></tr>
+<tr><td>{{api:HDRG_TEMPORAL_STATIC}}</td><td>なし (段もなし): 符号値の 1 つの固定のマッピング (解析も局所のゲインもなし)。{{api:hdrg_lut3d_export}} で 3D LUT に書き出せる。</td><td>&mdash;</td></tr>
+</tbody></table></div>
+<p>内蔵のフィルタはフェードも追います: フェードアウトでは前のフレームのマッピングを保ってフェードを単調に保ち、光の閾値・肩・コントラストの中心が暗くなり方に従うので、出力は比例して暗くなります。セッション自身のフラッシュリミッタ (ITU-R BT.1702-3、<code>flash_off</code> でなければ有効) は 16 × 9 の領域の画面の輝度を予測し、有害な変化が 1 秒に 7 回目になるフレームのゲインを下げます。ソース自体のフラッシュは取り除かず、増幅しないだけです。</p>
+<p>内蔵の STATS のフィルタはビルドのオプションで、ほかの時間方向の機能と一緒に既定は OFF です (<code>HDRG_WITH_TEMPORAL</code>: <code>hdrg.stats.temporal</code>・<code>hdrg.interp.mc</code>・<code>hdrg.scale.temporal</code>。それぞれは <code>HDRG_WITH_TEMPORAL_FILTER</code>・<code>_INTERP</code>・<code>_SR</code> で。有効にするのは自己責任です: {{dev:build}})。STATS のフィルタのないセッションは過去のウィンドウの既定が 0 で ({{api:hdrg_session_config_resolve}} でセッションが取る値が分かる)、各フレームを自分の統計だけで描きます。そこではウィンドウ・RECURSIVE・TWO_PASS は {{api:HDRG_ERR_UNSUPPORTED}} ですが、アプリが自分の STATS のフィルタを足せば (<code>hdrg_context_add_filter(ctx, HDRG_STAGE_STATS, id, options)</code>) どのビルドでも使えます。STATIC はいつも要りません。</p>
+
+<h2>遅延・プロファイル・シーク</h2>
+{{fig:window}}
+<p>{{api:hdrg_session_config_t.latency|latency}} はフレームの用途を表し、どのプリセットとも組み合わせます:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>プロファイル</th><th>用途</th><th>飛行中のフレーム</th><th>未来のウィンドウ</th><th>effort の AUTO</th><th>late</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_LATENCY_PLAYBACK}} (既定)</td><td>視聴する動画</td><td>ASYNC のフィルタが申告した枚数</td><td>過去と同じ長さ</td><td>REALTIME</td><td>直近 1 秒の呼び出しの平均がフレームの間隔を超えたとき</td></tr>
+<tr><td>{{api:HDRG_LATENCY_LOW}}</td><td>ゲーム・通話・ライブの表示</td><td>ジョブを 1 つずつすぐ待つ</td><td>なし</td><td>REALTIME</td><td>1 フレームの呼び出しが間隔を超えたとき</td></tr>
+<tr><td>{{api:HDRG_LATENCY_OFFLINE}}</td><td>誰も見ていないファイルの変換</td><td>PLAYBACK と同じ</td><td>PLAYBACK と同じ。光の安定化が 24 枚待つ</td><td>QUALITY</td><td>判定しない</td></tr>
+</tbody></table></div>
+<ul>
+<li>{{api:hdrg_session_latency}} は、フレームの出力が待つ枚数です: STATS のフィルタが先に要る枚数 (統計のウィンドウの未来か光の安定化の分)、PREFILTER と SCALE のフィルタの時間のウィンドウの未来、それらの ASYNC の飛行中の 2 枚目から、出力のレートでは INTERP のウィンドウ。</li>
+<li>{{api:hdrg_session_latency_report}} は遅延を原因ごとと各プロファイルで、send / receive で測った時間とその内訳 (変換・前処理・解析・適用・補間)、使った device、遅れたフレームの数、直すところを示す {{api:HDRG_ADVICE_PREFILTER|HDRG_ADVICE_*}} のビットで返します。{{api:hdrg_session_config_t.shed|shed}} なら、遅れた PLAYBACK・LOW のセッションは以後、時間のウィンドウのない PREFILTER のフィルタを素通しにします。</li>
+<li><strong>シーク</strong>: フレームの出力は {{api:hdrg_session_preroll}} 枚前からのフレームを読みます。<code>start = n − p</code>、<code>preroll = p</code> で作ったセッションは、フレーム n とその後のどのフレームも、ストリームの頭から始めたセッションとバイトまで同じに描きます (WINDOWED・TWO_PASS・STATIC。RECURSIVE は近似)。VapourSynth のプラグインはこれでランダムアクセスに応えます。</li>
+</ul>
+
+<h2>セッションのフィルタ</h2>
+<ul>
+<li><strong>PREFILTER</strong>: 静止画と同じものに、動き補償の時間方向のノイズ低減 <code>hdrg.mctf</code> (前後 2 枚、LOW は前だけ) が加わります。時間のウィンドウ (前後 8 枚まで) かクリップ (BasicVSR 型) を持つフィルタは自分の周りのフレームを受け取り、ASYNC のフィルタは <code>max_inflight</code> 枚まで飛ばしておけます。</li>
+<li><strong>粒</strong> ({{api:hdrg_params_t.grain_policy|grain_policy}}): PRESERVE はソースの粒を増幅せずに保ち、REDUCE は取り除き、RESYNTH (ビルドにノイズ低減があるときの PHOTO のセッションの既定) は取り除いてから取り除いた分を測り (コーデックの AV1 の粒のパラメータ {{api:HDRG_SD_FILM_GRAIN}} があればそれを使い)、SDR で見えていた量で PQ の出力に描き戻します。</li>
+<li><strong>SCALE</strong>: {{api:hdrg_session_config_t.output_width|output_width}} / <code>output_height</code>。scaler は時間のウィンドウ (32 枚まで) を持てます (多フレームの <code>hdrg.scale.temporal</code> など)。</li>
+<li><strong>出力のレート</strong>: {{api:hdrg_session_config_t.out_rate_num|out_rate_num}} / <code>out_rate_den</code> で、入力のフレームの間のフレームを INTERP 段のフィルタで合成します (既定はビルドにあれば <code>hdrg.interp.mc</code>、ほかに <code>repeat</code> と <code>blend</code>)。切れ目をまたぐところは近いほうのフレームです。合成した出力は <code>synthetic</code> とその <code>phase</code> が付き、信頼度の低い動きのブロックはゲインを頭打ちにします。</li>
+</ul>
+
+<h2>出力のメタデータ</h2>
+<ul>
+<li>{{api:hdrg_session_peak}}: どのフレームの描画の上限も超えない値で、最初のフレームの前に分かります: ストリームのマスタリングディスプレイの最大。</li>
+<li>フレームごと ({{api:hdrg_session_output_t}}): 測った MaxCLL / FALL (<code>max_nits</code>・<code>avg_nits</code>)、APL、シーンの切れ目、フラッシュリミッタ、フェード、ノイズ。</li>
+<li>HDR10+ ({{api:hdrg_hdr10plus_t}}: R・G・B の最大、max(R, G, B) の平均と 9 つの百分位) と SMPTE ST 2094-50 ({{api:hdrg_st2094_50_t}}: SDR のソースへ戻すゲインの曲線、32 点まで)。{{api:hdrg_hdr10plus_t35}} と {{api:hdrg_st2094_50_t35}} が、FFmpeg・FFMS2・ICC の HAGC のタグが使う T.35 のペイロードに書きます。</li>
+</ul>
+
+<h2>アプリ自身の GPU</h2>
+<p>フレームを変える段のないセッション (PREFILTER の段がない &mdash; フィルタを足さず、params の内蔵のものも切る: deblock・dering・defringe・deband・MCTF が 0、粒は PRESERVE &mdash;、SCALE・出力のレート・device のフレームがなく、TWO_PASS の 1 パス目でないもの) は、適用の代わりにフレームの仕事をアプリへ渡せます: {{api:hdrg_session_receive_state}} がフレームの統計と {{api:hdrg_apply_state_t}} を返し、{{api:hdrg_shader}} がライブラリの適用 (と Y'CbCr の変換) のシェーダを WGSL・SPIR-V・HLSL で返します。出力はライブラリの GPU の適用とバイトまで同じです。ブラウザのデモの対話プレビューはこの形です。</p>

@@ -1,0 +1,35 @@
+<p class="lead">リポジトリのマッピングです。{{src:CLAUDE.md}} にはほぼすべてのファイルの行があり、このページはそれを用途でまとめます。</p>
+
+<h2>ライブラリ</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>場所</th><th>中身</th></tr></thead>
+<tbody>
+<tr><td>{{src:include/hdrgrading}}</td><td>公開ヘッダ: hdrgrading.h (コンテキスト・静止画・設定)・video.h (セッション)・gpu.h (アプリの GPU の device・フレーム・シェーダ)・metadata.h (HDR10+・ST 2094-50 とその T.35 のペイロード)・sidedata.h (ノイズ・動き・粒のサイドデータ)・plugin.h (プラグインのホスト)・filter.h と codec.h (プラグインの ABI)・version.h.in。</td></tr>
+<tr><td>{{src:src/context.c}}・{{src:src/params.c}}・{{src:src/priv.h}}</td><td>コンテキスト・アロケータの補助・統計・プール。プリセット・設定の検査・名前での設定。</td></tr>
+<tr><td>{{src:src/convert.c}}・{{src:src/container.c}}</td><td>静止画の変換。静止画の書き手 (行・ゲインマップとそのメタデータ・プロファイル・光をコーデックへ渡す)。</td></tr>
+<tr><td>{{src:src/session}}</td><td>動画のセッション: session.c (開く・送る・受け取る・待ち行列・描画。フレームをまたぐ統計は STATS の段で)・flash.c (フラッシュリミッタ)・rate.c (出力のレート)・resident.c (GPU に置くフレームとアプリの GPU のフレーム)・latency.c (遅延の見積もりとレポート)・export.c (アプリの GPU 向けのシェーダと状態)。状態は session.h。</td></tr>
+<tr><td>{{src:src/pipeline.h}}・{{src:src/pipeline}}</td><td>系列とそのフレームのパイプライン (pipeline.c)、PREFILTER の連鎖と device の連鎖 (chain.c)、SCALE 段 (scale.c)。共有の部分は parts.h。</td></tr>
+<tr><td>{{src:src/lut3d.c}}</td><td>STATIC のマッピングの 3D LUT。</td></tr>
+<tr><td>{{src:src/core}}</td><td>analyze・noise・plan・render・apply・color・image・yuv・grain・motion・predict (ANALYZE の段へ渡す判定した光の記録と、その確からしさでの上乗せ)・exec・recycle・dynamic (HDR10+・ST 2094-50 の利得の曲線とその T.35 のペイロード)。GPU の上のコア (gpu_core*・gpu_apply・gpu_convert・gpu_analyze・gpu_gather) と、その WGSL ({{src:src/core/wgsl|core/wgsl}}) と生成した msl / spirv / hlsl。</td></tr>
+<tr><td>{{src:src/kernels}}</td><td>SIMD の関数表 (kernels.h)、CPU の検出 (cpu.c)、PQ の表、scalar の参照、ISA ごとの基本演算 (v_*.h) と翻訳単位 (k_*.c)、共有のカーネルの本体 (vmath.h)。</td></tr>
+<tr><td>{{src:src/io}}</td><td>ICC (icc.c)・ゲインマップのメタデータ (gainmeta.c: ISO 21496-1・XMP)。jpegli の C の層は {{src:src/plugins/jpeg/jpegli_compat}} にある。</td></tr>
+<tr><td>{{src:src/host}}</td><td>ホスト (host.c。フィルタのインスタンスとジョブは job.c、device とその GPU の共有は device.c)、内蔵の既定 (defaults.c)、公開の関数 (public.c)、検証、読み込み、段の実行器 (stage.c)、ANALYZE と STATS の段 (analyzer.c・stats.c)、ジョブのフレームの形式 (format.c)、コーデックのホスト (codec_host.c)。</td></tr>
+<tr><td>{{src:src/plugins}}</td><td>内蔵プラグイン。どれも CMake のプロジェクト (cmake/HdrgPlugin.cmake): bilinear・polyphase・edge (+ temporal)・fsr・nis・metalfx・denoise・deblock・dering・defringe・deband・mctf・interp (それぞれ CPU の部分と parts.h。bilinear と metalfx のほかは webgpu_*.c と gk_*.c と <code>wgsl/</code> の WGSL と生成した msl / spirv も持ち、metalfx は Metal だけ)、predict (+ scripts/predictor/train.py が書く predict_weights)・stats、コーデック jpeg・png・gif・jxl、モジュール avif と heif、shared (blockme・noise)。</td></tr>
+<tr><td>{{src:src/gpu}}</td><td>プロジェクト hdrgrading-gpu: webgpu.c・metal.m・vulkan.c・gk_metal.c / gk_vulkan.c・apple.c、GPU のプラグインの部分 (filter_plugin.c・filter_gk.c・filter_webgpu.c・filter_metal.c・filter_vulkan.c)。ヘッダは include/hdrgrading/gpu。</td></tr>
+<tr><td>{{src:src/foundation}}</td><td>プロジェクト hdrgrading-foundation: memory・math・fmath・hash・fpenv・thread・pool・clock・gpu_share (プラグインの ABI の GPU の共有) (ヘッダは include/hdrgrading/foundation)。</td></tr>
+<tr><td>{{src:src/wasm}}</td><td>ブラウザのモジュールのインタフェース。{{src:src/wasm/demo}}: デモのページ。</td></tr>
+<tr><td>{{src:src/bindings}}</td><td>ffmpeg (フィルタのパッチ)・gstreamer・vapoursynth: 公開ヘッダだけを使う。</td></tr>
+</tbody></table></div>
+
+<h2>ライブラリの周り</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>場所</th><th>中身</th></tr></thead>
+<tbody>
+<tr><td>{{src:tools}}</td><td>install するプログラム: hdrg-cli・hdrg-video・hdrg-ffmpeg・hdrg-inspect (HAGC の読み手 hagc.c と)。CLI の共有の解釈 (common.c)、hdrg-ffmpeg の FFmpeg の補助 ({{src:tools/ffmpeg}})。{{src:tools/gui}}: hdrg-gui。</td></tr>
+<tr><td>{{src:tests}}</td><td>unit・conformance・plugins (公開ヘッダだけで組む)・modules (GPU の層を自分に持つモジュール)・バインディングのテスト・wasm・install・fuzz (libFuzzer のハーネスとシードの書き手)・tools (ツールのテストと、開発者向けの hdrg-bench と hdrg-predictor-data)。補助の test_util.h・test_stage.h・test_jpeg.h・test_gpu_module.h。</td></tr>
+<tr><td>{{src:docs}}</td><td>このドキュメント (GitHub Pages のサイト)。その元は {{src:docs/scripts}}。</td></tr>
+<tr><td>{{src:cmake}}</td><td>HdrgCommon (警告・サニタイザ・カバレッジ・テスト)・HdrgDeps (同梱の依存)・HdrgPlugin (プラグインのプロジェクトとそのシェーダ)・HdrgHeif・HdrgWasm・パッケージのひな形。</td></tr>
+<tr><td>{{src:scripts}}</td><td>fetch_deps・docker_dev・jobs・build_dawn・build_ffmpeg・gen_shaders・coverage (+ merge・uncovered)・wasm_demo (デモ付きのサイト)・check_style・予測器の学習。</td></tr>
+<tr><td>{{src:third_party}}</td><td>submodule: jpegli・libpng・zlib・giflib・lcms2・libjxl・brotli・unity・emsdk・vapoursynth (ヘッダ)・fidelityfx-fsr と nis (移植の元)・sdl と imgui (GUI)。</td></tr>
+<tr><td>{{src:.github}}</td><td>ワークフロー・CI のイメージ・Renovate と Dependabot。</td></tr>
+</tbody></table></div>

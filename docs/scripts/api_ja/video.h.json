@@ -1,0 +1,1521 @@
+[
+ {
+  "key": "1e982beb5e1e8b6a",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading — video: a session grades a sequence of frames (R'G'B' or",
+   "planar Y'CbCr) into single-layer PQ, the scene statistics following the",
+   "frames of each scene; the STATIC mapping can be written as a 3D LUT."
+  ],
+  "ja": [
+   "libhdrgrading — 動画: セッションはフレームの列 (R'G'B' か平面の Y'CbCr) を単層 PQ へグレーディングし、シーンの統計は各シーンのフレームを追います。STATIC のマッピングは 3D LUT に書き出せます。"
+  ]
+ },
+ {
+  "key": "a58b33bf02981962",
+  "of": "HDRG_SESSION_AUTO",
+  "en": [
+   "a window's default (hdrg_session_config_t.past)"
+  ],
+  "ja": [
+   "ウィンドウの既定 (hdrg_session_config_t.past)"
+  ]
+ },
+ {
+  "key": "af0a33e13b04fa25",
+  "of": "HDRG_TEMPORAL_WINDOWED",
+  "en": [
+   "how the scene statistics of a frame follow the frames around it"
+  ],
+  "ja": [
+   "フレームのシーンの統計が周りのフレームをどう追うか"
+  ]
+ },
+ {
+  "key": "e36e3f7b7870bcb6",
+  "of": "HDRG_TEMPORAL_WINDOWED",
+  "en": [
+   "the mean over [t - past, t + future] in the scene"
+  ],
+  "ja": [
+   "シーンの中の [t - past, t + future] の平均"
+  ]
+ },
+ {
+  "key": "570af5e1c825ed74",
+  "of": "HDRG_TEMPORAL_RECURSIVE",
+  "en": [
+   "an asymmetric EMA, reset at a cut; no latency"
+  ],
+  "ja": [
+   "非対称な EMA、切れ目で初期化。遅延なし"
+  ]
+ },
+ {
+  "key": "1c746a37ff58cef5",
+  "of": "HDRG_TEMPORAL_TWO_PASS",
+  "en": [
+   "constant over each scene of a first pass"
+  ],
+  "ja": [
+   "1 パス目のシーンごとに一定"
+  ]
+ },
+ {
+  "key": "6f2043698dbd9ffd",
+  "of": "HDRG_TEMPORAL_STATIC",
+  "en": [
+   "no statistics: one fixed mapping (lut3d_export)"
+  ],
+  "ja": [
+   "統計なし: 1 つの固定のマッピング (lut3d_export)"
+  ]
+ },
+ {
+  "key": "e1703ebb67df6966",
+  "of": "HDRG_LATENCY_PLAYBACK",
+  "en": [
+   "What a session's frames are for (hdrg_session_config_t.latency): how long",
+   "a frame's output may wait and whether the session must keep up with the",
+   "stream's rate (hdrg_session_output_t.late, hdrg_session_latency_report).",
+   "Any preset goes with any of them.",
+   "- PLAYBACK (default): a video being watched. The ASYNC filters keep the",
+   "  frames in flight they declared and the statistics look ahead (future,",
+   "  by default as far as they look back): delay is not limited. Late when",
+   "  the calls of the last second took longer a frame than the frame",
+   "  interval at the rate.",
+   "- LOW (the low-latency mode: a game, a call, a live view): no frame waits",
+   "  for others: each job of an ASYNC filter is waited for at once, the",
+   "  statistics window has no future and effort AUTO is REALTIME. Late when a",
+   "  frame's calls took longer than the frame interval.",
+   "- OFFLINE: converting a file nobody watches meanwhile: PLAYBACK's",
+   "  frames, never late, and effort AUTO is QUALITY.",
+   "The filters' time windows are the same under all of them (their algorithm",
+   "reads those frames; hdrg_session_latency_report says how many), except",
+   "the built-in hdrg.mctf's, which reads no frames after its own under LOW."
+  ],
+  "ja": [
+   "セッションのフレームの用途 (hdrg_session_config_t.latency): フレームの出力がどれだけ待ってよいかと、セッションがストリームのレートに間に合う必要があるか (hdrg_session_output_t.late、hdrg_session_latency_report)。どのプリセットもどれとも組み合わせられます。",
+   "- PLAYBACK (既定): 視聴している動画。ASYNC のフィルタは申告した枚数のフレームを飛行中に保ち、統計は先を見ます (future、既定では後ろを見るのと同じだけ): 遅延は制限しません。直近 1 秒の呼び出しが 1 フレームあたりレートでのフレームの間隔より長くかかったとき late になります。",
+   "- LOW (ローレイテンシモード: ゲーム・通話・ライブの表示): どのフレームもほかのフレームを待ちません: ASYNC のフィルタのジョブはどれもすぐに待ち、統計のウィンドウに未来はなく、effort の AUTO は REALTIME です。1 フレームの呼び出しがフレームの間隔より長くかかったとき late になります。",
+   "- OFFLINE: その間誰も見ていないファイルの変換: PLAYBACK と同じフレーム、late にはならず、effort の AUTO は QUALITY です。",
+   "フィルタの時間のウィンドウはどのプロファイルでも同じです (フィルタのアルゴリズムがそのフレームを読みます。枚数は hdrg_session_latency_report が示します)。ただし内蔵の hdrg.mctf のものは別で、LOW では自分のフレームより後のフレームを読みません。"
+  ]
+ },
+ {
+  "key": "3dad641df475c8f2",
+  "of": "HDRG_ADVICE_PREFILTER",
+  "en": [
+   "hdrg_session_latency_t.advice: what to change when the session is late,",
+   "from what its calls took the most time with (bits):",
+   "- PREFILTER: fewer or lighter PREFILTER filters, or their GPU versions",
+   "  (hdrg.metal.*, hdrg.vulkan.*, hdrg.webgpu.*)",
+   "- EFFORT: the analysis under QUALITY: effort REALTIME",
+   "- PROXY: the analysis: a smaller proxy (config.proxy)",
+   "- SCALE: the SCALE stage: a smaller output or a lighter scaler",
+   "- THREADS: the context has fewer threads than the CPUs",
+   "- LATENCY: LOW waits for each job of an ASYNC filter: PLAYBACK keeps them",
+   "  in flight (frames of delay)"
+  ],
+  "ja": [
+   "hdrg_session_latency_t.advice: セッションが遅れたときに変えるもの。呼び出しでいちばん時間のかかったものから決めます (ビット):",
+   "- PREFILTER: PREFILTER のフィルタを減らすか軽くする、またはその GPU 版 (hdrg.metal.*、hdrg.vulkan.*、hdrg.webgpu.*)",
+   "- EFFORT: QUALITY での解析: effort を REALTIME に",
+   "- PROXY: 解析: 小さい縮小画 (config.proxy)",
+   "- SCALE: SCALE の段: 小さい出力か軽い scaler",
+   "- THREADS: コンテキストのスレッドが CPU の数より少ない",
+   "- LATENCY: LOW は ASYNC のフィルタのジョブを 1 つずつ待つ: PLAYBACK はそれを飛行中に保つ (数フレームの遅延)"
+  ]
+ },
+ {
+  "key": "9cd8c8fc216c80b5",
+  "of": "hdrg_session_t",
+  "en": [
+   "A video session:",
+   "frames of one size and color in, one single-layer PQ frame out per input",
+   "frame, in order. The sequence state (the color LUT, the thread pool, the",
+   "apply pass's scratch) is built once. Y'CbCr frames are converted to 16-bit",
+   "R'G'B' when they are sent (the ingest stage): the session",
+   "holds its queue's depth + 1 of them (the most of the statistics window's",
+   "future, OFFLINE's 24 frames of the lights' steadying, the SCALE stage's",
+   "delay and the INTERP window's) and releases the caller's planes at once.",
+   "",
+   "Temporal smoothing: a frame is analyzed when it is sent, which also tests",
+   "it for a scene cut (the scene histogram and the log-average luminance",
+   "against the previous frame, with no other such change in the 3 frames",
+   "before: a strobe stays one scene; a fade, the log-average luminance and",
+   "p99.5 moving the same way together frame after frame, is compared after",
+   "moving the histogram by the change, so its steps near black do not cut",
+   "it). When it is rendered, the scene anchor's",
+   "statistics (p99.5 and the log-average luminance) and the APL budget's",
+   "factor follow the frames of its scene:",
+   "- WINDOWED: the log-domain mean of the anchor statistics over the scene's",
+   "  frames in [t - past, t + future], of the APL factor over [t - past, t].",
+   "- RECURSIVE: an EMA in the log domain, faster toward a dimmer rendition",
+   "  (0.15 s) than a brighter one (0.6 s), its state in 1/1024 stop.",
+   "- TWO_PASS: the anchor statistics are the log-domain mean over the",
+   "  scene's frames of the first pass (whose cuts are kept) outside its",
+   "  fade-outs; the APL factor is the lower of the same mean of the first",
+   "  pass's fits and the frame's own.",
+   "- STATIC: no analysis and no local gain: every pixel takes the fixed",
+   "  mapping of its own code values (src/core/plan.h, a fixed plan), which",
+   "  hdrg_lut3d_export samples.",
+   "",
+   "The lights' judgments follow them too, so a light judged",
+   "near a threshold does not flip: under WINDOWED with a window, PLAYBACK and",
+   "OFFLINE steady them place by place with the camera followed (each cell of",
+   "the frame's lights takes the mean of the middle half of what the scene's",
+   "frames judged where the translation of their cells that matches best from",
+   "frame to frame moves it, a frame with no light there voting a boost of 0;",
+   "over 8 frames before it, at most its past, and its queued future, or",
+   "under OFFLINE over 24 frames before and after it, whatever the",
+   "statistics' window); under LOW's WINDOWED and RECURSIVE, each light takes",
+   "the median of the frame's judgment and those of the scene's frames up to 8",
+   "before it (a frame votes with its light whose center is the nearest,",
+   "within 8 pixels a frame, or not at all; the lower middle of an even count:",
+   "in doubt a light stays dimmer); under TWO_PASS, the median over the",
+   "light's track through the scene of the first pass (a light continues the",
+   "light of the frame before whose center is the nearest to its own, within 8",
+   "pixels, when its own is that light's nearest too).",
+   "",
+   "The flash limiter (ITU-R BT.1702-3 Annex 1, Guideline 1; on unless",
+   "flash_off, not under STATIC): the screen luminance of 16 x 9 regions is",
+   "predicted from the plan's cells, and a change against the previous frame",
+   "is harmful in a region when the darker side is below 160 cd/m^2 and they",
+   "differ by 20 cd/m^2 or more, or above it with a Michelson contrast over",
+   "1/17. A frame whose harmful change over more than a quarter of the screen",
+   "would be the seventh within a second (more than three flashes; the",
+   "changes counted on the renditions before the limiter) renders with the",
+   "largest gain scale below its own that keeps the change harmless against",
+   "the previous frame as shown (without gain if the limiter lowered it), at",
+   "the least none (the SDR rendition's change: the source's own flashes are",
+   "not removed, only not amplified). Saturated red is not judged.",
+   "In a fade-out under WINDOWED with a window or RECURSIVE (the log-average",
+   "luminance and p99.5 falling together for three frames), the frames hold",
+   "the anchor statistics and the APL factor of the frame before it (without",
+   "a hold of its own), so the mapping stays and the fade stays monotonic; a",
+   "fade longer than 2 seconds holds the frame 2 seconds back. From a fade's",
+   "first darkening frame (TWO_PASS too, from the first pass's statistics:",
+   "its scene's already stay) the lights' thresholds, the shoulder and the",
+   "contrast's pivot follow the dimming against the frame before it, so the",
+   "output darkens in proportion.",
+   "",
+   "Seeking: a frame's output reads the frames from",
+   "hdrg_session_preroll() before it to its window's future. A session created",
+   "with start = n - p and preroll = p (p of at least that, or n = p) renders",
+   "frame n and the frames after it byte for byte as a session started at the",
+   "stream's first frame, for the same frames, pts and settings (WINDOWED,",
+   "TWO_PASS, STATIC; RECURSIVE only approximately). A frame server sends",
+   "frames from n - p and receives from n.",
+   "",
+   "PREFILTER and SCALE filters with a time window (filter.h,",
+   "filter_set_window) read the frames around their own: the session keeps",
+   "them, delays each frame by the windows' future (in hdrg_session_latency)",
+   "and counts their past in hdrg_session_preroll. An ASYNC filter declares in",
+   "its create how many frames it keeps in flight (filter_set_max_inflight):",
+   "under HDRG_LATENCY_PLAYBACK and OFFLINE they delay each frame by that less",
+   "one, under HDRG_LATENCY_LOW each job is waited for at once (no delay; the GPU",
+   "and the CPU take turns). hdrg_session_latency_report gives the delay by",
+   "its causes, under each profile and in milliseconds. At the end of the",
+   "stream the frames they hold come out with the receives.",
+   "",
+   "Under WINDOWED and RECURSIVE, the first frame of a scene and every frame",
+   "of a zero window render on their own statistics: they equal the still",
+   "pipeline's output for the same pixels. The analysis leaves black bars at",
+   "the edges (letterbox, pillarbox) out of the statistics.",
+   "",
+   "The statistics across frames are a STATS filter's (the app's added to the",
+   "stage, else the built-in hdrg.stats.temporal where the build has it:",
+   "HDRG_WITH_TEMPORAL): without one every frame renders on its own",
+   "statistics, and a window, RECURSIVE and TWO_PASS give HDRG_ERR_UNSUPPORTED",
+   "(STATIC stays).",
+   "",
+   "Use: send frames until HDRG_ERR_AGAIN, receive until HDRG_ERR_AGAIN, and",
+   "so on; send NULL at the end, then receive until HDRG_EOF. A session is",
+   "used by one thread at a time."
+  ],
+  "ja": [
+   "動画のセッション: 1 つの寸法と色のフレームを入れ、入力のフレームごとに単層 PQ のフレームを 1 つ、順に出します。系列の状態 (色の LUT、スレッドプール、適用の走査の作業領域) は 1 回だけ作ります。Y'CbCr のフレームは送ったときに 16bit の R'G'B' へ変換し (取り込み)、セッションはそれを待ち行列の深さ + 1 枚 (統計のウィンドウの未来、OFFLINE の光の安定化の 24 枚、SCALE の段の遅延、INTERP のウィンドウのもののうち最大) 持ち、呼び出し元の面はすぐ返します。",
+   "",
+   "時間方向の平滑化: フレームは送ったときに解析し、そのときシーンの切れ目も調べます (前のフレームに対するシーンのヒストグラムと対数平均の輝度で、その前の 3 フレームにほかの同じような変化がないこと: ストロボは 1 つのシーンのままです。フェード、つまり対数平均の輝度と p99.5 がフレームごとに同じ向きにそろって動くものは、ヒストグラムを変化の分だけずらしてから比べるので、黒の近くの段差で切れません)。描くとき、シーンのアンカーの統計 (p99.5 と対数平均の輝度) と APL の予算の係数は、そのシーンのフレームを追います:",
+   "- WINDOWED: アンカーの統計は [t - past, t + future] のシーンのフレームでの対数領域の平均、APL の係数は [t - past, t] での平均。",
+   "- RECURSIVE: 対数領域の EMA で、暗い描画へは (0.15 s) 明るい描画へ (0.6 s) より速く、状態は 1/1024 段の刻み。",
+   "- TWO_PASS: アンカーの統計は、1 パス目 (その切れ目を保ちます) のシーンのフレームのうちフェードアウトの外のものでの対数領域の平均です。APL の係数は、1 パス目の当てはめの同じ平均とフレーム自身のもののうち低いほうです。",
+   "- STATIC: 解析も局所のゲインもなし: どの画素も自分の符号値の固定のマッピング (src/core/plan.h、固定のプラン) を受け、それを hdrg_lut3d_export が標本化します。",
+   "",
+   "光の判定もフレームを追うので、閾値の近くで判定された光が点いたり消えたりしません: ウィンドウのある WINDOWED では、PLAYBACK と OFFLINE はカメラの動きを追って場所ごとに安定させます (フレームの光のセルはそれぞれ、フレームからフレームへいちばん合うセルの平行移動で動いた先でシーンのフレームが判定したものの中央の半分の平均を取り、そこに光のないフレームは上乗せ 0 を投じます。範囲はそのフレームの前の 8 フレーム (過去のウィンドウまで) と待ち行列にある未来、OFFLINE では統計のウィンドウによらず前後 24 フレームです)。LOW の WINDOWED と RECURSIVE では、光はそれぞれ、そのフレームの判定と、その前の 8 フレームまでのシーンのフレームの判定の中央値を取ります (フレームは中心がいちばん近い光で投じ、1 フレームあたり 8 画素以内になければ投じません。数が偶数なら中央の低いほう: 迷えば光は暗いままです)。TWO_PASS では、1 パス目のシーンの中の光の追跡での中央値です (光は、前のフレームの光のうち中心が自分にいちばん近く 8 画素以内のものを、その光にとっても自分がいちばん近いときに続けます)。",
+   "",
+   "フラッシュリミッタ (ITU-R BT.1702-3 の Annex 1、Guideline 1。flash_off でなければ有効、STATIC では働きません): 16 x 9 の領域の画面の輝度をプランのセルから予測し、前のフレームに対する変化は、暗い側が 160 cd/m^2 未満で差が 20 cd/m^2 以上のとき、またはそれ以上で Michelson のコントラストが 1/17 を超えるとき、その領域で有害とします。画面の 4 分の 1 を超える有害な変化が 1 秒以内に 7 回目になるフレーム (3 回を超えるフラッシュ。変化はリミッタの前の描画で数えます) は、表示したとおりの前のフレーム (リミッタが下げたならゲインなしのもの) に対して変化を無害に保つ、自分のものより小さいゲインの倍率のうち最大のもので描き、最小でもゲインなしです (SDR の描画の変化: ソース自体のフラッシュは取り除かず、増幅しないだけです)。飽和した赤は判定しません。",
+   "ウィンドウのある WINDOWED か RECURSIVE のフェードアウト (対数平均の輝度と p99.5 が 3 フレームそろって下がる) では、フレームはフェードの前の (自分では保持していない) フレームのアンカーの統計と APL の係数を保つので、マッピングが変わらずフェードは単調なままです。2 秒より長いフェードは 2 秒前のフレームを保ちます。フェードの最初の暗くなるフレームから (TWO_PASS も、1 パス目の統計から: そのシーンの統計はもともと変わりません)、光の閾値・肩・コントラストの中心が前のフレームに対する暗くなり方に従うので、出力は比例して暗くなります。",
+   "",
+   "シーク: フレームの出力は、hdrg_session_preroll() 枚前のフレームからウィンドウの未来までのフレームを読みます。start = n - p、preroll = p (p はそれ以上、または n = p) で作ったセッションは、同じフレーム・pts・設定値なら、フレーム n とその後のフレームを、ストリームの最初のフレームから始めたセッションとバイト一致で描きます (WINDOWED・TWO_PASS・STATIC。RECURSIVE は近似だけ)。フレームサーバは n - p からフレームを送り、n から受け取ります。",
+   "",
+   "時間のウィンドウを持つ PREFILTER と SCALE のフィルタ (filter.h、filter_set_window) は自分のフレームの周りのフレームを読みます: セッションはそれらを持ち、各フレームをウィンドウの未来の分だけ遅らせ (hdrg_session_latency に含みます)、過去の分を hdrg_session_preroll に数えます。ASYNC のフィルタは飛行中に保つフレームの枚数を create で申告します (filter_set_max_inflight): HDRG_LATENCY_PLAYBACK と OFFLINE ではそれより 1 少ない枚数だけ各フレームを遅らせ、HDRG_LATENCY_LOW ではジョブをどれもすぐに待ちます (遅延なし。GPU と CPU が交互に働きます)。hdrg_session_latency_report は遅延を原因ごと、プロファイルごと、ミリ秒で返します。ストリームの終わりでは、フィルタが持っているフレームが受け取りとともに出てきます。",
+   "",
+   "WINDOWED と RECURSIVE では、シーンの最初のフレームと、長さ 0 のウィンドウのすべてのフレームは自分の統計で描くので、同じ画素の静止画の経路の出力と同じになります。解析は端の黒帯 (レターボックス、ピラーボックス) を統計から外します。",
+   "",
+   "フレームをまたぐ統計は STATS のフィルタのものです (段に足したアプリのもの、なければビルドにあれば内蔵の hdrg.stats.temporal: HDRG_WITH_TEMPORAL)。それがなければどのフレームも自分の統計で描き、ウィンドウ・RECURSIVE・TWO_PASS は HDRG_ERR_UNSUPPORTED を返します (STATIC は使えます)。",
+   "",
+   "使い方: HDRG_ERR_AGAIN までフレームを送り、HDRG_ERR_AGAIN まで受け取る、をくり返します。終わりに NULL を送り、HDRG_EOF まで受け取ります。セッションは 1 度に 1 つのスレッドから使います。"
+  ]
+ },
+ {
+  "key": "d758cfacef15011b",
+  "of": "hdrg_session_format_t",
+  "en": [
+   "A session's frames: their size and color (primaries and transfer as",
+   "hdrg_raw_image_t's), and for R'G'B' input (hdrg_session_pixfmt_t.layout",
+   "0) their bit depth (8 or 16; 16: the planes and rows at 2 bytes), the",
+   "bytes a row and whether a fourth",
+   "component (alpha, ignored) follows each pixel. The frames bring their",
+   "pixels (hdrg_session_frame_t)"
+  ],
+  "ja": [
+   "セッションのフレーム: その寸法と色 (原色と伝達特性は hdrg_raw_image_t のもの)、R'G'B' の入力 (hdrg_session_pixfmt_t.layout が 0) ではビット深度 (8 か 16。16 では面と行を 2 バイトにそろえる)、1 行のバイト数、各画素の後ろに 4 つ目の成分 (α、無視) が続くか。画素はフレームが持ってきます (hdrg_session_frame_t)"
+  ]
+ },
+ {
+  "key": "60c32f0acd6d48f3",
+  "of": "hdrg_session_frame_t.planes",
+  "en": [
+   "RGB: planes[0], rows of the format's stride; Y'CbCr: Y, Cb, Cr.",
+   "Read until release is called"
+  ],
+  "ja": [
+   "RGB: planes[0]、format の行の幅の行。Y'CbCr: Y、Cb、Cr。release が呼ばれるまで読みます"
+  ]
+ },
+ {
+  "key": "2858fa32cfc89642",
+  "of": "hdrg_session_frame_t.strides",
+  "en": [
+   "Y'CbCr: bytes a row of each plane"
+  ],
+  "ja": [
+   "Y'CbCr: 各面の 1 行のバイト数"
+  ]
+ },
+ {
+  "key": "4ad2b22ba1792aac",
+  "of": "hdrg_session_frame_t.device",
+  "en": [
+   "config.device: the frame on the GPU instead (planes",
+   "and strides not read), copied at the send; NULL:",
+   "the planes in host memory"
+  ],
+  "ja": [
+   "config.device: 代わりに GPU の上のフレーム (planes と strides は読みません) で、送るときに写します。NULL: host のメモリの面"
+  ]
+ },
+ {
+  "key": "321eb0b9d4f27e3f",
+  "of": "hdrg_session_frame_t.motion",
+  "en": [
+   "the frame's HDRG_SD_MOTION version 1 (sidedata.h: a",
+   "codec's, a game engine's vectors; motion_size bytes,",
+   "checked and copied at the send), given to its",
+   "PREFILTER filters and INTERP jobs; NULL: none"
+  ],
+  "ja": [
+   "フレームの HDRG_SD_MOTION 版 1 (sidedata.h: コーデックやゲームエンジンのベクトル。motion_size バイト、送るときに検査して写します)。そのフレームの PREFILTER のフィルタと INTERP のジョブへ渡します。NULL: なし"
+  ]
+ },
+ {
+  "key": "75326852f4655e52",
+  "of": "hdrg_session_frame_t.film_grain",
+  "en": [
+   "the frame's HDRG_SD_FILM_GRAIN version 1 (sidedata.h: the grain",
+   "its decoder left out; film_grain_size bytes, checked and copied",
+   "at the send), put back in the output; NULL: none"
+  ],
+  "ja": [
+   "フレームの HDRG_SD_FILM_GRAIN 版 1 (sidedata.h: デコーダが足さなかった粒。film_grain_size バイト、送るときに検査して写します)。出力に戻します。NULL: なし"
+  ]
+ },
+ {
+  "key": "dd18ed0bb5604b64",
+  "of": "hdrg_session_frame_t.release",
+  "en": [
+   "NULL = none; called once the pixels are no longer read"
+  ],
+  "ja": [
+   "NULL = なし。画素をもう読まなくなったら呼びます"
+  ]
+ },
+ {
+  "key": "c72c7b4dfdcd31f9",
+  "of": "hdrg_session_light_t",
+  "en": [
+   "A light a TWO_PASS first pass judged: its core's box in the frame's",
+   "pixels (inclusive, on the analysis cells) and its boost (0..1, a share of",
+   "the headroom above the diffuse level)"
+  ],
+  "ja": [
+   "TWO_PASS の 1 パス目が判定した光: フレームの画素での芯の箱 (両端を含み、解析のセルの上) と上乗せ (0..1、拡散面の水準より上のヘッドルームの割合)"
+  ]
+ },
+ {
+  "key": "c698bd072617eeb6",
+  "of": "hdrg_session_pass_t",
+  "en": [
+   "a frame's statistics from a TWO_PASS first pass (its outputs, in order)"
+  ],
+  "ja": [
+   "TWO_PASS の 1 パス目のフレームの統計 (その出力を順に)"
+  ]
+ },
+ {
+  "key": "c242380721019ecc",
+  "of": "hdrg_session_pass_t.lights",
+  "en": [
+   "the output's lights, copied (read at create): the",
+   "second pass tracks them over the shot"
+  ],
+  "ja": [
+   "出力の光を写したもの (create で読みます): 2 パス目がショットの中でそれを追跡します"
+  ]
+ },
+ {
+  "key": "877ba6e992963a2e",
+  "of": "hdrg_session_pass_t.apl_fit",
+  "en": [
+   "the APL factor fitted to the frame alone (0..1)"
+  ],
+  "ja": [
+   "そのフレームだけに当てはめた APL の係数 (0..1)"
+  ]
+ },
+ {
+  "key": "51bb09f3b6e22bc2",
+  "of": "hdrg_session_pixfmt_t",
+  "en": [
+   "the pixels of a side"
+  ],
+  "ja": [
+   "一方の側 (入力・出力) の画素"
+  ]
+ },
+ {
+  "key": "af9c7afb3da11466",
+  "of": "hdrg_session_pixfmt_t.layout",
+  "en": [
+   "0: interleaved R'G'B'; HDRG_YUV_*: planar Y'CbCr"
+  ],
+  "ja": [
+   "0: 詰めた R'G'B'。HDRG_YUV_*: 平面の Y'CbCr"
+  ]
+ },
+ {
+  "key": "ebd3be3eac21cb39",
+  "of": "hdrg_session_pixfmt_t.matrix",
+  "en": [
+   "Y'CbCr: HDRG_MATRIX_*"
+  ],
+  "ja": [
+   "Y'CbCr: HDRG_MATRIX_*"
+  ]
+ },
+ {
+  "key": "a56020f47f2cac37",
+  "of": "hdrg_session_pixfmt_t.bits",
+  "en": [
+   "Y'CbCr: 8..16 (above 8: 16-bit samples); R'G'B' output: 8 or 16"
+  ],
+  "ja": [
+   "Y'CbCr: 8..16 (8 を超えれば 16bit の標本)。R'G'B' の出力: 8 か 16"
+  ]
+ },
+ {
+  "key": "6efb39a9504e7734",
+  "of": "hdrg_session_pixfmt_t.chroma_loc",
+  "en": [
+   "Y'CbCr input, 4:2:0 / 4:2:2: HDRG_CHROMA_* (default LEFT); the",
+   "4:2:0 output is LEFT"
+  ],
+  "ja": [
+   "Y'CbCr の入力の 4:2:0 / 4:2:2: HDRG_CHROMA_* (既定は LEFT)。4:2:0 の出力は LEFT"
+  ]
+ },
+ {
+  "key": "fbe161f83079d4a0",
+  "of": "hdrg_session_pixfmt_t.full_range",
+  "en": [
+   "Y'CbCr: false = video (limited) range"
+  ],
+  "ja": [
+   "Y'CbCr: false = ビデオ (リミテッド) レンジ"
+  ]
+ },
+ {
+  "key": "f3422a9fca798a9e",
+  "of": "hdrg_session_pixfmt_t.interleaved",
+  "en": [
+   "Y'CbCr: Cb and Cr alternating in planes[1] (NV12, P010; planes[2]",
+   "unused), else a plane each"
+  ],
+  "ja": [
+   "Y'CbCr: Cb と Cr が planes[1] に交互に並ぶ (NV12、P010。planes[2] は使わない)。ほかは 1 つずつの面"
+  ]
+ },
+ {
+  "key": "9b97bd2e7ae9b46a",
+  "of": "hdrg_session_pixfmt_t.msb",
+  "en": [
+   "Y'CbCr above 8 bits: the bits in the high bits of the 16-bit",
+   "samples, the low ones 0 (P010), else the low ones"
+  ],
+  "ja": [
+   "8bit を超える Y'CbCr: 値を 16bit の標本の上位のビットに置き、下位は 0 (P010)。ほかは下位のビットに置く"
+  ]
+ },
+ {
+  "key": "f2ab9155b33843f6",
+  "of": "hdrg_session_config_t",
+  "en": [
+   "The temporal mode and its window (at most HDRG_SESSION_MAX_WINDOW each",
+   "way), the pixels, the analysis size. Initialize with",
+   "hdrg_session_config_init()"
+  ],
+  "ja": [
+   "時間方向のモードとそのウィンドウ (どちら向きも HDRG_SESSION_MAX_WINDOW まで)、画素、解析の大きさ。hdrg_session_config_init() で初期化します"
+  ]
+ },
+ {
+  "key": "898da9da3e67403a",
+  "of": "hdrg_session_config_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_session_config_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_session_config_t) にする"
+  ]
+ },
+ {
+  "key": "e1996a4b2273bd26",
+  "of": "hdrg_session_config_t.passes",
+  "en": [
+   "TWO_PASS: the first pass's frames; NULL = this is the",
+   "first pass (receive fills the statistics only)"
+  ],
+  "ja": [
+   "TWO_PASS: 1 パス目のフレーム。NULL = これが 1 パス目 (受け取りは統計だけを埋めます)"
+  ]
+ },
+ {
+  "key": "792b737303cdce31",
+  "of": "hdrg_session_config_t.start",
+  "en": [
+   "the stream's frame the first one sent is (0 = its first;",
+   "TWO_PASS second pass: the first pass's frame); not under a",
+   "TWO_PASS first pass"
+  ],
+  "ja": [
+   "最初に送るフレームがストリームの何番目のフレームか (0 = 最初のフレーム。TWO_PASS の 2 パス目: 1 パス目のフレームの番号)。TWO_PASS の 1 パス目では使えません"
+  ]
+ },
+ {
+  "key": "f9d2e244a286498f",
+  "of": "hdrg_session_config_t.preroll",
+  "en": [
+   "the frames sent first that only build the state: rendered",
+   "without the apply pass and not received"
+  ],
+  "ja": [
+   "最初に送る、状態を作るだけのフレームの数: 適用の走査なしで描き、受け取りません"
+  ]
+ },
+ {
+  "key": "75ac08e0f7c82e09",
+  "of": "hdrg_session_config_t.rate_num",
+  "en": [
+   "frames a second (0 = 30): RECURSIVE's time constants, the",
+   "flash limiter's second, the fade-out's reach, the frame",
+   "interval the session must keep up with"
+  ],
+  "ja": [
+   "1 秒あたりのフレーム数 (0 = 30): RECURSIVE の時定数、フラッシュリミッタの 1 秒、フェードアウトの届く範囲、セッションが間に合わせるフレームの間隔"
+  ]
+ },
+ {
+  "key": "0ff899e7defdb367",
+  "of": "hdrg_session_config_t.out_rate_num",
+  "en": [
+   "the output's frames a second (0 = the input's): output frame j",
+   "at input time j x rate / out_rate, between two input frames",
+   "from the INTERP stage's filter (hdrg_context_add_filter;",
+   "default hdrg.interp.mc where the build has it, else",
+   "HDRG_ERR_UNSUPPORTED), across a cut the nearer frame; each",
+   "on the plan of the input frame nearest it (not analyzed",
+   "again). Needs rate_num. With a SCALE stage the input frames",
+   "are scaled first (in order, ahead of the outputs: the latency",
+   "holds the INTERP window's future and the SCALE's delay) and",
+   "the INTERP stage reads them at the output's size (the app's",
+   "HDRG_SD_MOTION stays of the input's)"
+  ],
+  "ja": [
+   "出力の 1 秒あたりのフレーム数 (0 = 入力のもの): 出力のフレーム j は入力の時刻 j x rate / out_rate のもので、2 つの入力のフレームの間は INTERP の段のフィルタ (hdrg_context_add_filter。既定はビルドにあれば hdrg.interp.mc、なければ HDRG_ERR_UNSUPPORTED) から、切れ目をまたぐところは近いほうのフレームです。どれもいちばん近い入力のフレームのプランで描きます (解析し直しません)。rate_num が要ります。SCALE の段があれば、入力のフレームを先に SCALE の段に通し (順に、出力より先に: 遅延は INTERP のウィンドウの未来と SCALE の遅延を含みます)、INTERP の段はそれを出力の寸法で読みます (アプリの HDRG_SD_MOTION は入力の寸法のまま)"
+  ]
+ },
+ {
+  "key": "0d68e338cb8d6cf8",
+  "of": "hdrg_session_config_t.output_width",
+  "en": [
+   "the output's size (0 x 0: the input's; one side 0 keeps the",
+   "aspect ratio): the SCALE stage, a filter added to it or a",
+   "built-in scaler (hdrg_params_t.upscaler's when larger on both",
+   "sides, else Lanczos). The analysis stays at the input's size"
+  ],
+  "ja": [
+   "出力の寸法 (0 x 0: 入力の寸法。片方の辺が 0 なら縦横比を保ちます): SCALE の段で、段に足したフィルタか内蔵の scaler (両方の辺で大きくなるときは hdrg_params_t.upscaler のもの、ほかは Lanczos)。解析は入力の寸法のままです"
+  ]
+ },
+ {
+  "key": "bcc693ee499aa4a0",
+  "of": "hdrg_session_config_t.past",
+  "en": [
+   "WINDOWED: frames before a frame its statistics average over.",
+   "Default HDRG_SESSION_AUTO: 8 with a STATS filter, else 0"
+  ],
+  "ja": [
+   "WINDOWED: フレームの統計が平均する、その前のフレームの数。既定 HDRG_SESSION_AUTO: STATS のフィルタがあれば 8、なければ 0"
+  ]
+ },
+ {
+  "key": "a8d98cfceb9c054f",
+  "of": "hdrg_session_config_t.future",
+  "en": [
+   "WINDOWED: frames after it, the latency (others and",
+   "LOW: 0). Default HDRG_SESSION_AUTO: the past's, LOW 0",
+   "(OFFLINE's queue waits for 24 frames at least: the",
+   "lights' steadying)"
+  ],
+  "ja": [
+   "WINDOWED: その後のフレームの数で、遅延になります (ほかのモードと LOW: 0)。既定は HDRG_SESSION_AUTO: 過去と同じ、LOW は 0 (OFFLINE の待ち行列は少なくとも 24 フレームを待ちます: 光の安定化)"
+  ]
+ },
+ {
+  "key": "7583fb0bcd1be1cf",
+  "of": "hdrg_session_config_t.temporal",
+  "en": [
+   "HDRG_TEMPORAL_*"
+  ],
+  "ja": [
+   "HDRG_TEMPORAL_*"
+  ]
+ },
+ {
+  "key": "c995be29638b1ad5",
+  "of": "hdrg_session_config_t.latency",
+  "en": [
+   "HDRG_LATENCY_* (default PLAYBACK)"
+  ],
+  "ja": [
+   "HDRG_LATENCY_* (既定は PLAYBACK)"
+  ]
+ },
+ {
+  "key": "177b834ac02690f8",
+  "of": "hdrg_session_config_t.input",
+  "en": [
+   "layout 0: the format's RGB (its bit depth, stride, alpha)"
+  ],
+  "ja": [
+   "layout 0: format の RGB (そのビット深度・行の幅・α)"
+  ]
+ },
+ {
+  "key": "47179d57d5ff5698",
+  "of": "hdrg_session_config_t.output",
+  "en": [
+   "layout 0: PQ R'G'B' (16 bits: codes x 65535); HDRG_YUV_420:",
+   "PQ Y'CbCr of the BT.2020 matrix (the BT.2020 container)"
+  ],
+  "ja": [
+   "layout 0: PQ の R'G'B' (16bit: 符号値 x 65535)。HDRG_YUV_420: BT.2020 の行列の PQ の Y'CbCr (BT.2020 の入れ物)"
+  ]
+ },
+ {
+  "key": "7d8225bdc8a7c59f",
+  "of": "hdrg_session_config_t.device",
+  "en": [
+   "HDRG_DEVICE_METAL / VULKAN / WEBGPU (gpu.h): frames may be sent",
+   "and received on the GPU (hdrg_session_frame_t.device,",
+   "hdrg_session_output_t.device; 0: host memory alone). Needs the",
+   "context's HDRG_GPU_AUTO, Y'CbCr input and the frames kept on the GPU",
+   "(hdrg_session_latency_t.frames_on_gpu; else HDRG_ERR_UNSUPPORTED), and",
+   "for HDRG_FRAME_BUFFERS the context's device of the kind the app's. The",
+   "calls wait for their GPU work: an input's writes are done (or before",
+   "the send on the device's queue), an output is written when the receive",
+   "returns"
+  ],
+  "ja": [
+   "HDRG_DEVICE_METAL / VULKAN / WEBGPU (gpu.h): フレームを GPU の上で送り、受け取れます (hdrg_session_frame_t.device、hdrg_session_output_t.device。0: host のメモリだけ)。コンテキストの HDRG_GPU_AUTO、Y'CbCr の入力、フレームを GPU に置くこと (hdrg_session_latency_t.frames_on_gpu。満たさなければ HDRG_ERR_UNSUPPORTED) が要り、HDRG_FRAME_BUFFERS ではその種類のコンテキストの device がアプリのものであることも要ります。呼び出しは GPU の仕事を待ちます: 入力への書き込みは終わっていること (または送る前に device のキューに積まれていること)、出力は受け取りが戻ったときに書き終わっています"
+  ]
+ },
+ {
+  "key": "ff0f1110a64210ab",
+  "of": "hdrg_session_config_t.proxy",
+  "en": [
+   "longest side of the analysis image: larger frames are analyzed on a",
+   "reduction by a power of two (0 = at full resolution; default 960)"
+  ],
+  "ja": [
+   "解析の画像の長辺: それより大きいフレームは 2 のべき乗で縮小した画で解析します (0 = 全解像度。既定 960)"
+  ]
+ },
+ {
+  "key": "939813573248e86a",
+  "of": "hdrg_session_config_t.flash_off",
+  "en": [
+   "no flash limiter"
+  ],
+  "ja": [
+   "フラッシュリミッタなし"
+  ]
+ },
+ {
+  "key": "b5813bcef3fe759b",
+  "of": "hdrg_session_config_t.shed",
+  "en": [
+   "PLAYBACK / LOW: once the session is late, the frames sent after pass",
+   "the PREFILTER filters without a time window (the built-in ones among",
+   "them) through, so it keeps up; the output then follows the timing",
+   "(hdrg_session_output_t.shed, hdrg_session_latency_t.shed_at)"
+  ],
+  "ja": [
+   "PLAYBACK / LOW: セッションが一度遅れたら、その後に送るフレームでは時間のウィンドウのない PREFILTER のフィルタ (内蔵のものもその中に入ります) を素通しにして、間に合うようにします。そのとき出力はタイミングによって変わります (hdrg_session_output_t.shed、hdrg_session_latency_t.shed_at)"
+  ]
+ },
+ {
+  "key": "bec5da31f3a06e89",
+  "of": "hdrg_session_config_t.dither_off",
+  "en": [
+   "8-bit R'G'B' output without the triangular dither"
+  ],
+  "ja": [
+   "三角分布のディザのない 8bit の R'G'B' の出力"
+  ]
+ },
+ {
+  "key": "a25c7282d597e969",
+  "of": "hdrg_session_output_t.planes",
+  "en": [
+   "the caller's, in the rendition's container primaries: R'G'B' in",
+   "planes[0] (width * 3 samples a row); Y'CbCr 4:2:0: Y, Cb, Cr"
+  ],
+  "ja": [
+   "呼び出し元のもので、描画の入れ物の原色: R'G'B' は planes[0] (1 行に width * 3 個の標本)。Y'CbCr 4:2:0: Y、Cb、Cr"
+  ]
+ },
+ {
+  "key": "8a803378e5110b2c",
+  "of": "hdrg_session_output_t.strides",
+  "en": [
+   "bytes: R'G'B' at least width * 3 samples"
+  ],
+  "ja": [
+   "バイト数: R'G'B' は width * 3 個の標本以上"
+  ]
+ },
+ {
+  "key": "3db880cde52a0d08",
+  "of": "hdrg_session_output_t.device",
+  "en": [
+   "config.device: the frame on the GPU instead (NULL:",
+   "the planes in host memory)"
+  ],
+  "ja": [
+   "config.device: 代わりに GPU の上のフレーム (NULL: host のメモリの面)"
+  ]
+ },
+ {
+  "key": "22db22b8217dbeac",
+  "of": "hdrg_session_output_t.lights",
+  "en": [
+   "TWO_PASS first pass: the lights the frame's analysis",
+   "judged, until the next receive (session-owned)"
+  ],
+  "ja": [
+   "TWO_PASS の 1 パス目: フレームの解析が判定した光、次の受け取りまで (セッションが持つ)"
+  ]
+ },
+ {
+  "key": "76a2388512d04719",
+  "of": "hdrg_session_output_t.pts",
+  "en": [
+   "the input frame's"
+  ],
+  "ja": [
+   "入力のフレームのもの"
+  ]
+ },
+ {
+  "key": "8fbd04dea903a10a",
+  "of": "hdrg_session_output_t.peak_nits",
+  "en": [
+   "the rendition ceiling (hdrg_session_peak; the shoulder saturates",
+   "toward it)"
+  ],
+  "ja": [
+   "描画の上限 (hdrg_session_peak。肩はそこへ向けて飽和します)"
+  ]
+ },
+ {
+  "key": "6d64792e6422cafc",
+  "of": "hdrg_session_output_t.apl_nits",
+  "en": [
+   "estimated average luminance of the output"
+  ],
+  "ja": [
+   "推定した出力の平均輝度"
+  ]
+ },
+ {
+  "key": "cbfce0e8b70115d7",
+  "of": "hdrg_session_output_t.sdr_apl_nits",
+  "en": [
+   "average luminance of the input at SDR white"
+  ],
+  "ja": [
+   "SDR の白での入力の平均輝度"
+  ]
+ },
+ {
+  "key": "8ebd011856262914",
+  "of": "hdrg_session_output_t.apl_scale",
+  "en": [
+   "the APL budget's common gain factor"
+  ],
+  "ja": [
+   "APL の予算の共通のゲインの係数"
+  ]
+ },
+ {
+  "key": "a1171bad74e9c1cb",
+  "of": "hdrg_session_output_t.anchor_luma",
+  "en": [
+   "the scene's bright anchor (p99.5 of the analysis luminance)"
+  ],
+  "ja": [
+   "シーンの明るいアンカー (解析の輝度の p99.5)"
+  ]
+ },
+ {
+  "key": "423f476816a3a2c3",
+  "of": "hdrg_session_output_t.key_luma",
+  "en": [
+   "the log-average analysis luminance"
+  ],
+  "ja": [
+   "解析の輝度の対数平均"
+  ]
+ },
+ {
+  "key": "dcdfda596dbb7e93",
+  "of": "hdrg_session_output_t.anchor_used",
+  "en": [
+   "the p99.5 the plan used (averaged over the window)"
+  ],
+  "ja": [
+   "プランが使った p99.5 (ウィンドウで平均したもの)"
+  ]
+ },
+ {
+  "key": "72624e13c728156e",
+  "of": "hdrg_session_output_t.apl_fit",
+  "en": [
+   "the APL factor fitted to this frame alone (apl_scale: averaged)"
+  ],
+  "ja": [
+   "このフレームだけに当てはめた APL の係数 (apl_scale: 平均したもの)"
+  ]
+ },
+ {
+  "key": "7d32b2e0d57051f5",
+  "of": "hdrg_session_output_t.max_nits",
+  "en": [
+   "measured: the largest max(R, G, B) of the output (MaxCLL)"
+  ],
+  "ja": [
+   "測った値: 出力の max(R, G, B) の最大 (MaxCLL)"
+  ]
+ },
+ {
+  "key": "2a328b896534bbae",
+  "of": "hdrg_session_output_t.avg_nits",
+  "en": [
+   "measured: the mean max(R, G, B) of the output (FALL)"
+  ],
+  "ja": [
+   "測った値: 出力の max(R, G, B) の平均 (FALL)"
+  ]
+ },
+ {
+  "key": "8624d5ef0fc3f961",
+  "of": "hdrg_session_output_t.noise_sigma",
+  "en": [
+   "the input's Y' noise in 8-bit codes (< 0 = not measured, STATIC)"
+  ],
+  "ja": [
+   "8bit の符号値での入力の Y' のノイズ (< 0 = 測っていない、STATIC)"
+  ]
+ },
+ {
+  "key": "5779b4fcfce131d4",
+  "of": "hdrg_session_output_t.blockiness",
+  "en": [
+   "the input's 8-pixel block steps over the others (1 = none)"
+  ],
+  "ja": [
+   "入力の 8 画素のブロックの段差とほかの段差の比 (1 = なし)"
+  ]
+ },
+ {
+  "key": "519e8e91853c1f24",
+  "of": "hdrg_session_output_t.ringing",
+  "en": [
+   "the input's ringing around edges, as hdrg_stats_t (1 = none)"
+  ],
+  "ja": [
+   "入力のエッジの周りのリンギング、hdrg_stats_t と同じ (1 = なし)"
+  ]
+ },
+ {
+  "key": "4f3bb714f5f5351f",
+  "of": "hdrg_session_output_t.scene_cut",
+  "en": [
+   "the frame starts a scene"
+  ],
+  "ja": [
+   "フレームがシーンを始める"
+  ]
+ },
+ {
+  "key": "82d86e2a17b8ac37",
+  "of": "hdrg_session_output_t.flash_limited",
+  "en": [
+   "the flash limiter lowered the frame's gain"
+  ],
+  "ja": [
+   "フラッシュリミッタがフレームのゲインを下げた"
+  ]
+ },
+ {
+  "key": "e3e8e188b8359d9e",
+  "of": "hdrg_session_output_t.fading",
+  "en": [
+   "in a fade-out: the frame before it's statistics and APL factor"
+  ],
+  "ja": [
+   "フェードアウトの中: その前のフレームの統計と APL の係数"
+  ]
+ },
+ {
+  "key": "6d87e11a5070e871",
+  "of": "hdrg_session_output_t.late",
+  "en": [
+   "the session does not keep up with the rate (HDRG_LATENCY_*; never",
+   "OFFLINE): hdrg_session_latency_report says what to change"
+  ],
+  "ja": [
+   "セッションがレートに間に合っていない (HDRG_LATENCY_*。OFFLINE ではならない): 変えるものは hdrg_session_latency_report が示します"
+  ]
+ },
+ {
+  "key": "7938358f5653b6f1",
+  "of": "hdrg_session_output_t.shed",
+  "en": [
+   "rendered without its PREFILTER filters: the session shed them",
+   "(hdrg_session_config_t.shed)"
+  ],
+  "ja": [
+   "PREFILTER のフィルタなしで描いた: セッションがそれを落とした (hdrg_session_config_t.shed)"
+  ]
+ },
+ {
+  "key": "64d8831c1d166f9b",
+  "of": "hdrg_session_output_t.synthetic",
+  "en": [
+   "out_rate: a frame between two input frames (its pts interpolated,",
+   "the rest the nearer frame's), not an input frame"
+  ],
+  "ja": [
+   "out_rate: 2 つの入力のフレームの間のフレーム (pts は補間したもの、ほかは近いほうのフレームのもの)。入力のフレームではない"
+  ]
+ },
+ {
+  "key": "1e63a8fccd3e2f3c",
+  "of": "hdrg_session_output_t.phase",
+  "en": [
+   "... its place after the input frame of src_pts[0] toward the one of",
+   "src_pts[1], in 1/65536 (0: an input frame)"
+  ],
+  "ja": [
+   "... src_pts[0] の入力のフレームから src_pts[1] のフレームへ向かう位置、1/65536 単位 (0: 入力のフレーム)"
+  ]
+ },
+ {
+  "key": "a83faa8a37714d8a",
+  "of": "hdrg_session_output_t.src_pts",
+  "en": [
+   "... the input frames it lies between (an input frame: its pts twice)"
+  ],
+  "ja": [
+   "... 間にある 2 つの入力のフレーム (入力のフレーム: その pts を 2 つ)"
+  ]
+ },
+ {
+  "key": "0d8c3ff195ca3244",
+  "of": "hdrg_session_output_t.motion",
+  "en": [
+   "the frame's HDRG_SD_MOTION (sidedata.h): the app's fields, then its",
+   "PREFILTER filters' (hdrg.mctf's: the motion to the frames of its",
+   "window); a frame between: its INTERP filter's. Until the next",
+   "receive (session-owned); NULL: none"
+  ],
+  "ja": [
+   "フレームの HDRG_SD_MOTION (sidedata.h): アプリの場、次にその PREFILTER のフィルタのもの (hdrg.mctf のもの: そのウィンドウのフレームへの動き)。間のフレーム: その INTERP のフィルタのもの。次の受け取りまで (セッションのもの)。NULL: なし"
+  ]
+ },
+ {
+  "key": "e1d0b19dbdeccbcf",
+  "of": "hdrg_session_output_t.hdr10plus",
+  "en": [
+   "the output's HDR10+ statistics"
+  ],
+  "ja": [
+   "出力の HDR10+ の統計"
+  ]
+ },
+ {
+  "key": "ca5c0382bc0b5214",
+  "of": "hdrg_session_output_t.st2094_50",
+  "en": [
+   "... and its ST 2094-50 gain curve"
+  ],
+  "ja": [
+   "... と ST 2094-50 のゲインの曲線"
+  ]
+ },
+ {
+  "key": "ca95e37a8ee146cb",
+  "of": "hdrg_session_latency_t",
+  "en": [
+   "A session's delay (hdrg_session_latency_report): the frames a frame's",
+   "output waits for after it is sent, by their cause, and at the stream's",
+   "rate; the time the calls took so far. frames = prefilter +",
+   "prefilter_flight + the most of window, scale + scale_flight and, under",
+   "out_rate, the INTERP window's future with its jobs ahead in flight (plus",
+   "scale + scale_flight when there is a SCALE stage too): the session's",
+   "window and the SCALE stage wait for the same frames."
+  ],
+  "ja": [
+   "セッションの遅延 (hdrg_session_latency_report): フレームの出力が送った後に待つフレームを、原因ごとに、またストリームのレートで表したものと、これまでの呼び出しにかかった時間。frames = prefilter + prefilter_flight + 次のうち最大: window、scale + scale_flight、out_rate では先のジョブを飛行中に持つ INTERP のウィンドウの未来 (SCALE の段もあれば scale + scale_flight を足したもの)。セッションのウィンドウと SCALE の段は同じフレームを待つからです。"
+  ]
+ },
+ {
+  "key": "2a8687aabe044ee7",
+  "of": "hdrg_session_latency_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_session_latency_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_session_latency_t) にする"
+  ]
+ },
+ {
+  "key": "f1b619b8492fb4ef",
+  "of": "hdrg_session_latency_t.frames",
+  "en": [
+   "hdrg_session_latency"
+  ],
+  "ja": [
+   "hdrg_session_latency"
+  ]
+ },
+ {
+  "key": "3f813cd426311870",
+  "of": "hdrg_session_latency_t.window",
+  "en": [
+   "the statistics window's future (WINDOWED), or OFFLINE's 24",
+   "frames of the lights' steadying when more"
+  ],
+  "ja": [
+   "統計のウィンドウの未来 (WINDOWED)、または OFFLINE の光の安定化の 24 フレーム (そのほうが多ければ)"
+  ]
+ },
+ {
+  "key": "c82c28d260379f0c",
+  "of": "hdrg_session_latency_t.prefilter",
+  "en": [
+   "the PREFILTER filters' time windows' future"
+  ],
+  "ja": [
+   "PREFILTER のフィルタの時間のウィンドウの未来"
+  ]
+ },
+ {
+  "key": "686950c8acf72e3a",
+  "of": "hdrg_session_latency_t.prefilter_flight",
+  "en": [
+   "the PREFILTER ASYNC filters' frames in flight past the first"
+  ],
+  "ja": [
+   "PREFILTER の ASYNC のフィルタの飛行中のフレームのうち 2 枚目から"
+  ]
+ },
+ {
+  "key": "4ddea0a1c4c5f826",
+  "of": "hdrg_session_latency_t.scale",
+  "en": [
+   "the SCALE filter's time window's future"
+  ],
+  "ja": [
+   "SCALE のフィルタの時間のウィンドウの未来"
+  ]
+ },
+ {
+  "key": "4f7391e035ad378c",
+  "of": "hdrg_session_latency_t.scale_flight",
+  "en": [
+   "its frames in flight past the first"
+  ],
+  "ja": [
+   "その飛行中のフレームのうち 2 枚目から"
+  ]
+ },
+ {
+  "key": "9ae9f32fe7375569",
+  "of": "hdrg_session_latency_t.profiles",
+  "en": [
+   "frames under each HDRG_LATENCY_*, the same filters",
+   "and settings (LOW: no window future); the",
+   "session's own profile's: frames"
+  ],
+  "ja": [
+   "各 HDRG_LATENCY_* でのフレームの数、同じフィルタと設定値で (LOW: ウィンドウの未来なし)。セッション自身のプロファイルの値: frames"
+  ]
+ },
+ {
+  "key": "4809fdc418da71df",
+  "of": "hdrg_session_latency_t.preroll",
+  "en": [
+   "hdrg_session_preroll"
+  ],
+  "ja": [
+   "hdrg_session_preroll"
+  ]
+ },
+ {
+  "key": "be8603bc4ef228bd",
+  "of": "hdrg_session_latency_t.sent",
+  "en": [
+   "the frames the measurement covers"
+  ],
+  "ja": [
+   "測定が対象とするフレームの数"
+  ]
+ },
+ {
+  "key": "ae002f45433fa2d4",
+  "of": "hdrg_session_latency_t.rate",
+  "en": [
+   "frames a second (the config's, 30 when unset)"
+  ],
+  "ja": [
+   "1 秒あたりのフレーム数 (config のもの、設定がなければ 30)"
+  ]
+ },
+ {
+  "key": "1720399a90915e30",
+  "of": "hdrg_session_latency_t.frames_ms",
+  "en": [
+   "frames at the rate: the wait for the frames after it in a live stream"
+  ],
+  "ja": [
+   "frames をレートで時間にしたもの: ライブのストリームで後のフレームを待つ時間"
+  ]
+ },
+ {
+  "key": "ef2ffcbc3e63633e",
+  "of": "hdrg_session_latency_t.work_ms",
+  "en": [
+   "measured: the time in send and receive a frame sent (0 before one)"
+  ],
+  "ja": [
+   "測った値: 送ったフレームあたりの send と receive の時間 (送る前は 0)"
+  ]
+ },
+ {
+  "key": "dd90360986c599d7",
+  "of": "hdrg_session_latency_t.work_max_ms",
+  "en": [
+   "measured: the longest send or receive"
+  ],
+  "ja": [
+   "測った値: いちばん長い send か receive"
+  ]
+ },
+ {
+  "key": "9388f88c9a3a783f",
+  "of": "hdrg_session_latency_t.total_ms",
+  "en": [
+   "estimated: frames_ms + work_ms, from a live frame's arrival to its output"
+  ],
+  "ja": [
+   "見積もり: frames_ms + work_ms、ライブのフレームが届いてから出力まで"
+  ]
+ },
+ {
+  "key": "577ea29c22ad9127",
+  "of": "hdrg_session_latency_t.interval_ms",
+  "en": [
+   "the frame interval at the rate"
+  ],
+  "ja": [
+   "レートでのフレームの間隔"
+  ]
+ },
+ {
+  "key": "f39fc757d91733f0",
+  "of": "hdrg_session_latency_t / the parts of work_ms (title)",
+  "en": [
+   "the parts of work_ms"
+  ],
+  "ja": [
+   "work_ms の内訳"
+  ]
+ },
+ {
+  "key": "359badbaf6d50609",
+  "of": "hdrg_session_latency_t / the parts of work_ms",
+  "en": [
+   "measured, a frame sent"
+  ],
+  "ja": [
+   "実測、送ったフレーム 1 枚あたり"
+  ]
+ },
+ {
+  "key": "f563e9220ef7a414",
+  "of": "hdrg_session_latency_t.convert_ms",
+  "en": [
+   "Y'CbCr input to R'G'B'"
+  ],
+  "ja": [
+   "Y'CbCr の入力から R'G'B' への変換"
+  ]
+ },
+ {
+  "key": "977200a328fedfce",
+  "of": "hdrg_session_latency_t.prefilter_ms",
+  "en": [
+   "the PREFILTER chain (its GPU jobs: the waits for them)"
+  ],
+  "ja": [
+   "PREFILTER の連鎖 (GPU のジョブ: それを待つ時間)"
+  ]
+ },
+ {
+  "key": "ee34bfd37b320bae",
+  "of": "hdrg_session_latency_t.analyze_ms",
+  "en": [
+   "the analysis and the plan of the grading"
+  ],
+  "ja": [
+   "グレーディングの解析とプラン"
+  ]
+ },
+ {
+  "key": "0d807871f00511dc",
+  "of": "hdrg_session_latency_t.apply_ms",
+  "en": [
+   "the apply pass, the SCALE stage, the output's conversion"
+  ],
+  "ja": [
+   "適用の走査、SCALE の段、出力の変換"
+  ]
+ },
+ {
+  "key": "6a19fb6fdc0af7c5",
+  "of": "hdrg_session_latency_t.interp_ms",
+  "en": [
+   "out_rate: the frames between (the INTERP stage's filter)"
+  ],
+  "ja": [
+   "out_rate: 間のフレーム (INTERP の段のフィルタ)"
+  ]
+ },
+ {
+  "key": "cfc4cd31f7b73dd9",
+  "of": "hdrg_session_latency_t.late_frames",
+  "en": [
+   "the frames received late (hdrg_session_output_t.late)"
+  ],
+  "ja": [
+   "遅れて受け取ったフレームの数 (hdrg_session_output_t.late)"
+  ]
+ },
+ {
+  "key": "edc5aeed7eace4e4",
+  "of": "hdrg_session_latency_t.advice",
+  "en": [
+   "HDRG_ADVICE_* for the part that took the most (0: none to give)"
+  ],
+  "ja": [
+   "いちばん時間のかかった部分への HDRG_ADVICE_* (0: 勧めることなし)"
+  ]
+ },
+ {
+  "key": "e7034d9e467365a2",
+  "of": "hdrg_session_latency_t.shed_at",
+  "en": [
+   "the first frame sent without its PREFILTER filters (UINT32_MAX:",
+   "none; hdrg_session_config_t.shed)"
+  ],
+  "ja": [
+   "PREFILTER のフィルタなしで送った最初のフレーム (UINT32_MAX: なし。hdrg_session_config_t.shed)"
+  ]
+ },
+ {
+  "key": "608f297cbc47fe1a",
+  "of": "hdrg_session_latency_t.convert_device",
+  "en": [
+   "the HDRG_DEVICE_* the Y'CbCr input's conversion runs on (the",
+   "context's HDRG_GPU_AUTO; 0: the CPU)"
+  ],
+  "ja": [
+   "Y'CbCr の入力の変換が動く HDRG_DEVICE_* (コンテキストの HDRG_GPU_AUTO。0: CPU)"
+  ]
+ },
+ {
+  "key": "72abd75793df89c3",
+  "of": "hdrg_session_latency_t.apply_device",
+  "en": [
+   "... the apply pass"
+  ],
+  "ja": [
+   "... 適用の走査"
+  ]
+ },
+ {
+  "key": "f289a681bfb22d6d",
+  "of": "hdrg_session_latency_t.profile",
+  "en": [
+   "the session's HDRG_LATENCY_*"
+  ],
+  "ja": [
+   "セッションの HDRG_LATENCY_*"
+  ]
+ },
+ {
+  "key": "aff0992516b20773",
+  "of": "hdrg_session_latency_t.late",
+  "en": [
+   "the latest frame received was late"
+  ],
+  "ja": [
+   "最後に受け取ったフレームが遅れた"
+  ]
+ },
+ {
+  "key": "3b95ddd9d1ff9a4f",
+  "of": "hdrg_session_latency_t.frames_on_gpu",
+  "en": [
+   "the frames stay on the GPU from the conversion to the apply",
+   "(HDRG_GPU_AUTO, Y'CbCr input, the PREFILTER filters on that",
+   "GPU, no SCALE or out_rate; by default WebGPU's always, Metal's",
+   "and Vulkan's under LOW alone): the analysis reads their proxy",
+   "and noise windows read back"
+  ],
+  "ja": [
+   "フレームを変換から適用まで GPU に置く (HDRG_GPU_AUTO、Y'CbCr の入力、PREFILTER のフィルタがその GPU の上、SCALE も out_rate もなし。既定では WebGPU はいつも、Metal と Vulkan は LOW のときだけ): 解析は読み戻した縮小画とノイズのウィンドウを読みます"
+  ]
+ },
+ {
+  "key": "f52ab9e3420ac6e4",
+  "of": "hdrg_session_config_init",
+  "en": [
+   "the defaults; NULL is a no-op"
+  ],
+  "ja": [
+   "既定値。NULL なら何もしない"
+  ]
+ },
+ {
+  "key": "ec45b6448c918a76",
+  "of": "hdrg_session_config_resolve",
+  "en": [
+   "config's defaults that depend on the context, resolved as hdrg_session_create",
+   "resolves them: the HDRG_SESSION_AUTO windows (past 8 where a STATS filter",
+   "is there, the app's added to the stage or the built-in one, else 0; future",
+   "the past's for WINDOWED, else 0, LOW's 0). For what a session will be before",
+   "it is made (a pipeline's latency); NULL is a no-op"
+  ],
+  "ja": [
+   "config の既定のうちコンテキストによるものを、hdrg_session_create と同じように解決します: HDRG_SESSION_AUTO のウィンドウ (past は STATS のフィルタ (段に足したアプリのもの、または内蔵のもの) があれば 8、なければ 0。future は WINDOWED なら past と同じ、ほかは 0、LOW は 0)。作る前のセッションがどうなるか (パイプラインの遅延) のために。NULL は何もしません"
+  ]
+ },
+ {
+  "key": "a4d21312b9d89bc0",
+  "of": "hdrg_session_setting_set",
+  "en": [
+   "One setting of a session (hdrg_setting_at's part HDRG_SETTING_SESSION: hdrgrading.h) into",
+   "config; the errors of hdrg_setting_set"
+  ],
+  "ja": [
+   "セッションの設定 1 つ (hdrg_setting_at の部分 HDRG_SETTING_SESSION: hdrgrading.h) を config へ。誤りは hdrg_setting_set と同じです"
+  ]
+ },
+ {
+  "key": "14b933d1f30751b5",
+  "of": "hdrg_session_setting_get",
+  "en": [
+   "... and its value from config"
+  ],
+  "ja": [
+   "... と、その値を config から"
+  ]
+ },
+ {
+  "key": "87d59c0abdda8032",
+  "of": "hdrg_session_create",
+  "en": [
+   "format: the frames' size and color, and for RGB input their bit depth,",
+   "stride and alpha. The output is single-layer PQ",
+   "at the config's output size. An ASYNC filter that did not declare its",
+   "max_inflight fails with HDRG_ERR_PLUGIN. caps NULL =",
+   "hdrg_display_caps_init's; a gamut of HDRG_GAMUT_BT2020 writes a BT.2020",
+   "container (the content stays within Display P3), which Y'CbCr output",
+   "needs. params NULL = the defaults; config NULL =",
+   "hdrg_session_config_init's (WINDOWED with 8 frames past and as many ahead",
+   "where a STATS filter is there, else none; PLAYBACK, RGB in, 8-bit RGB out,",
+   "analysis within 960 pixels)."
+  ],
+  "ja": [
+   "format: フレームの寸法と色、RGB の入力ではビット深度・行の幅・α。出力は config の出力の寸法の単層 PQ です。max_inflight を申告しなかった ASYNC のフィルタは HDRG_ERR_PLUGIN で失敗します。caps NULL = hdrg_display_caps_init のもの。HDRG_GAMUT_BT2020 の色域は BT.2020 の入れ物を書き (内容は Display P3 の内側のまま)、Y'CbCr の出力にはそれが要ります。params NULL = 既定値。config NULL = hdrg_session_config_init のもの (STATS のフィルタがあれば WINDOWED で過去 8 フレームと同じだけ先、なければなし。PLAYBACK、RGB の入力、8bit の RGB の出力、解析は 960 画素以内)。"
+  ]
+ },
+ {
+  "key": "cd253bd785198aab",
+  "of": "hdrg_session_send_frame",
+  "en": [
+   "NULL = end of stream. HDRG_ERR_AGAIN: receive first; HDRG_ERR_INVALID_STATE",
+   "after the end. A frame that fails here (its analysis) is not taken: its",
+   "release is not called"
+  ],
+  "ja": [
+   "NULL = ストリームの終わり。HDRG_ERR_AGAIN: 先に受け取ります。終わりの後は HDRG_ERR_INVALID_STATE。ここで (その解析で) 失敗したフレームはセッションが預からず、release は呼びません"
+  ]
+ },
+ {
+  "key": "97d5a19b1737d720",
+  "of": "hdrg_session_receive_frame",
+  "en": [
+   "HDRG_ERR_AGAIN: send more first; HDRG_EOF: every frame was received after the end"
+  ],
+  "ja": [
+   "HDRG_ERR_AGAIN: 先にもっと送ります。HDRG_EOF: 終わりの後にすべてのフレームを受け取った"
+  ]
+ },
+ {
+  "key": "322e93c06a5063f4",
+  "of": "hdrg_session_receive_state",
+  "en": [
+   "hdrg_session_receive_frame without the apply pass, for the app's GPU: the",
+   "frame's statistics into out (its planes not written; max_nits and",
+   "avg_nits 0, not measured) and the state of the shaders into state",
+   "(state->struct_size set; valid until the next receive). A session",
+   "without PREFILTER filters, SCALE, out_rate or config.device, not a",
+   "TWO_PASS first pass (else HDRG_ERR_UNSUPPORTED); the frame is the one",
+   "sent with out->pts. The library needs no GPU of its own (any HDRG_GPU_*)"
+  ],
+  "ja": [
+   "アプリの GPU のための、適用の走査なしの hdrg_session_receive_frame: フレームの統計を out に (面は書かず、max_nits と avg_nits は測らないので 0)、シェーダの状態を state に返します (state->struct_size を設定して。次の受け取りまで有効)。PREFILTER のフィルタ・SCALE・out_rate・config.device のない、TWO_PASS の 1 パス目でないセッションで使えます (ほかは HDRG_ERR_UNSUPPORTED)。フレームは out->pts で送ったものです。ライブラリ自身の GPU は要りません (どの HDRG_GPU_* でも)"
+  ]
+ },
+ {
+  "key": "283ad31f092e99b6",
+  "of": "hdrg_session_latency",
+  "en": [
+   "frames a frame's output waits for after it is sent: the window's future,",
+   "the filters' time windows' future and their frames in flight (0 for a",
+   "NULL session)"
+  ],
+  "ja": [
+   "フレームの出力が送った後に待つフレームの数: ウィンドウの未来、フィルタの時間のウィンドウの未来とその飛行中のフレーム (NULL のセッションは 0)"
+  ]
+ },
+ {
+  "key": "42ceb571b7206f23",
+  "of": "hdrg_session_latency_report",
+  "en": [
+   "the delay by its causes and under each profile, in frames and at the",
+   "rate, with the time measured so far (out->struct_size set)"
+  ],
+  "ja": [
+   "原因ごとと各プロファイルでの遅延を、フレームの数とレートでの時間で、これまでに測った時間とともに返します (out->struct_size を設定して)"
+  ]
+ },
+ {
+  "key": "cbc877760a939816",
+  "of": "hdrg_session_preroll",
+  "en": [
+   "frames before a frame its output reads: the preroll a seek needs (see above; NULL: 0)"
+  ],
+  "ja": [
+   "フレームの出力が読む、そのフレームより前のフレームの数: シークに要る preroll (上を参照。NULL: 0)"
+  ]
+ },
+ {
+  "key": "023e85cc613a2e06",
+  "of": "hdrg_session_size",
+  "en": [
+   "the output's size (output_width x output_height resolved; NULL: 0 x 0); either may be NULL"
+  ],
+  "ja": [
+   "出力の寸法 (output_width x output_height を解決したもの。NULL: 0 x 0)。どちらも NULL でよい"
+  ]
+ },
+ {
+  "key": "7460b7298739b28d",
+  "of": "hdrg_session_peak",
+  "en": [
+   "The rendition ceiling (cd/m^2) of every frame of the session, the",
+   "shoulder's target, known before the first frame: a stream's mastering",
+   "display maximum (the content's own brightest is measured:",
+   "hdrg_session_output_t.max_nits); 0 for a NULL session"
+  ],
+  "ja": [
+   "セッションのすべてのフレームに共通の描画の上限 (cd/m^2) で、肩の目標、最初のフレームの前に分かるもの: ストリームのマスタリングディスプレイの最大 (内容自体のいちばん明るいところは測ります: hdrg_session_output_t.max_nits)。NULL のセッションは 0"
+  ]
+ },
+ {
+  "key": "e4e3cb1913d3b607",
+  "of": "hdrg_session_destroy",
+  "en": [
+   "releases the frames still queued"
+  ],
+  "ja": [
+   "まだ待ち行列にあるフレームを解放します"
+  ]
+ },
+ {
+  "key": "7ecaae8dbc08bf2b",
+  "of": "hdrg_lut3d_export",
+  "en": [
+   "The STATIC mapping (a session's HDRG_TEMPORAL_STATIC) as a 3D LUT, for",
+   "FFmpeg lut3d, OBS or mpv: params (NULL = the defaults) on caps (NULL =",
+   "hdrg_display_caps_init's), for sources of the H.273 primaries and",
+   "transfer, sampled at size^3 code values (R fastest, then G, then B; node i",
+   "is the 16-bit code of i / (size - 1)). rgb receives size^3 * 3 PQ R'G'B'",
+   "values in [0, 1] in the rendition's container primaries, the session's",
+   "16-bit output / 65535 for those codes. size is 2..HDRG_LUT3D_MAX_SIZE.",
+   "HDRG_ERR_UNSUPPORTED when filters were added to the context's SCALE or",
+   "PREFILTER stage (the LUT is the color mapping alone)."
+  ],
+  "ja": [
+   "STATIC のマッピング (セッションの HDRG_TEMPORAL_STATIC) を FFmpeg の lut3d・OBS・mpv 向けの 3D LUT にします: caps (NULL = hdrg_display_caps_init のもの) の上の params (NULL = 既定値) を、H.273 の primaries と transfer のソースについて、size^3 個の符号値で標本化します (R がいちばん速く、次に G、次に B。節点 i は i / (size - 1) の 16bit の符号値)。rgb は描画の入れ物の原色で [0, 1] の size^3 * 3 個の PQ の R'G'B' の値を受け取り、それはその符号値でのセッションの 16bit の出力 / 65535 です。size は 2..HDRG_LUT3D_MAX_SIZE。コンテキストの SCALE か PREFILTER の段にフィルタを足したときは HDRG_ERR_UNSUPPORTED です (LUT は色のマッピングだけ)。"
+  ]
+ }
+]

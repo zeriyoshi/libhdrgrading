@@ -1,0 +1,13 @@
+prefix=@HDRG_PC_PREFIX_LINE@
+exec_prefix=${prefix}
+libdir=@HDRG_PC_LIBDIR@
+includedir=@HDRG_PC_INCLUDEDIR@
+
+Name: hdrgrading
+Description: SDR to HDR grading of images and video (gain map JPEG, PQ)
+URL: https://github.com/zeriyoshi/libhdrgrading
+Version: @PROJECT_VERSION@
+Requires.private: @HDRG_PC_REQUIRES_PRIVATE@
+Libs: -L${libdir} -lhdrgrading
+Libs.private: @HDRG_PC_LIBS_PRIVATE@
+Cflags: -I${includedir}@HDRG_PC_CFLAGS@

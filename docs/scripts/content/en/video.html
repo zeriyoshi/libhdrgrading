@@ -1,0 +1,80 @@
+<p class="lead">A session ({{api:hdrg_session_t}}, {{src:src/session}}) grades a sequence of frames of one size and color into single-layer PQ. The sequence state is built once; each frame is analyzed when it is sent and rendered when it is received, from the statistics of the frames of its scene around it.</p>
+
+{{fig:session}}
+
+<h2>Using a session</h2>
+<pre><code>hdrg_session_config_t config;
+hdrg_session_t *session;
+hdrg_session_format_t format = {0};   /* width, height, primaries, transfer; for R'G'B' input bit depth, stride, alpha */
+
+hdrg_session_config_init(&amp;config);              /* WINDOWED (8 frames past with the STATS filter), PLAYBACK */
+config.rate_num = 24000;
+config.rate_den = 1001;
+config.input.layout = HDRG_YUV_420;              /* planar Y'CbCr ... */
+config.input.matrix = HDRG_MATRIX_BT709;
+config.input.bits = 10;
+config.output.layout = HDRG_YUV_420;             /* ... to PQ Y'CbCr 4:2:0 10-bit in BT.2020 */
+config.output.matrix = HDRG_MATRIX_BT2020;
+config.output.bits = 10;
+/* caps.gamut = HDRG_GAMUT_BT2020 is needed for Y'CbCr output */
+status = hdrg_session_create(ctx, &amp;format, &amp;params, &amp;caps, &amp;config, &amp;session);
+
+/* loop: send until HDRG_ERR_AGAIN, then receive until HDRG_ERR_AGAIN */
+status = hdrg_session_send_frame(session, &amp;frame);       /* NULL at the end */
+status = hdrg_session_receive_frame(session, &amp;output);   /* ... until HDRG_EOF */
+hdrg_session_destroy(session);</code></pre>
+<p>A session is used by one thread at a time. The caller's planes are read until the frame's <code>release</code> is called: Y'CbCr input, and any input with a PREFILTER chain, is converted to 16-bit R'G'B' when it is sent (the ingest), so the planes are released at once; R'G'B' input without a chain is read in place until the frame's output is rendered.</p>
+
+<h2>Pixels in and out</h2>
+<ul>
+<li>Input ({{api:hdrg_session_pixfmt_t}}): interleaved R'G'B' (8 or 16 bits), or planar Y'CbCr 4:2:0 / 4:2:2 / 4:4:4 of 8 to 16 bits, BT.709 / BT.601 / BT.2020 matrix, video or full range, chroma sited by H.273's six locations, Cb / Cr in their own planes or interleaved (NV12, P010; <code>msb</code> for the high-bit layout). Subsampled chroma is upsampled with the luma's detail (chroma from luma, {{api:hdrg_params_t.chroma_fit|chroma_fit}}).</li>
+<li>Output: PQ R'G'B' (8 bits with dither, or 16 bits) or PQ Y'CbCr 4:2:0 with the BT.2020 matrix (a BT.2020 container: the colors stay within Display P3).</li>
+<li>On the app's GPU: {{api:hdrg_session_config_t.device|config.device}} with {{api:hdrg_device_frame_t}} &mdash; buffers of the context's Metal, Vulkan or WebGPU device, Apple's CVPixelBuffer, Linux dma-buf fds or Android's AHardwareBuffer (with {{api:HDRG_GPU_AUTO}} and Y'CbCr input, when the frames can stay on the GPU; else {{api:HDRG_ERR_UNSUPPORTED}}). See {{page:gpu}}.</li>
+</ul>
+
+<h2>Temporal statistics</h2>
+<p>A frame's analysis also tests it for a scene cut against the previous frame (the scene histogram and the log-average luminance, with fades compared after moving the histogram by the change, and strobes kept in one scene). When it is rendered, the anchor statistics (p99.5 and the key) and the APL factor follow the frames of its scene. That work across frames is the STATS stage's ({{api:HDRG_STAGE_STATS}}, {{page:plugins}}): the filter added to it, else the built-in <code>hdrg.stats.temporal</code> ({{src:src/plugins/stats}}), whose modes are these:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>{{api:hdrg_session_config_t.temporal|temporal}}</th><th>Statistics</th><th>Lights steadied by</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_TEMPORAL_WINDOWED}} (default)</td><td>The log-domain mean over the scene's frames in [t &minus; past, t + future] (APL: [t &minus; past, t]). Without a window (past and future 0) every frame renders on its own statistics, without the stage.</td><td>PLAYBACK and OFFLINE: place by place, following the camera (cells near a light take the mean of the middle half of what the frames judged where the best-matching translation moves them; 8 frames before and the future window, or 24 before and after under OFFLINE). LOW: the median of each light's judgment over up to 8 frames before.</td></tr>
+<tr><td>{{api:HDRG_TEMPORAL_RECURSIVE}}</td><td>An asymmetric EMA in the log domain (0.15 s toward a dimmer rendition, 0.6 s toward a brighter one), reset at a cut; no latency.</td><td>The median of each light's judgment over up to 8 frames before.</td></tr>
+<tr><td>{{api:HDRG_TEMPORAL_TWO_PASS}}</td><td>Constant over each scene of a first pass (fade-outs left out of the mean); the first pass's records ({{api:hdrg_session_pass_t}}) are given at create.</td><td>The median over the light's track through the shot of the first pass.</td></tr>
+<tr><td>{{api:HDRG_TEMPORAL_STATIC}}</td><td>None (no stage): one fixed mapping of code values (no analysis, no local gain), exportable as a 3D LUT with {{api:hdrg_lut3d_export}}.</td><td>&mdash;</td></tr>
+</tbody></table></div>
+<p>The built-in filter also follows fades: in a fade-out the frames hold the mapping of the frame before it, so the fade stays monotonic, and the lights' thresholds, the shoulder and the contrast's pivot follow the dimming, so the output darkens in proportion. The session's own flash limiter (ITU-R BT.1702-3, on unless <code>flash_off</code>) predicts the screen luminance of 16 &times; 9 regions and lowers the gain of a frame whose harmful change would be the seventh within a second; the source's own flashes are not removed, only not amplified.</p>
+<p>The built-in STATS filter is a build option, off by default with the other temporal features (<code>HDRG_WITH_TEMPORAL</code>: <code>hdrg.stats.temporal</code>, <code>hdrg.interp.mc</code>, <code>hdrg.scale.temporal</code>; each on its own with <code>HDRG_WITH_TEMPORAL_FILTER</code>, <code>_INTERP</code>, <code>_SR</code>); turning them on is at your own risk ({{dev:build}}). A session without a STATS filter defaults the past window to 0 ({{api:hdrg_session_config_resolve}} tells what a session will take), so every frame renders on its own statistics; a window, RECURSIVE and TWO_PASS are {{api:HDRG_ERR_UNSUPPORTED}} there unless the app adds a STATS filter of its own (<code>hdrg_context_add_filter(ctx, HDRG_STAGE_STATS, id, options)</code>), which makes them work in any build. STATIC never needs one.</p>
+
+<h2>Latency, profiles and seeking</h2>
+{{fig:window}}
+<p>{{api:hdrg_session_config_t.latency|latency}} says what the frames are for; any preset goes with any profile:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Profile</th><th>Use</th><th>Frames in flight</th><th>Future window</th><th>effort AUTO</th><th>late</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_LATENCY_PLAYBACK}} (default)</td><td>a video being watched</td><td>as many as the ASYNC filters declared</td><td>as long as the past</td><td>REALTIME</td><td>when the calls of the last second took longer than the frame interval on average</td></tr>
+<tr><td>{{api:HDRG_LATENCY_LOW}}</td><td>games, calls, live views</td><td>each job waited for at once</td><td>none</td><td>REALTIME</td><td>when one frame's calls took longer than the interval</td></tr>
+<tr><td>{{api:HDRG_LATENCY_OFFLINE}}</td><td>converting a file nobody watches meanwhile</td><td>as PLAYBACK</td><td>as PLAYBACK; the lights' steadying waits for 24 frames</td><td>QUALITY</td><td>never</td></tr>
+</tbody></table></div>
+<ul>
+<li>{{api:hdrg_session_latency}} counts the frames a frame's output waits for: the frames the STATS filter needs ahead (the statistics window's future, or the steadying's), the future of the PREFILTER and SCALE filters' time windows, their ASYNC frames in flight past the first, and the INTERP window under an output rate.</li>
+<li>{{api:hdrg_session_latency_report}} gives the delay by cause and under every profile, the time measured in send and receive with its parts (convert, prefilter, analyze, apply, interpolation), the devices used, the late frames and {{api:HDRG_ADVICE_PREFILTER|HDRG_ADVICE_*}} bits for what to change. With {{api:hdrg_session_config_t.shed|shed}}, a late PLAYBACK or LOW session passes the PREFILTER filters without a time window through from then on.</li>
+<li><strong>Seeking</strong>: a frame's output reads the frames from {{api:hdrg_session_preroll}} before it. A session created with <code>start = n &minus; p</code> and <code>preroll = p</code> renders frame n and every frame after it byte for byte as a session started at the stream's first frame (WINDOWED, TWO_PASS, STATIC; RECURSIVE only approximately). The VapourSynth plugin serves random access this way.</li>
+</ul>
+
+<h2>Filters in a session</h2>
+<ul>
+<li><strong>PREFILTER</strong>: as for stills, plus the motion-compensated temporal noise reduction <code>hdrg.mctf</code> (2 frames before and after; LOW reads only the frames before). Filters with a time window (up to 8 frames each way) or a clip (BasicVSR-style) get the frames around their own; ASYNC filters keep up to their <code>max_inflight</code> frames in flight.</li>
+<li><strong>Grain</strong> ({{api:hdrg_params_t.grain_policy|grain_policy}}): PRESERVE keeps the source's grain without amplifying it; REDUCE removes it; RESYNTH (the default of PHOTO's sessions where the build has the denoiser) removes it, measures what was removed (or takes the codec's AV1 film grain parameters, {{api:HDRG_SD_FILM_GRAIN}}) and draws it back into the PQ output as it looked in SDR.</li>
+<li><strong>SCALE</strong>: {{api:hdrg_session_config_t.output_width|output_width}} / <code>output_height</code>; the scaler may have a time window (up to 32 frames) such as the multi-frame <code>hdrg.scale.temporal</code>.</li>
+<li><strong>Output rate</strong>: {{api:hdrg_session_config_t.out_rate_num|out_rate_num}} / <code>out_rate_den</code> synthesizes frames between input frames with the INTERP stage's filter (<code>hdrg.interp.mc</code> by default where the build has it, also <code>repeat</code> and <code>blend</code>); across a cut the nearer frame is repeated. A synthesized output is marked <code>synthetic</code> with its <code>phase</code>; the motion of low confidence caps the gain of the blocks it covers.</li>
+</ul>
+
+<h2>Metadata of the output</h2>
+<ul>
+<li>{{api:hdrg_session_peak}}: the rendition ceiling of every frame, known before the first one: the stream's mastering display maximum.</li>
+<li>Per frame ({{api:hdrg_session_output_t}}): the measured MaxCLL / FALL (<code>max_nits</code>, <code>avg_nits</code>), the APL, the scene cut, the flash limiter, the fade, the noise.</li>
+<li>HDR10+ ({{api:hdrg_hdr10plus_t}}: the R, G, B maxima, the mean max(R, G, B) and nine percentiles) and SMPTE ST 2094-50 ({{api:hdrg_st2094_50_t}}: the gain curve back to the SDR source, up to 32 points). {{api:hdrg_hdr10plus_t35}} and {{api:hdrg_st2094_50_t35}} write them as the T.35 payloads FFmpeg, FFMS2 and the ICC HAGC tag use.</li>
+</ul>
+
+<h2>The app's own GPU</h2>
+<p>A session without frame-changing stages (no PREFILTER stage &mdash; no filters added and the params' built-in ones off: deblock, dering, defringe, deband and MCTF at 0, grain PRESERVE &mdash; no SCALE, output rate or device frames, and not a TWO_PASS first pass) can hand the work of each frame to the app instead of applying it: {{api:hdrg_session_receive_state}} returns the frame's statistics and an {{api:hdrg_apply_state_t}}, and {{api:hdrg_shader}} returns the library's apply (and Y'CbCr convert) shaders as WGSL, SPIR-V or HLSL. The output matches the library's GPU apply byte for byte. The browser demo's interactive preview works this way.</p>

@@ -1,0 +1,87 @@
+<p class="lead">任意の処理は段で、フィルタとして動きます。ファイルの形式はコーデックが読み書きします。フィルタもコーデックもプラグインのクラスで、プラグインは API 表を通して登録し、ライブラリをリンクしません。内蔵のフィルタとコーデックも同じ ABI のプラグインで、どれも自分の CMake のプロジェクトとしてライブラリにリンクされ、コンテキストを作るときに登録されます。任意のものはビルドから外せます。</p>
+
+{{fig:plugins}}
+
+<h2>段</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>段</th><th>フィルタ</th><th>そこで動くもの</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_STAGE_PREFILTER}}</td><td>{{api:HDRG_PREFILTER_MAX}} (6) までの連鎖、追加した順</td><td>解析の前に、ソースの符号値の上で: deblock・dering・defringe・deband・時間方向と空間のノイズ低減。ここに足したフィルタは内蔵の連鎖の代わりになります。</td></tr>
+<tr><td>{{api:HDRG_STAGE_INTERP}}</td><td>1 つ</td><td>出力のレートを変えるセッションの、入力のフレームの間のフレーム (既定はビルドにあれば <code>hdrg.interp.mc</code>)。</td></tr>
+<tr><td>{{api:HDRG_STAGE_SCALE}}</td><td>1 つ</td><td>出力の寸法。適用が帯ごとに読みます (既定は params の内蔵の scaler)。</td></tr>
+<tr><td>{{api:HDRG_STAGE_ANALYZE}}</td><td>1 つ</td><td>{{api:hdrg_params_t.light_predictor|light_predictor}} が 0 より大きいときの、走査 A が判定した光の確かめ (既定 <code>hdrg.analyze.predict</code>)。光ごとに 0〜1 の確からしさを付け、ライブラリはその光の上乗せを (1 &minus; 量) + 量 &times; 確からしさ 倍にします。確かめは疑わしい光を下げるだけで、上げません。</td></tr>
+<tr><td>{{api:HDRG_STAGE_STATS}}</td><td>1 つ</td><td>動画のセッションのフレームをまたぐ統計: 時間モードの WINDOWED (ウィンドウあり)・RECURSIVE・TWO_PASS ({{page:video}}。既定はビルドにあれば <code>hdrg.stats.temporal</code>)。</td></tr>
+</tbody></table></div>
+<p>INTERP・ANALYZE・STATS に足したフィルタは既定のものの代わりになります。足したフィルタも既定のものもない段 (既定のもののないビルド、{{dev:build}}) では、それが要るものが {{api:HDRG_ERR_UNSUPPORTED}} になります: 出力のレート、0 より大きい <code>light_predictor</code>、ウィンドウのある WINDOWED・RECURSIVE・TWO_PASS。</p>
+
+<h2>ホストの側 (plugin.h)</h2>
+<ul>
+<li>{{api:hdrg_context_register_plugin}} はアプリにリンクした入口を受け取り、{{api:hdrg_context_load_plugin}} は明示したパスからモジュールを読み込みます (探しません)。表に触れさせる前に ABI の版を照合します。</li>
+<li>入口はプラグインの ID・名前・版・ベンダー・SPDX のライセンス・著作権・同梱の部品・状態を報告し、ホストはどの文字列も検証し (長さ・UTF-8・文字の集合・SPDX の構文・SemVer)、アプリの方針 ({{api:hdrg_context_set_plugin_policy}}) に掛けてフリーズします。拒否したプラグインも理由とともに一覧に残ります ({{api:hdrg_context_plugin_info}})。</li>
+<li>{{api:hdrg_context_filter_count}}・{{api:hdrg_context_filter_info}}・{{api:hdrg_context_filter_option}} がフィルタとそのオプションを一覧し、{{api:hdrg_options_create}} / {{api:hdrg_options_set}} がオプションを key=value の文字列で受け取り、{{api:hdrg_context_add_filter}} が ID でフィルタを以後の変換とセッションの段に足します (PREFILTER は 6 つまで、INTERP・SCALE・ANALYZE・STATS は 1 つずつ)。</li>
+<li>{{api:hdrg_context_codec_count}}・{{api:hdrg_context_codec_info}}・{{api:hdrg_context_codec_option}} がコーデック (拡張子・役割・書き手の形と既定の形・オプション) を一覧し、{{api:hdrg_context_set_writer}} が以後の静止画の変換の書き手を ID とオプションで選びます (既定は <code>hdrg.jpeg</code>。ID が NULL でオプションがあれば既定の書き手のオプションにし、どちらも NULL なら既定に戻します)。読み手は登録した順に試します。</li>
+<li>{{api:hdrg_context_set_device}} ({{src:include/hdrgrading/gpu.h|gpu.h}}) はアプリの GPU の device とキューをフィルタと共有します。</li>
+</ul>
+
+<h2>プラグインの側 (filter.h)</h2>
+<ul>
+<li>モジュールは {{api:HDRG_PLUGIN_DEFINE}} で書き出す記号を定義し、入口は {{api:hdrg_plugin_api}} を受け取ります。用途ごとに並んだ関数の表です: プラグインの報告・メモリ (コンテキストのアロケータ)・クラス・オプション・インスタンスの申告・交渉・ジョブ・ANALYZE と STATS の段の仕事・読み・書き。</li>
+<li>文字列は (ポインタ, バイト数) で渡り、複製されます。境界を enum は渡りません: 定数は <code>uint32_t</code>、ホストのものは中の見えないハンドルで、段が渡すもの (サイドデータ・ANALYZE の段の光の記録・STATS の段のフレーム) はヘッダの素の C の構造体です。コールバックはどれも最後の引数に API 表を受け取るので、プラグインは大域の状態が要りません。</li>
+<li>クラスは段と性質 ({{api:HDRG_FILTER_PURE}}・{{api:HDRG_FILTER_BANDS}}・{{api:HDRG_FILTER_DETERMINISTIC}}・{{api:HDRG_FILTER_ASYNC}}・{{api:HDRG_FILTER_SEQUENTIAL}}・{{api:HDRG_FILTER_GPU_FRAMES}}: device のジョブが device の上で共有するフレームを受け渡す、{{api:HDRG_FILTER_NO_MOTION}}: 何も動かさない INTERP のフィルタで、間のフレームを動きで頭打ちにしない)、型と範囲の付いたオプション、コールバックを申告します。<code>plugin_set_user</code> と <code>class_set_user</code> は、プラグインのどのフィルタとコーデックも、あるいはクラスのどのインスタンスも読み返すポインタを置きます (<code>filter_plugin_user</code> と <code>filter_class_user</code>、コーデックは {{api:hdrg_plugin_api.read_users|read_users}} と {{api:hdrg_plugin_api.write_users|write_users}})。共有する device・モデル・GPU のクラスのバックエンドなどです。</li>
+<li>コーデックのクラス ({{src:include/hdrgrading/codec.h|codec.h}}) は読み手か書き手です。読み手はファイルの頭を試し、ホストが確保した絵へ復号して、色 (CICP か ICC)・Exif・向きを報告します。書き手は形 ({{api:HDRG_OUTPUT_GAINMAP}}・HYBRID・PQ) と既定の形、行 (8bit か 16bit の R'G'B')、色の伝え方 (CICP か ICC)、最大の辺を申告します。ホストは行を帯ごとに渡し、終わりにゲインマップと ISO 21496-1 のメタデータ・代替の描画の色・ICC プロファイル・Apple の XMP・測った光・Exif を渡して、書き手のバイト列を受け取ります。</li>
+<li>ANALYZE のクラス ({{api:hdrg_plugin_api.class_set_analyze|class_set_analyze}}) はその段だけで、<code>create</code>・<code>destroy</code>・<code>analyze</code> ({{api:hdrg_filter_analyze_fn_t}}) を持ち、<code>configure</code>・<code>process</code>・<code>submit</code> はなく、フラグは DETERMINISTIC だけです。判定した光のあるフレームごとに、<code>analyze</code> は <code>lights_get</code> でその記録 ({{api:hdrg_light_record_t}}: 解析したフレームの画素での光の芯の箱・規則の上乗せ・{{api:HDRG_LIGHT_FEATURES}} 個の特徴量) を、<code>lights_frame</code> で解析したフレームを詰めた 16bit の R'G'B' で (セッションの解析の縮小画も。フレームが GPU の上だけにあれば {{api:HDRG_ERR_NOT_FOUND}}) 読み、<code>lights_set_chance</code> で光ごとの確からしさを渡します (渡さなければ 1)。</li>
+<li>STATS のクラス ({{api:hdrg_plugin_api.class_set_stats|class_set_stats}}) もその段だけで、<code>create</code>・<code>destroy</code> と 6 つのコールバックを持ちます: <code>window</code> (遅延のプロファイルごとに、状態が読むフレームの前の枚数 (シークの preroll が覆う) と、描く前に送られていなければならない後の枚数 (待ち行列が持つ))、<code>fade</code> (送ったときのフレーム {{api:hdrg_stats_sent_t}} からそのフェード {{api:hdrg_stats_fade_t}} へ: そこまでの暗くなる走り・走りの最初のフレームが描いた統計を保つか・解析をやり直す暗くなり方)、<code>frame</code> (その解析、{{api:hdrg_stats_frame_t}})、<code>render</code> (描くフレーム: <code>stats_head</code> が渡す {{api:hdrg_stats_head_t}} のアンカー・key・光の上乗せを書き、<code>stats_queued</code> がその後の待ち行列のフレームを渡す)、<code>fit</code> (計画した APL の係数と、代わりに使うもの)、<code>rendered</code>。<code>filter_stats_session</code> がセッションを表します ({{api:hdrg_stats_session_t}}: モード・プロファイル・ウィンドウ・最初のフレーム・寸法・レート・TWO_PASS の 2 パス目の 1 パス目)。クラスはセッションのバイト列をフレームの純関数に保ちます。</li>
+<li>インスタンスは変換・セッションで 1 回作り、フレームごとに configure します。<code>create</code> で時間のウィンドウ (<code>filter_set_window</code>)・クリップ (<code>filter_set_clip</code>)・飛行中の枚数 (<code>filter_set_max_inflight</code>、ASYNC は必須)・入力の形式・device を申告し、<code>configure</code> で入力の寸法・色・サイドデータを読んで、出力の寸法と形式か素通しを申告します。</li>
+<li>ジョブは帯の行 (BANDS) か全画面です。<code>process</code> はその場で終え、ASYNC のフィルタの <code>submit</code> は全画面のジョブを始め、任意のスレッド (ドライバの完了のコールバックも) から <code>job_done</code> で終えます。<code>process</code> のジョブは作業領域を <code>job_scratch</code> から取ります: ホストはワーカーごとに領域を持ち続け、どれも帯のジョブが求めたいちばん大きな大きさまで広げるので、フレームの大きさに届いた後はジョブが何も確保しません。</li>
+</ul>
+<p>ABI は {{api:HDRG_PLUGIN_ABI_VERSION}} 1 のままフリーズしていません。フリーズまでどこでも変わりえ、別の版で組んだモジュールは読み込むときに拒否します。プラグインはライブラリと同じヘッダで組みます。</p>
+
+<h2>段の実行器</h2>
+<p>{{src:src/host/stage.c}} がパイプラインのために段のフィルタを動かします:</p>
+<ul>
+<li>帯のフィルタは、求めたのりしろ付きの RGB16 の行を受け取ります。全画面のフィルタは、選んだ形式 (RGB16・RGBA16・平面の RGB16 / FP16 / FP32・P016・RGBA8・RGB10A2) のフレームを受け取り、{{src:src/host/format.c}} が RGB16 との間を決定的に変換します。全画面は 16 KiB 境界から 256 バイトの倍数のピッチか、フィルタ自身のメモリ (<code>class_set_frames</code>: IOSurface や CUDA の pinned メモリ) です。</li>
+<li>時間のウィンドウとクリップ: セッションは過去 + 未来 + 飛行中のフレームを輪に持ち、ジョブごとにウィンドウ (と、マルチフレームのモデルが 2 つのショットを混ぜないよう、そのショットのフレームの数 <code>job_shot</code>) を渡し、出力を未来の分だけ遅らせます。</li>
+<li><code>max_inflight</code> が 2 以上の ASYNC のフィルタは、PLAYBACK と OFFLINE ではその枚数まで飛ばしておき、LOW ではジョブを 1 つずつすぐ待ちます。ある段が land したフレームは、両方のフレームの作り方が同じなら写さずに次の段へ渡します。</li>
+<li>device の種類を申告したフィルタ (<code>filter_set_device</code>) は、同じ種類の隣り合うフィルタへ出力を device の上で渡します (<code>job_device</code>・<code>job_set_output_device</code>)。</li>
+<li>BANDS でない SCALE のフィルタは、求めた寸法の代わりに固定の倍率 (2 倍・4 倍) で出してもよく、実行器が自分の Lanczos で合わせます。</li>
+</ul>
+
+<h2>サイドデータ</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>種類</th><th>出すもの</th><th>受け取るもの</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_SD_NOISE}}</td><td>入力のフレームのライブラリの測定 (水準ごとのノイズ・ブロック性・リンギング)</td><td>どのフィルタも (<code>nego_side_data</code>)</td></tr>
+<tr><td>{{api:HDRG_SD_MOTION}}</td><td>アプリ (コーデックやゲームエンジンのベクトル)・<code>hdrg.mctf</code>・INTERP のジョブ</td><td>そのフレームの PREFILTER のフィルタと INTERP のジョブ、セッションの出力</td></tr>
+<tr><td>{{api:HDRG_SD_FILM_GRAIN}}</td><td>アプリ (デコーダが足さなかった AV1 の粒のパラメータ)</td><td>セッション (出力に粒を入れる)</td></tr>
+</tbody></table></div>
+
+<h2>内蔵のプラグイン</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>プラグイン</th><th>クラス</th><th>段</th><th>プロジェクト</th></tr></thead>
+<tbody>
+<tr><td><code>hdrg.scale.polyphase</code></td><td><code>hdrg.scale.lanczos</code> (既定の scaler)・<code>hdrg.scale.bicubic</code>・<code>&lt;gpu&gt;.lanczos</code></td><td>SCALE</td><td>{{src:src/plugins/polyphase}}</td></tr>
+<tr><td><code>hdrg.scale.bilinear</code></td><td><code>hdrg.scale.bilinear</code></td><td>SCALE</td><td>{{src:src/plugins/bilinear}}</td></tr>
+<tr><td><code>hdrg.scale.edge</code></td><td><code>hdrg.scale.edge</code> (独自のエッジ適応)・<code>hdrg.scale.temporal</code> (多フレーム。<code>HDRG_WITH_TEMPORAL</code> のとき)・<code>&lt;gpu&gt;.edge</code></td><td>SCALE</td><td>{{src:src/plugins/edge}}</td></tr>
+<tr><td><code>hdrg.scale.fsr</code>・<code>hdrg.scale.nvidia</code></td><td><code>hdrg.scale.fsr1</code> (AMD FSR 1)・<code>hdrg.scale.nis</code> (NVIDIA Image Scaling)・<code>&lt;gpu&gt;.fsr1</code>・<code>&lt;gpu&gt;.nis</code></td><td>SCALE</td><td>{{src:src/plugins/fsr}}・{{src:src/plugins/nis}}</td></tr>
+<tr><td><code>hdrg.metalfx</code></td><td><code>hdrg.metal.metalfx</code> (MetalFX Spatial、Metal だけ)</td><td>SCALE</td><td>{{src:src/plugins/metalfx}}</td></tr>
+<tr><td><code>hdrg.deblock</code>・<code>hdrg.dering</code>・<code>hdrg.defringe</code>・<code>hdrg.deband</code></td><td>同じ名前の CPU のクラスと <code>&lt;gpu&gt;.deblock</code> など</td><td>PREFILTER</td><td>{{src:src/plugins/deblock}} など</td></tr>
+<tr><td><code>hdrg.denoise.spatial</code></td><td><code>hdrg.denoise.spatial</code> (guided filter)・<code>&lt;gpu&gt;.denoise</code></td><td>PREFILTER</td><td>{{src:src/plugins/denoise}}</td></tr>
+<tr><td><code>hdrg.mctf</code></td><td><code>hdrg.mctf</code> (動き補償の時間方向の NR)・<code>&lt;gpu&gt;.mctf</code></td><td>PREFILTER (セッション)</td><td>{{src:src/plugins/mctf}}</td></tr>
+<tr><td><code>hdrg.interp</code></td><td><code>hdrg.interp.repeat</code>・<code>hdrg.interp.blend</code>・<code>hdrg.interp.mc</code>・<code>&lt;gpu&gt;.interp.mc</code> (<code>HDRG_WITH_TEMPORAL</code> のとき)</td><td>INTERP</td><td>{{src:src/plugins/interp}}</td></tr>
+<tr><td><code>hdrg.analyze.predict</code></td><td><code>hdrg.analyze.predict</code> (光の小型予測器: 光の記録の特徴量の整数の MLP)</td><td>ANALYZE</td><td>{{src:src/plugins/predict}}</td></tr>
+<tr><td><code>hdrg.stats.temporal</code></td><td><code>hdrg.stats.temporal</code> (時間モードの統計・フェード・光の安定化。<code>HDRG_WITH_TEMPORAL</code> のとき)</td><td>STATS (セッション)</td><td>{{src:src/plugins/stats}}</td></tr>
+<tr><td><code>hdrg.jpeg</code>・<code>hdrg.png</code>・<code>hdrg.gif</code></td><td>JPEG (読み書き、既定の書き手)・PNG と GIF (読み)</td><td>コーデック</td><td>{{src:src/plugins/jpeg}}・{{src:src/plugins/png}}・{{src:src/plugins/gif}}</td></tr>
+<tr><td><code>hdrg.jxl</code></td><td>JPEG XL (書き、既定は HYBRID)</td><td>コーデック</td><td>{{src:src/plugins/jxl}}</td></tr>
+<tr><td><code>org.hdrgrading.avif</code>・<code>org.hdrgrading.heif</code></td><td>AVIF (読み書き)・HEIF (書き): 読み込むモジュールで、ライブラリにはリンクしない</td><td>コーデック</td><td>{{src:src/plugins/avif}}・{{src:src/plugins/heif}}</td></tr>
+</tbody></table></div>
+<p><code>&lt;gpu&gt;</code> は <code>hdrg.webgpu</code>・<code>hdrg.metal</code>・<code>hdrg.vulkan</code> のどれか (例: <code>hdrg.vulkan.deband</code>) で、ビルドにそのバックエンドがあるときに組まれます。系統の GPU のクラスは CPU のクラスと同じプラグインにあり、{{api:HDRG_FILTER_GPU_FRAMES}} を申告するので、ライブラリはその連鎖を自分の device のフレームで流せます。</p>
+<p>GPU のクラスは {{api:hdrg_plugin_api.filter_gpu_share|filter_gpu_share}} でコンテキストのその種類の device を受け取ります: ホストがその種類に持つネイティブの device とキュー (アプリのか自分の)、Vulkan のキューへの submit が取るロック、WebGPU では device のスレッド (device を使うただ 1 つのスレッド) で仕事を動かす関数で、プラグインの deinit まで有効です。ライブラリからプラグインへ渡るのはこれらのハンドルだけで、プラグインの GPU の層 (リンクする <code>hdrgrading-gpu</code> のライブラリ、{{src:src/gpu/include/hdrgrading/gpu|hdrgrading/gpu/}}) がそれを自分のオブジェクトで包みます。ライブラリのバイナリの中ではそれがライブラリ自身のオブジェクトで、別に組んだモジュールでは同じ device とキューの上のモジュール自身のオブジェクトです。GPU のフィルタが device の上で渡し合うフレームもネイティブのバッファ (<code>hdrg_gpu_share_frame_t</code>) で、読む側が包みます。共有には版があり (<code>HDRG_GPU_SHARE_VERSION</code>、{{src:src/foundation/include/hdrgrading/foundation/gpu_share.h|gpu_share.h}})、別の版で組んだプラグインは device のないコンテキストと同じく {{api:HDRG_ERR_UNSUPPORTED}} を受け取り、その GPU のクラスは動きません。</p>
+
+<h2>プロジェクトとしてのプラグイン</h2>
+<ul>
+<li>{{src:src/plugins}} のディレクトリはどれも自分の CMake のプロジェクトで、<code>hdrg_plugin</code> ({{src:cmake/HdrgPlugin.cmake}}) で作ります: CPU のソース、WebGPU とネイティブの GPU (Metal・Vulkan) のソース、WGSL とその隣の生成した MSL と SPIR-V。{{src:src/plugins/shared}} は複数が共有するもの (ブロックの動き推定、ノイズ低減のノイズの読み方) です。</li>
+<li>ライブラリのビルドは最初からこれらをリンクします: オブジェクトはライブラリに入り、入口は生成した一覧に入って、どのコンテキストもその順に登録します (フィルタ、次にコーデック)。依存を自分で持つ AVIF と HEIF はいつも読み込むモジュールです。</li>
+<li>キャッシュ変数 <code>HDRG_PLUGINS_EXCLUDE</code> で任意のものを外せます ({{dev:build}}): bilinear・denoise・deblock・dering・defringe・deband・mctf・interp・fsr・nis・edge・predict とコーデックの jpeg・png・gif・jxl、またはまとまりの <code>filters</code>・<code>codecs</code>・<code>all</code>。polyphase (SCALE 段の Lanczos。固定の倍率を合わせるのも) はいつも残り、コーデックはそれぞれ自分の依存を連れてきます。ライブラリはほかのものなしで動きます: 外した系統のプリセットの既定は切れ (強さは 0、ANIME と GAME の upscaler は Lanczos、PHOTO の動画の粒はノイズ低減がなければ PRESERVE)、明示して使えば {{api:HDRG_ERR_UNSUPPORTED}}、外した読み手だけが読むファイルは {{api:HDRG_ERR_UNSUPPORTED_FORMAT}} です。<code>HDRG_WITH_TEMPORAL_INTERP</code> には interp が、<code>HDRG_WITH_TEMPORAL_SR</code> には edge が要り、<code>hdrg.stats.temporal</code> は <code>HDRG_WITH_TEMPORAL</code> で組まれます。</li>
+<li>インストールしたパッケージに対して別に組んだプロジェクト (<code>find_package(hdrgrading)</code>: <code>hdrgrading::headers</code>・<code>hdrgrading::foundation</code>・<code>hdrgrading::gpu</code>・<code>hdrgrading::plugin_shared</code>) は読み込むモジュール <code>hdrgrading-&lt;名前&gt;</code> になります。{{src:tests/install/run.cmake|test_install}} が {{src:src/plugins/deband}} をそう組みます。<code>hdrg.</code> で始まる ID は内蔵のプラグインのもので、それを名乗るモジュールは拒否されるので、ライブラリから外したプラグインは自分の ID を名乗ります。</li>
+<li>プラグインは公開ヘッダ・自分のディレクトリ・土台の層 ({{src:src/foundation}}・{{src:src/gpu}}・{{src:src/plugins/shared}}) だけを include し、ライブラリの内部は include しません (scripts/check_style.py が検査)。</li>
+</ul>

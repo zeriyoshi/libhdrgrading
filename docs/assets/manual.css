@@ -1,0 +1,508 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ * Copyright (c) 2026 Go Kudo <zeriyoshi@gmail.com>
+ *
+ * The manual's stylesheet (a source file: manual/scripts/build.py does not write it).
+ * The colors are web/index.html's.
+ */
+:root {
+    --bg: #fafaf9;
+    --fg: #1c1917;
+    --muted: #57534e;
+    --card: #ffffff;
+    --border: #e7e5e4;
+    --accent: #b45309;
+    --code-bg: #f5f5f4;
+    --row: #fafaf9;
+    --mark: #fef3c7;
+    color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #0c0a09;
+        --fg: #f5f5f4;
+        --muted: #a8a29e;
+        --card: #1c1917;
+        --border: #292524;
+        --accent: #f59e0b;
+        --code-bg: #1c1917;
+        --row: #141210;
+        --mark: #3b2a0a;
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #0c0a09;
+    --fg: #f5f5f4;
+    --muted: #a8a29e;
+    --card: #1c1917;
+    --border: #292524;
+    --accent: #f59e0b;
+    --code-bg: #1c1917;
+    --row: #141210;
+    --mark: #3b2a0a;
+    color-scheme: dark;
+}
+* {
+    box-sizing: border-box;
+}
+html {
+    -webkit-text-size-adjust: 100%;
+}
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP",
+        "Noto Sans JP", "Yu Gothic UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+}
+:lang(ja) {
+    line-break: strict;
+}
+a {
+    color: var(--accent);
+    text-underline-offset: 2px;
+}
+code, pre {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Noto Sans Mono", monospace;
+    font-size: 0.88em;
+}
+:not(pre) > code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 0.25em;
+    overflow-wrap: anywhere;
+}
+a > code {
+    color: var(--accent);
+}
+pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    line-height: 1.5;
+}
+[id] {
+    scroll-margin-top: 64px;
+}
+.skip {
+    position: absolute;
+    left: -9999px;
+}
+.skip:focus {
+    left: 16px;
+    top: 8px;
+    z-index: 10;
+    background: var(--card);
+    padding: 4px 8px;
+}
+
+/* --- the header bar --- */
+header.top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+.brand {
+    font-weight: 700;
+    color: var(--fg);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+}
+nav.parts {
+    display: flex;
+    gap: 14px;
+}
+nav.parts a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: 2px 0;
+    border-bottom: 2px solid transparent;
+}
+nav.parts a.current {
+    color: var(--fg);
+    border-bottom-color: var(--accent);
+}
+header .tools {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+button.theme {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg);
+    font-size: 15px;
+    line-height: 1;
+    padding: 5px 8px;
+    cursor: pointer;
+}
+
+/* --- layout --- */
+.layout {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+.layout.with-aside {
+    grid-template-columns: 230px minmax(0, 1fr) 240px;
+}
+nav.side {
+    position: sticky;
+    top: 56px;
+    align-self: start;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+    padding: 24px 0;
+}
+nav.side ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+nav.side li a {
+    display: block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 15px;
+}
+nav.side li.sub a {
+    padding-left: 24px;
+    font-size: 14px;
+}
+nav.side li a.current {
+    background: var(--code-bg);
+    color: var(--fg);
+    font-weight: 600;
+}
+main.content {
+    min-width: 0;
+    max-width: 860px;
+    padding: 24px 0 64px;
+}
+main.content.wide {
+    max-width: 1000px;
+}
+main h1 {
+    font-size: 30px;
+    line-height: 1.3;
+    margin: 8px 0 20px;
+}
+main h2 {
+    font-size: 22px;
+    margin: 40px 0 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+main h3 {
+    font-size: 18px;
+    margin: 28px 0 8px;
+}
+main h4 {
+    font-size: 16px;
+    margin: 20px 0 6px;
+}
+.lead {
+    font-size: 18px;
+    color: var(--muted);
+}
+.note {
+    border-left: 3px solid var(--accent);
+    background: var(--card);
+    padding: 8px 14px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+}
+footer.gen, p.gen {
+    margin-top: 56px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+/* --- figures and tables --- */
+figure.diagram {
+    margin: 24px 0;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+figure.diagram svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+figure.diagram figcaption {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+}
+.table-wrap {
+    overflow-x: auto;
+    margin: 16px 0;
+}
+table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 15px;
+}
+th, td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    background: var(--code-bg);
+    font-weight: 600;
+}
+tbody tr:nth-child(even) {
+    background: var(--row);
+}
+td > p:first-child {
+    margin-top: 0;
+}
+td > p:last-child {
+    margin-bottom: 0;
+}
+
+/* --- the API reference --- */
+.api-src {
+    color: var(--muted);
+}
+.api-item {
+    margin: 28px 0;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+}
+.api-item h3 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    margin: 14px 0 6px;
+}
+.api-item h3 code {
+    font-size: 17px;
+    background: none;
+    border: none;
+    padding: 0;
+}
+.badge {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0 8px;
+}
+.lineref {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--muted);
+}
+.api-macros > .lineref {
+    float: right;
+    margin-top: 8px;
+}
+pre.decl {
+    margin: 6px 0 10px;
+}
+pre.mdecl {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+pre.doc-pre {
+    font-size: 13px;
+}
+.api-table {
+    display: block;
+    overflow-x: auto;
+    font-size: 14px;
+}
+.api-table td:first-child {
+    min-width: 200px;
+    max-width: 380px;
+}
+.api-table tr.section td {
+    background: var(--code-bg);
+}
+.api-table tr.section p {
+    margin: 4px 0 0;
+}
+.api-table tr:target, .api-item:target h3 {
+    background: var(--mark);
+}
+.api-prose {
+    color: var(--muted);
+    font-style: italic;
+}
+details.api-en {
+    margin: 4px 0 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+details.api-en summary {
+    cursor: pointer;
+    width: fit-content;
+}
+details.api-en[open] {
+    border-left: 2px solid var(--border);
+    padding-left: 8px;
+}
+details.api-en p {
+    margin: 4px 0;
+}
+.api-en-title {
+    font-weight: normal;
+    color: var(--muted);
+}
+nav.api-side {
+    position: sticky;
+    top: 56px;
+    align-self: start;
+    max-height: calc(100vh - 56px);
+    overflow-y: auto;
+    padding: 24px 0;
+    font-size: 13px;
+}
+nav.api-side h4 {
+    margin: 12px 0 4px;
+    font-size: 13px;
+    color: var(--muted);
+}
+ul.api-index {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+ul.api-index li {
+    margin: 1px 0;
+}
+ul.api-index code {
+    font-size: 12px;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+/* --- the language choice --- */
+body.landing {
+    display: flex;
+    justify-content: center;
+}
+.landing-main {
+    max-width: 880px;
+    padding: 56px 16px;
+}
+.landing-main h1 {
+    font-size: 34px;
+    margin: 0 0 8px;
+}
+.landing-main .lead {
+    margin: 4px 0;
+}
+.cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+}
+a.card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--fg);
+    text-decoration: none;
+}
+a.card:hover {
+    border-color: var(--accent);
+}
+a.card strong {
+    font-size: 19px;
+}
+a.card span {
+    color: var(--muted);
+    font-size: 15px;
+}
+a.card .card-lang {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+/* --- narrow screens --- */
+@media (max-width: 1100px) {
+    .layout.with-aside {
+        grid-template-columns: 210px minmax(0, 1fr);
+    }
+    nav.api-side {
+        display: none;
+    }
+}
+@media (max-width: 760px) {
+    .cards {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    header.top {
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        padding: 8px 16px;
+        position: static;
+    }
+    .layout, .layout.with-aside {
+        display: block;
+        padding: 0 16px;
+    }
+    nav.side {
+        position: static;
+        max-height: none;
+        padding: 12px 0 0;
+        border-bottom: 1px solid var(--border);
+    }
+    nav.side ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    nav.side li a, nav.side li.sub a {
+        padding: 2px 8px;
+        font-size: 14px;
+    }
+    main h1 {
+        font-size: 25px;
+    }
+    .api-table td:first-child {
+        min-width: 140px;
+    }
+}

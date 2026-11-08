@@ -1,0 +1,55 @@
+<p class="lead">The full rules are in {{src:CLAUDE.md}} (Japanese). This page summarizes them; what can be checked mechanically, {{src:scripts/check_style.py}} checks in CI.</p>
+
+<h2>C code</h2>
+<ul>
+<li>C11; the fixed-width types of <code>stdint.h</code> and <code>bool</code>; the smallest type that fits; unsigned unless a sign is needed.</li>
+<li>Declarations at the top of the function only, never in nested blocks or <code>for</code> headers. One declaration statement per type (pointers, arrays and initializers of the same type share it), in this order: <code>const</code> ones, project and dependency types, <code>uint64_t</code> &hellip; <code>uint8_t</code>, <code>int64_t</code> &hellip; <code>int8_t</code>, <code>size_t</code>, <code>bool</code>, <code>char</code>, <code>double</code>, <code>float</code>, <code>void *</code>.</li>
+<li>Braces always. Every <code>typedef</code> ends in <code>_t</code>.</li>
+<li>A file is ordered: includes, macros, <code>static inline</code> functions, <code>static</code> functions, ordinary functions, exported functions (written with <code>extern</code>).</li>
+<li>Blank lines between the logical steps (after declarations, before a block unless the previous statement sets what it tests, after a closing brace, before a <code>return</code> that follows other statements, between allocation, assignment, side effects and cleanup).</li>
+<li>Comments only where the code does not say it. The SPDX header (<code>Apache-2.0 OR MIT</code>) on every file.</li>
+<li>Format with <code>.clang-format</code>, analyze with <code>.clang-tidy</code> (LLVM 23, the same as zendriver's <code>common/</code>).</li>
+</ul>
+
+<h2>Memory</h2>
+<ul>
+<li>Nothing under <code>src/</code> calls <code>malloc</code> and the like directly: the library uses <code>hdrg_mem_*</code> (the context's allocator; aligned blocks with <code>hdrg_mem_aligned_alloc</code>), built-in filters and GPU layers the API table's <code>mem_*</code>. A dependency that allocates what it asks the caller to free is freed with <code>free</code> on a line saying "the dependency's" (check_style's <code>raw-alloc</code>).</li>
+<li>Real-time paths hold no full-resolution float planes.</li>
+</ul>
+
+<h2>Determinism</h2>
+<ul>
+<li>Random values and dithers come only from the counter hash of {{src:src/foundation/include/hdrgrading/foundation/hash.h|hash.h}} (key, x, y, sample); <code>rand()</code> and sequential random streams are not allowed.</li>
+<li>Transcendental functions come from {{src:src/foundation/include/hdrgrading/foundation/math.h|math.h}} (and, in pixel loops, {{src:src/foundation/include/hdrgrading/foundation/fmath.h|fmath.h}}), never libm's <code>powf</code>, <code>expf</code>, <code>log2f</code>.</li>
+<li>Parallel work goes through the context's pool with a fixed split (<code>hdrg_exec_t</code>); the output never depends on the thread count. The FP environment is pinned at every entry point and worker; contraction is off (<code>-ffp-contract=off</code>).</li>
+<li>The three temporal features are plugins the library calls through the stages' ABI alone, chosen like any built-in plugin (<code>HDRG_WITH_TEMPORAL</code>): the statistics across frames in the STATS plugin ({{src:src/plugins/stats}}), the motion-compensated interpolation in interp (<code>HDRG_INTERP_MC</code>), the multi-frame upscaling in edge (<code>HDRG_SCALE_TEMPORAL</code>). The core knows nothing of the build: a session's defaults follow the filters there are (a STATS filter: the past window). What touches them stays in those plugins, and a test of them goes by the generated <code>HDRG_BUILTIN_STATS</code> / <code>_INTERP_MC</code> / <code>_SCALE_TEMPORAL</code>: the build passes with them off (the default) and on (<code>temporal</code>).</li>
+</ul>
+
+<h2>The public API and the plugin ABI</h2>
+<ul>
+<li>A public function is declared on one line of a public header with <code>HDRG_API</code>: CMake builds the shared library's export list from those lines and <code>test_exports</code> checks it.</li>
+<li>Status codes, kinds and flags are fixed <code>uint32_t</code> / <code>uint8_t</code> constants, not enums; structs that grow carry <code>struct_size</code>.</li>
+<li>The filter ABI ({{src:include/hdrgrading/filter.h}}) stays at version 1 until it is frozen; until then, its table, signatures and meaning may change without a version bump, and the table is ordered by purpose.</li>
+<li>Built-in plugins ({{src:src/plugins}}) include only the public headers, their own directory and the layers they build on ({{src:src/foundation}}, {{src:src/gpu}}, {{src:src/plugins/shared}}), never the core (check_style's <code>filter-include</code>); external plugins and the bindings, the public headers alone. Strings from plugins are taken with explicit lengths, validated and copied.</li>
+<li>The built-in plugins that <code>HDRG_PLUGINS_EXCLUDE</code> can leave out (the list in {{src:src/plugins/CMakeLists.txt}}) stay so: the library runs without each (its defaults off, an explicit use {{api:HDRG_ERR_UNSUPPORTED}}), which <code>minimal</code> keeps true, and the tests avoid what is left out.</li>
+</ul>
+
+<h2>SIMD and shaders</h2>
+<ul>
+<li>A kernel is written once in {{src:src/kernels/vmath.h}} over the per-ISA primitives (<code>v_&lt;isa&gt;.h</code>); every tier follows the scalar reference's operations, without approximate instructions; a multiply followed by an add is <code>hdrg_vf_fma</code>, fused or not by <code>HDRG_WITH_SIMD_FMA</code>. A new kernel comes with its comparison in test_kernels.</li>
+<li>WGSL is the source of every shader; regenerate MSL / SPIR-V / HLSL with {{src:scripts/gen_shaders.sh}} and commit them. A <code>var</code> in a loop always has an initializer (lavapipe does not reset one without it).</li>
+<li>GPU results agree with the CPU within L2; add the comparison to the GPU tests.</li>
+</ul>
+
+<h2>Presets and evaluation</h2>
+<ul>
+<li>PHOTO's defaults are tuned by fidelity numbers (16-bit truth, PSNR against undegraded originals, chroma error, texture kept).</li>
+<li>ANIME's defaults and the choice of methods are judged by eye at 200 to 400 %; numbers are regression checks, not rankings. Line art is left alone by default.</li>
+<li>Evaluation images are kept out of the repository and the public pages.</li>
+</ul>
+
+<h2>Records</h2>
+<ul>
+<li>{{src:CLAUDE.md}}: the file structure, kept current when files or names change.</li>
+<li>Generic behavior comes first; nothing is tuned for one platform or service.</li>
+</ul>

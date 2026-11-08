@@ -1,0 +1,61 @@
+# branch = <tag> is intentional: Renovate's git-submodules manager follows new
+# semver tags through this field (see renovate.json). For manual updates run
+# `git fetch && git checkout <tag>` inside the submodule — see CONTRIBUTING.md.
+[submodule "third_party/libpng"]
+	path = third_party/libpng
+	url = https://github.com/pnggroup/libpng.git
+	branch = v1.6.58
+[submodule "third_party/lcms2"]
+	path = third_party/lcms2
+	url = https://github.com/mm2/Little-CMS.git
+	branch = lcms2.20
+[submodule "third_party/unity"]
+	path = third_party/unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
+	branch = v2.7.0
+# jpegli has no release tags: pinned by commit only (no branch entry;
+# Renovate updates are disabled for it in renovate.json — check upstream
+# manually, see README).
+[submodule "third_party/jpegli"]
+	path = third_party/jpegli
+	url = https://github.com/google/jpegli.git
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/madler/zlib.git
+	branch = v1.3.2
+[submodule "third_party/giflib"]
+	path = third_party/giflib
+	url = https://git.code.sf.net/p/giflib/code
+	branch = 5.2.2
+[submodule "third_party/emsdk"]
+	path = third_party/emsdk
+	url = https://github.com/emscripten-core/emsdk.git
+	branch = 6.0.13
+[submodule "third_party/vapoursynth"]
+	path = third_party/vapoursynth
+	url = https://github.com/vapoursynth/vapoursynth.git
+	branch = R81
+[submodule "third_party/fidelityfx-fsr"]
+	path = third_party/fidelityfx-fsr
+	url = https://github.com/GPUOpen-Effects/FidelityFX-FSR.git
+	branch = v1.0.2
+[submodule "third_party/nis"]
+	path = third_party/nis
+	url = https://github.com/NVIDIAGameWorks/NVIDIAImageScaling.git
+	branch = v1.0.3
+[submodule "third_party/sdl"]
+	path = third_party/sdl
+	url = https://github.com/libsdl-org/SDL.git
+	branch = release-3.4.20
+[submodule "third_party/imgui"]
+	path = third_party/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = v1.93.0
+[submodule "third_party/libjxl"]
+	path = third_party/libjxl
+	url = https://github.com/libjxl/libjxl.git
+	branch = v0.12.0
+[submodule "third_party/brotli"]
+	path = third_party/brotli
+	url = https://github.com/google/brotli.git
+	branch = v1.2.1

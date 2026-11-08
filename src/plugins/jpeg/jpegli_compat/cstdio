@@ -1,0 +1,10 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ * Copyright (c) 2026 Go Kudo <zeriyoshi@gmail.com>
+ */
+
+#ifdef __cplusplus
+#include_next <cstdio>
+#else
+#include <stdio.h>
+#endif

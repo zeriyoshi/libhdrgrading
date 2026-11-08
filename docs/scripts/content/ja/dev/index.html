@@ -1,0 +1,21 @@
+<p class="lead">libhdrgrading のメンテナのための資料です: 公開ヘッダから作った API リファレンス、すべての構成のビルド、変更の確認方法、コードの規約、ソースマップ。</p>
+
+<div class="table-wrap"><table>
+<tbody>
+<tr><td>{{page:api/index}}</td><td>8 つの公開ヘッダ (hdrgrading.h・video.h・gpu.h・metadata.h・sidedata.h・plugin.h・filter.h・codec.h) の関数・型・定数のすべてを、ヘッダ自体のコメントと相互のリンク付きで。<code>include/hdrgrading/*.h</code> から作ります。</td></tr>
+<tr><td>{{page:build}}</td><td>依存、CMake のプリセットとオプション、GPU の道具 (Dawn・Tint)、FFmpeg、WebAssembly、ライブラリの install と使い方。</td></tr>
+<tr><td>{{page:verification}}</td><td>テストの一式、検証の 3 段階、空きメモリからの並列の数、CI、決定性の水準。</td></tr>
+<tr><td>{{page:conventions}}</td><td>C の書き方 (<code>scripts/check_style.py</code> が検査)、メモリ、決定性、公開 API、シェーダ、SIMD、プリセットの評価、CLAUDE.md。</td></tr>
+<tr><td>{{page:sources}}</td><td>どのディレクトリとファイルが何を持つか。</td></tr>
+<tr><td>{{page:manual}}</td><td>このマニュアルの作り方と、ページと図の直し方。</td></tr>
+</tbody></table></div>
+
+<h2>基本の約束</h2>
+<ul>
+<li>ライブラリは未完成です: 下位互換は保たず、プラグインの ABI もフリーズまで版 1 のままです。</li>
+<li>ファイルや名前が変わったら {{src:CLAUDE.md}} (ファイル構造) も合わせて直します。</li>
+<li>出力は決定的で、それをテストします: 出力がスレッド数・FP の環境・実行ごとに変わる変更は誤りです ({{page:conventions}})。</li>
+</ul>
+
+<h2>次に読むもの</h2>
+<p>利用者向けの{{man:architecture}}と{{man:pipeline}}がライブラリの組み立てを説明します。{{src:CONTRIBUTING.md}} に開発環境と依存があります。</p>
