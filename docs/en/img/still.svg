@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 540" width="1060" height="540" class="hd-svg" role="img" aria-labelledby="still-title" lang="en">
+<title id="still-title">Still conversion: hdrg_convert from bytes to an HDR file</title>
+<desc>Decode with the color resolved, normalize the orientation, run the pipeline, write one of three forms with the context&#x27;s writer (a codec plugin).</desc>
+<style>
+.hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+@media (prefers-color-scheme: dark) {
+  .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+  html[data-theme="light"] .hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+}
+html[data-theme="dark"] .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+.hd-svg .hd-bg { fill: var(--hd-bg); }
+.hd-svg text { font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", sans-serif; fill: var(--hd-ink); }
+.hd-svg .hd-mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+.hd-svg .hd-label { font-size: 13px; font-weight: 600; }
+.hd-svg .hd-sub { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-gtitle { font-size: 12px; font-weight: 700; fill: var(--hd-muted); }
+.hd-svg .hd-note { font-size: 11.5px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel-bg { fill: var(--hd-bg); opacity: .92; }
+.hd-svg .hd-group { fill: var(--hd-group); stroke: var(--hd-group-stroke); stroke-width: 1; }
+.hd-svg .hd-edge { fill: none; stroke: var(--hd-line); stroke-width: 1.4; }
+.hd-svg .hd-edge.hd-dashed { stroke-dasharray: 5 4; }
+.hd-svg .hd-edge.hd-accent { stroke: var(--hd-accent); stroke-width: 1.8; }
+.hd-svg .hd-arrow { fill: var(--hd-line); }
+.hd-svg .hd-arrow.hd-accent { fill: var(--hd-accent); }
+.hd-svg .hd-k-app rect.hd-box { fill: var(--hd-app-fill); stroke: var(--hd-app-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-api rect.hd-box { fill: var(--hd-api-fill); stroke: var(--hd-api-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-entry rect.hd-box { fill: var(--hd-entry-fill); stroke: var(--hd-entry-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-core rect.hd-box { fill: var(--hd-core-fill); stroke: var(--hd-core-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-io rect.hd-box { fill: var(--hd-io-fill); stroke: var(--hd-io-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-plugin rect.hd-box { fill: var(--hd-plugin-fill); stroke: var(--hd-plugin-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-filter rect.hd-box { fill: var(--hd-filter-fill); stroke: var(--hd-filter-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-gpu rect.hd-box { fill: var(--hd-gpu-fill); stroke: var(--hd-gpu-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-common rect.hd-box { fill: var(--hd-common-fill); stroke: var(--hd-common-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box { fill: var(--hd-ext-fill); stroke: var(--hd-ext-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-data rect.hd-box { fill: var(--hd-data-fill); stroke: var(--hd-data-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box, .hd-svg .hd-k-data rect.hd-box { stroke-dasharray: 4 3; }
+</style>
+<rect class="hd-bg" x="0" y="0" width="1060" height="540"/>
+<rect class="hd-group" x="140" y="176" width="440" height="206" rx="10"/>
+<text class="hd-gtitle" x="152" y="194">Readers and the input color</text>
+<rect class="hd-group" x="600" y="176" width="440" height="118" rx="10"/>
+<text class="hd-gtitle" x="612" y="194">Forms (encode.output_mode)</text>
+<rect class="hd-group" x="600" y="306" width="440" height="146" rx="10"/>
+<text class="hd-gtitle" x="612" y="324">Writers (hdrg_context_set_writer)</text>
+<rect class="hd-group" x="20" y="176" width="100" height="206" rx="10"/>
+<text class="hd-gtitle" x="32" y="194">Settings</text>
+<polyline class="hd-edge" points="124.0,122.0 134.0,122.0"/>
+<polygon class="hd-arrow" points="140.0,122.0 133.0,118.5 133.0,125.5"/>
+<polyline class="hd-edge" points="260.0,122.0 274.0,122.0"/>
+<polygon class="hd-arrow" points="280.0,122.0 273.0,118.5 273.0,125.5"/>
+<polyline class="hd-edge" points="430.0,122.0 444.0,122.0"/>
+<polygon class="hd-arrow" points="450.0,122.0 443.0,118.5 443.0,125.5"/>
+<polyline class="hd-edge" points="580.0,122.0 594.0,122.0"/>
+<polygon class="hd-arrow" points="600.0,122.0 593.0,118.5 593.0,125.5"/>
+<polyline class="hd-edge" points="750.0,122.0 764.0,122.0"/>
+<polygon class="hd-arrow" points="770.0,122.0 763.0,118.5 763.0,125.5"/>
+<polyline class="hd-edge" points="910.0,122.0 924.0,122.0"/>
+<polygon class="hd-arrow" points="930.0,122.0 923.0,118.5 923.0,125.5"/>
+<polyline class="hd-edge" points="270.0,38.0 675.0,38.0 675.0,90.0"/>
+<polygon class="hd-arrow" points="675.0,96.0 671.5,89.0 678.5,89.0"/>
+<polyline class="hd-edge" points="355.0,148.0 355.2,170.0"/>
+<polygon class="hd-arrow" points="355.2,176.0 351.7,169.0 358.7,169.0"/>
+<polyline class="hd-edge" points="840.0,148.0 839.8,170.0"/>
+<polygon class="hd-arrow" points="839.8,176.0 836.3,169.0 843.3,169.0"/>
+<g class="hd-k-data">
+<rect class="hd-box" x="20" y="96" width="104" height="52" rx="7"/>
+<text class="hd-label" x="72.0" y="126.0" text-anchor="middle">Input bytes</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="140" y="96" width="120" height="52" rx="7"/>
+<text class="hd-label" x="200.0" y="119.0" text-anchor="middle">Format</text>
+<text class="hd-sub" x="200.0" y="134.0" text-anchor="middle">readers probe</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="280" y="96" width="150" height="52" rx="7"/>
+<text class="hd-label" x="355.0" y="119.0" text-anchor="middle">Reader</text>
+<text class="hd-sub hd-mono" x="355.0" y="134.0" text-anchor="middle">plugins/&lt;codec&gt;</text>
+</g>
+<g class="hd-k-entry">
+<rect class="hd-box" x="450" y="96" width="130" height="52" rx="7"/>
+<text class="hd-label" x="515.0" y="119.0" text-anchor="middle">Orientation</text>
+<text class="hd-sub" x="515.0" y="134.0" text-anchor="middle">EXIF 2..8 → 1</text>
+</g>
+<g class="hd-k-entry">
+<rect class="hd-box" x="600" y="96" width="150" height="52" rx="7"/>
+<text class="hd-label" x="675.0" y="119.0" text-anchor="middle">Pipeline</text>
+<text class="hd-sub hd-mono" x="675.0" y="134.0" text-anchor="middle">pipeline.c</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="770" y="96" width="140" height="52" rx="7"/>
+<text class="hd-label" x="840.0" y="119.0" text-anchor="middle">Writer</text>
+<text class="hd-sub hd-mono" x="840.0" y="134.0" text-anchor="middle">container.c</text>
+</g>
+<g class="hd-k-data">
+<rect class="hd-box" x="930" y="96" width="122" height="52" rx="7"/>
+<text class="hd-label" x="991.0" y="119.0" text-anchor="middle">HDR file</text>
+<text class="hd-sub" x="991.0" y="134.0" text-anchor="middle">the writer&#x27;s</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="20" y="16" width="250" height="44" rx="7"/>
+<text class="hd-label" x="145.0" y="35.0" text-anchor="middle">hdrg_convert_raw</text>
+<text class="hd-sub" x="145.0" y="50.0" text-anchor="middle">pixels + H.273 primaries / transfer</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="156" y="202" width="200" height="50" rx="7"/>
+<text class="hd-label" x="256.0" y="217.0" text-anchor="middle">JPEG · jpegli</text>
+<text class="hd-sub" x="256.0" y="232.0" text-anchor="middle">ICC &gt; EXIF R03 &gt; sRGB;</text>
+<text class="hd-sub" x="256.0" y="246.0" text-anchor="middle">4:2:0 / 4:2:2: chroma from luma</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="368" y="202" width="200" height="50" rx="7"/>
+<text class="hd-label" x="468.0" y="224.0" text-anchor="middle">PNG · libpng</text>
+<text class="hd-sub" x="468.0" y="239.0" text-anchor="middle">cICP &gt; iCCP &gt; sRGB &gt; cHRM/gAMA</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="156" y="260" width="200" height="50" rx="7"/>
+<text class="hd-label" x="256.0" y="282.0" text-anchor="middle">GIF · giflib</text>
+<text class="hd-sub" x="256.0" y="297.0" text-anchor="middle">the first image</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="368" y="260" width="200" height="50" rx="7"/>
+<text class="hd-label" x="468.0" y="282.0" text-anchor="middle">AVIF · module</text>
+<text class="hd-sub" x="468.0" y="297.0" text-anchor="middle">CICP / ICC; PQ, HLG rejected</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="614.0" y="202" width="130.66666666666666" height="78" rx="7"/>
+<text class="hd-label" x="679.3" y="231.0" text-anchor="middle">GAINMAP</text>
+<text class="hd-sub" x="679.3" y="246.0" text-anchor="middle">SDR base + gain</text>
+<text class="hd-sub" x="679.3" y="260.0" text-anchor="middle">map</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="754.6666666666666" y="202" width="130.66666666666666" height="78" rx="7"/>
+<text class="hd-label" x="820.0" y="231.0" text-anchor="middle">HYBRID</text>
+<text class="hd-sub" x="820.0" y="246.0" text-anchor="middle">PQ base + SDR-</text>
+<text class="hd-sub" x="820.0" y="260.0" text-anchor="middle">recovering map</text>
+</g>
+<g class="hd-k-core">
+<rect class="hd-box" x="895.3333333333333" y="202" width="130.66666666666666" height="78" rx="7"/>
+<text class="hd-label" x="960.7" y="238.0" text-anchor="middle">PQ</text>
+<text class="hd-sub" x="960.7" y="253.0" text-anchor="middle">single-layer PQ</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="614.0" y="332" width="97.0" height="106" rx="7"/>
+<text class="hd-label" x="662.5" y="368.0" text-anchor="middle">JPEG</text>
+<text class="hd-sub" x="662.5" y="383.0" text-anchor="middle">jpegli + MPF,</text>
+<text class="hd-sub" x="662.5" y="397.0" text-anchor="middle">ISO 21496-1,</text>
+<text class="hd-sub" x="662.5" y="411.0" text-anchor="middle">XMP, ICC</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="719.0" y="332" width="97.0" height="106" rx="7"/>
+<text class="hd-label" x="767.5" y="368.0" text-anchor="middle">JXL</text>
+<text class="hd-sub" x="767.5" y="383.0" text-anchor="middle">built in:</text>
+<text class="hd-sub" x="767.5" y="397.0" text-anchor="middle">libjxl, jhgm</text>
+<text class="hd-sub" x="767.5" y="411.0" text-anchor="middle">gain map</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="824.0" y="332" width="97.0" height="106" rx="7"/>
+<text class="hd-label" x="872.5" y="368.0" text-anchor="middle">AVIF</text>
+<text class="hd-sub" x="872.5" y="383.0" text-anchor="middle">module: AV1,</text>
+<text class="hd-sub" x="872.5" y="397.0" text-anchor="middle">CICP, clli, ISO</text>
+<text class="hd-sub" x="872.5" y="411.0" text-anchor="middle">gain map</text>
+</g>
+<g class="hd-k-io">
+<rect class="hd-box" x="929.0" y="332" width="97.0" height="106" rx="7"/>
+<text class="hd-label" x="977.5" y="368.0" text-anchor="middle">HEIF</text>
+<text class="hd-sub" x="977.5" y="383.0" text-anchor="middle">module: HEVC,</text>
+<text class="hd-sub" x="977.5" y="397.0" text-anchor="middle">tmap + Apple</text>
+<text class="hd-sub" x="977.5" y="411.0" text-anchor="middle">(opt-in)</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="28" y="202" width="84" height="50" rx="7"/>
+<text class="hd-label" x="70.0" y="224.0" text-anchor="middle">params</text>
+<text class="hd-sub" x="70.0" y="239.0" text-anchor="middle">intent</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="28" y="262" width="84" height="50" rx="7"/>
+<text class="hd-label" x="70.0" y="284.0" text-anchor="middle">display</text>
+<text class="hd-sub" x="70.0" y="299.0" text-anchor="middle">caps</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="28" y="322" width="84" height="50" rx="7"/>
+<text class="hd-label" x="70.0" y="344.0" text-anchor="middle">encode</text>
+<text class="hd-sub" x="70.0" y="359.0" text-anchor="middle">form</text>
+</g>
+<text class="hd-note" x="368" y="336" text-anchor="start">ICC: matrix + TRC read directly,</text>
+<text class="hd-note" x="368" y="351" text-anchor="start">LUT profiles through lcms2</text>
+<text class="hd-note" x="20" y="482" text-anchor="start">A still file is graded for the assumed viewing (hdrg_container_caps): 203-nit white, the gain map&#x27;s 3-stop cap, Display P3 (JPEG: with lcms2); one call, effort QUALITY, grain PRESERVE.</text>
+<text class="hd-note" x="20" y="500" text-anchor="start">output_mode AUTO is the writer&#x27;s default form: GAINMAP for JPEG, AVIF and HEIF, HYBRID for JPEG XL; the default writer is hdrg.jpeg.</text>
+<text class="hd-note" x="20" y="518" text-anchor="start">Output buffers carry their allocator: hdrg_free works after the context is gone.</text>
+</svg>

@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# Dependabot keeps the workflows' actions (and with them .github/workflows/actions.lock, which it
+# regenerates in the same pull request) and the Docker base images (the development image's and
+# .github/docker's, tag and digest). Renovate (renovate.json) keeps the submodules and the versions
+# in the development image's ARGs (LLVM, Valgrind, VapourSynth, emsdk).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Tokyo
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: docker
+    directories:
+      - /.devcontainer
+      - /.github/docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Tokyo
+    groups:
+      images:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

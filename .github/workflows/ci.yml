@@ -1,0 +1,542 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Repository checks
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: emsdk version is the same in .gitmodules and the dev image
+        run: |
+          submodule="$(git config -f .gitmodules --get submodule.third_party/emsdk.branch)"
+          image="$(sed -n 's/^ARG EMSDK_VERSION=//p' .devcontainer/Dockerfile)"
+          if [ "$submodule" != "$image" ]; then
+            echo "::error file=.devcontainer/Dockerfile::EMSDK_VERSION=$image but .gitmodules has $submodule"
+            exit 1
+          fi
+      - name: VapourSynth version is the same in .gitmodules and the dev image
+        run: |
+          submodule="$(git config -f .gitmodules --get submodule.third_party/vapoursynth.branch)"
+          image="$(sed -n 's/^ARG VAPOURSYNTH_VERSION=//p' .devcontainer/Dockerfile)"
+          if [ "$submodule" != "$image" ]; then
+            echo "::error file=.devcontainer/Dockerfile::VAPOURSYNTH_VERSION=$image but .gitmodules has $submodule"
+            exit 1
+          fi
+      - name: Dawn tag is the same in scripts/build_dawn.sh and the dev image
+        run: |
+          script="$(sed -n 's/^DAWN_TAG=//p' scripts/build_dawn.sh)"
+          image="$(sed -n 's/^ARG DAWN_TAG=//p' .devcontainer/Dockerfile)"
+          if [ "$script" != "$image" ]; then
+            echo "::error file=.devcontainer/Dockerfile::DAWN_TAG=$image but scripts/build_dawn.sh has $script"
+            exit 1
+          fi
+      - name: Shell scripts parse
+        run: for f in scripts/*.sh; do bash -n "$f"; done
+      - name: C conventions (CLAUDE.md, scripts/check_style.py)
+        run: python3 -I scripts/check_style.py
+      # docs/ is generated from the public headers, its page sources and its diagrams: a change
+      # to them commits the rebuilt docs too (python3 -I docs/scripts/build.py)
+      - name: Docs are up to date (docs/scripts/build.py)
+        run: python3 -I docs/scripts/build.py --check --strict
+      # .github/workflows/actions.lock: every workflow's actions locked, each lock where its tag points.
+      # gh-actions-lock is pinned (its lockfile format still changes before 1.0): raise it by hand,
+      # with the version that wrote the lockfile
+      - name: Actions lockfile is complete and resolves
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh extension install github/gh-actions-lock --pin v0.4.1
+          gh actions-lock --verify
+
+  format:
+    name: clang-format (LLVM 23)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: amd64
+      - name: Check formatting
+        run: |
+          scripts/docker_dev.sh bash -c \
+            'find src include tools tests -name "*.[ch]" -print0 | xargs -0 clang-format --dry-run --Werror --style=file'
+      # the committed MSL / SPIR-V / HLSL are Tint's (the image's, of the pinned Dawn tag) of the WGSL
+      - name: Generated MSL is up to date
+        run: scripts/docker_dev.sh scripts/gen_shaders.sh --check
+
+  linux:
+    name: Linux ${{ matrix.arch }} ${{ matrix.compiler }} ${{ matrix.preset }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-26.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        compiler: [gcc-16, clang]
+        preset: [dev, release]
+        include:
+          # without lcms2: GAINMAP only, sRGB container, the suites needing PQ skip
+          - arch: amd64
+            compiler: gcc-16
+            preset: nolcms2
+          # with the temporal features, off by default (the coverage jobs build them too)
+          - arch: amd64
+            compiler: clang
+            preset: temporal
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Build and test
+        run: |
+          if [ "${{ matrix.compiler }}" = clang ]; then cc=clang; cxx=clang++; else cc=gcc-16; cxx=g++-16; fi
+          scripts/docker_dev.sh env CC="$cc" CXX="$cxx" cmake --workflow --preset ${{ matrix.preset }}
+
+  sanitize:
+    name: Linux ${{ matrix.arch }} ${{ matrix.preset }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-26.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        preset: [asan-ubsan, tsan]
+        include:
+          - arch: amd64
+            preset: msan-core
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Reduce ASLR entropy for TSan/MSan (high mmap_rnd_bits breaks their shadow mapping)
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - name: Build and test
+        run: scripts/docker_dev.sh env CC=clang CXX=clang++ cmake --workflow --preset ${{ matrix.preset }}
+
+  fuzz:
+    name: Fuzz smoke (libFuzzer, 3 min)
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: amd64
+      # the corpus grows from run to run (libFuzzer keeps the inputs that reach new code, smaller
+      # ones in place of larger): each run on main saves it, every run starts from the latest
+      - id: corpus
+        name: Restore the corpus of the earlier runs
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/fuzz-corpus
+          key: fuzz-corpus-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: fuzz-corpus-
+      - name: Build and fuzz
+        # seeds from fuzz_seeds: small files keep the runs short (the image's build prefix is linux-)
+        run: |
+          scripts/docker_dev.sh bash -c 'cmake --preset fuzz && cmake --build --preset fuzz && \
+            mkdir -p build/fuzz-corpus build/fuzz-crashes && \
+            "build/${HDRG_BUILD_PREFIX}fuzz/fuzz_seeds" build/fuzz-corpus && \
+            "build/${HDRG_BUILD_PREFIX}fuzz/fuzz_convert" -max_total_time=180 -rss_limit_mb=4096 \
+              -artifact_prefix=build/fuzz-crashes/ build/fuzz-corpus'
+      # the input of a crash, a leak or a timeout (it may come from the restored corpus)
+      - if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: fuzz-crashes
+          path: build/fuzz-crashes
+          if-no-files-found: ignore
+          retention-days: 14
+      - if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/fuzz-corpus
+          key: fuzz-corpus-${{ github.run_id }}-${{ github.run_attempt }}
+
+  ffmpeg-filter:
+    name: FFmpeg's libhdrgrading filter (Linux amd64)
+    runs-on: ubuntu-26.04
+    env:
+      # the container's ~/.cache (scripts/docker_dev.sh): FFmpeg's clone of the tag and the ccache of
+      # its compiles, kept in the Actions cache (written only outside pull requests)
+      HDRG_DEV_CACHE: ${{ github.workspace }}/build/dev-cache
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: amd64
+      - id: ffmpeg
+        name: FFmpeg's tag (scripts/build_ffmpeg.sh)
+        run: echo "tag=$(sed -n 's/^FFMPEG_TAG=//p' scripts/build_ffmpeg.sh)" >> "$GITHUB_OUTPUT"
+      - id: ffmpeg-source
+        name: Restore FFmpeg's clone
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/dev-cache/ffmpeg
+          key: ffmpeg-source-${{ steps.ffmpeg.outputs.tag }}
+      - name: Restore the ccache of FFmpeg's compiles
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/dev-cache/ccache
+          key: ffmpeg-ccache-${{ steps.ffmpeg.outputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ffmpeg-ccache-${{ steps.ffmpeg.outputs.tag }}-
+      - name: Build FFmpeg with the filter and test it
+        # a shared libhdrgrading installed, the latest FFmpeg with src/bindings/ffmpeg/patches against
+        # it (copied from the cached clone, compiled through ccache: only the filter's file changes
+        # with the library's headers), then test_filter of a shared build over that FFmpeg (the filter
+        # must be there) with hdrg.interp.mc (HDRG_WITH_TEMPORAL_INTERP: the filter's fps; the library the
+        # filter loads is the test build's)
+        run: |
+          scripts/docker_dev.sh bash -c 'set -e
+            b="$PWD/build/${HDRG_BUILD_PREFIX}"
+            cmake --preset release -B "${b}ff-filter-lib" -DBUILD_TESTING=OFF
+            cmake --build "${b}ff-filter-lib"
+            cmake --install "${b}ff-filter-lib" --prefix "${b}deps/hdrgrading"
+            export CCACHE_COMPILERCHECK=content CCACHE_MAXSIZE=1G
+            ccache --zero-stats > /dev/null
+            HDRG_FFMPEG_WORK="${b}deps" HDRG_FFMPEG_CACHE="$HOME/.cache/ffmpeg" PATH="/usr/lib/ccache:$PATH" \
+              scripts/build_ffmpeg.sh --filter "${b}deps/hdrgrading" "${b}deps/ffmpeg-filter"
+            ccache --show-stats
+            PKG_CONFIG_PATH="${b}deps/ffmpeg-filter/lib/pkgconfig" cmake --preset release \
+              -B "${b}ff-filter" -DHDRG_WITH_TEMPORAL_INTERP=ON
+            cmake --build "${b}ff-filter"
+            HDRG_TEST_REQUIRE_FILTER=1 ctest --test-dir "${b}ff-filter" -R test_filter \
+              --output-on-failure --no-tests=error'
+      - if: ${{ !cancelled() && github.event_name != 'pull_request' && steps.ffmpeg-source.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/dev-cache/ffmpeg
+          key: ffmpeg-source-${{ steps.ffmpeg.outputs.tag }}
+      - if: ${{ !cancelled() && github.event_name != 'pull_request' }}
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/dev-cache/ccache
+          key: ffmpeg-ccache-${{ steps.ffmpeg.outputs.tag }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+  wasm:
+    # the Emscripten builds; the tests and the browser module run under node (the
+    # WebGPU build's GPU is a browser's: node checks that it falls back to the CPU)
+    name: WASM ${{ matrix.preset }}
+    runs-on: ubuntu-26.04
+    env:
+      # the container's ~/.cache (scripts/docker_dev.sh): Emscripten's cache (the system libraries it
+      # builds on first use, the emdawnwebgpu port it fetches), kept in the Actions cache per preset
+      # (written only outside pull requests)
+      HDRG_DEV_CACHE: ${{ github.workspace }}/build/dev-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [wasm, wasm-mt, wasm-scalar, wasm-scalar-mt, wasm-webgpu]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: amd64
+      - id: emsdk
+        name: emsdk version (.devcontainer/Dockerfile)
+        run: echo "version=$(sed -n 's/^ARG EMSDK_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+      - id: emscripten
+        name: Restore Emscripten's cache
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/dev-cache/emscripten
+          key: emscripten-${{ steps.emsdk.outputs.version }}-${{ matrix.preset }}-${{ hashFiles('cmake/HdrgWasm.cmake') }}
+          restore-keys: emscripten-${{ steps.emsdk.outputs.version }}-${{ matrix.preset }}-
+      - name: Build and test
+        run: |
+          scripts/docker_dev.sh bash -c \
+            'source "$HDRG_EMSDK_DIR/emsdk_env.sh" > /dev/null && cmake --workflow --preset ${{ matrix.preset }}'
+      - if: ${{ !cancelled() && github.event_name != 'pull_request' && steps.emscripten.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/dev-cache/emscripten
+          key: emscripten-${{ steps.emsdk.outputs.version }}-${{ matrix.preset }}-${{ hashFiles('cmake/HdrgWasm.cmake') }}
+
+  coverage:
+    # every platform's tests under Clang source-based coverage (scripts/coverage.sh --keep-going: the
+    # report even when tests fail, then the job fails), its coverage.lcov merged by coverage-merge.
+    # x86 runs on an x64 runner (Linux: a linux/386 container; Windows: clang-cl -m32). The platforms
+    # not yet green on GitHub stay non-blocking (experimental).
+    name: Coverage ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # the development image (Debian 13: Dawn, lavapipe, FFmpeg, GStreamer)
+          - {name: debian-x64, runner: ubuntu-26.04, kind: dev-image, arch: amd64, experimental: false}
+          - {name: debian-arm64, runner: ubuntu-26.04-arm, kind: dev-image, arch: arm64, experimental: false}
+          # .github/docker's images
+          - {name: debian-x86, runner: ubuntu-26.04, kind: image, file: debian.Dockerfile, arch: '386', experimental: true}
+          - {name: alpine-x64, runner: ubuntu-26.04, kind: image, file: alpine.Dockerfile, arch: amd64, experimental: true}
+          - {name: alpine-x86, runner: ubuntu-26.04, kind: image, file: alpine.Dockerfile, arch: '386', experimental: true}
+          - {name: alpine-arm64, runner: ubuntu-26.04-arm, kind: image, file: alpine.Dockerfile, arch: arm64, experimental: true}
+          # Apple's Clang (Metal, CVPixelBuffer, MetalFX)
+          - {name: macos-arm64, runner: macos-26, kind: macos, experimental: false}
+          - {name: macos-x64, runner: macos-26-intel, kind: macos, experimental: false}
+          # clang-cl (the coverage-msvc preset)
+          - {name: windows-x64, runner: windows-2025, kind: windows, arch: x64, experimental: true}
+          - {name: windows-x86, runner: windows-2025, kind: windows, arch: x86, experimental: true}
+          - {name: windows-arm64, runner: windows-11-arm, kind: windows, arch: arm64, experimental: true}
+    env:
+      HDRG_COVERAGE_LABEL: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+        shell: bash
+
+      - if: matrix.kind == 'dev-image'
+        uses: $/.github/actions/dev-image
+        with:
+          arch: ${{ matrix.arch }}
+      - if: matrix.kind == 'dev-image'
+        name: Build, test and report (the development image)
+        run: scripts/docker_dev.sh scripts/coverage.sh --keep-going
+
+      - if: matrix.kind == 'image'
+        uses: $/.github/actions/ci-image
+        with:
+          file: ${{ matrix.file }}
+          platform: linux/${{ matrix.arch }}
+          name: ${{ matrix.name }}
+      - if: matrix.kind == 'image'
+        name: Build, test and report (hdrg-ci:${{ matrix.name }})
+        run: |
+          docker run --rm --platform "linux/${{ matrix.arch }}" -u "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e HDRG_BUILD_PREFIX="${{ matrix.name }}-" -e HDRG_COVERAGE_LABEL \
+            -e CMAKE_BUILD_PARALLEL_LEVEL="$(nproc)" -e CTEST_PARALLEL_LEVEL="$(nproc)" \
+            -v "$PWD:$PWD" -w "$PWD" \
+            "hdrg-ci:${{ matrix.name }}" bash scripts/coverage.sh --keep-going
+
+      - if: matrix.kind == 'macos'
+        name: Build, test and report
+        run: scripts/jobs.sh scripts/coverage.sh --keep-going
+
+      - if: matrix.kind == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: ${{ matrix.arch == 'x86' && 'amd64_x86' || matrix.arch }}
+      - if: matrix.kind == 'windows'
+        # the first clang-cl (the standalone LLVM, then Visual Studio's) whose resource directory has
+        # the profile runtime of the target (x86: -m32, whose runtime the x64 LLVM may lack)
+        name: clang-cl with the profile runtime of the target
+        shell: bash
+        run: |
+          case "${{ matrix.arch }}" in
+            x64) runtime=x86_64; flags= ;;
+            x86) runtime=i386; flags=-m32 ;;
+            arm64) runtime=aarch64; flags= ;;
+          esac
+          vs="$("/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe" -latest \
+            -products '*' -property installationPath | tr -d '\r')"
+          vs="$(cygpath -u "$vs")"
+          for bin in "/c/Program Files/LLVM/bin" "$vs/VC/Tools/Llvm/ARM64/bin" \
+                     "$vs/VC/Tools/Llvm/x64/bin" "$vs/VC/Tools/Llvm/bin"; do
+            if [ ! -x "$bin/clang-cl.exe" ]; then
+              continue
+            fi
+            dir="$(MSYS_NO_PATHCONV=1 "$bin/clang-cl.exe" $flags /clang:-print-runtime-dir | tr -d '\r')"
+            dir="$(cygpath -u "$dir")"
+            if [ -f "$dir/clang_rt.profile-$runtime.lib" ] || [ -f "$dir/clang_rt.profile.lib" ]; then
+              echo "clang-cl: $bin (profile runtime in $dir)"
+              cygpath -w "$bin" >> "$GITHUB_PATH"
+              if [ -n "$flags" ]; then
+                echo "CFLAGS=$flags" >> "$GITHUB_ENV"
+                echo "CXXFLAGS=$flags" >> "$GITHUB_ENV"
+              fi
+              exit 0
+            fi
+          done
+          echo "::error::no clang-cl with the profile runtime for $runtime"
+          exit 1
+      - if: matrix.kind == 'windows'
+        name: Build, test and report (clang-cl)
+        shell: bash
+        env:
+          HDRG_COVERAGE_PRESET: coverage-msvc
+          HDRG_PYTHON: python
+        run: CTEST_PARALLEL_LEVEL="$NUMBER_OF_PROCESSORS" scripts/coverage.sh --keep-going
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: cat build/*coverage*/hdrg-coverage/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: coverage-lcov-${{ matrix.name }}
+          path: |
+            build/*coverage*/hdrg-coverage/coverage.lcov
+            build/*coverage*/hdrg-coverage/summary.md
+            build/*coverage*/hdrg-coverage/uncovered.md
+          if-no-files-found: warn
+          retention-days: 14
+
+  coverage-merge:
+    # the platforms' coverage.lcov as one (scripts/coverage_merge.py: run on any platform, built on
+    # any) with genhtml's report; Pages (pages.yml) publishes it from main's run
+    name: Coverage of every platform
+    needs: coverage
+    if: always()
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: coverage-lcov-*
+          path: build/coverage-platforms
+      - name: Install lcov (genhtml)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends lcov
+      - name: Merge
+        run: |
+          inputs=()
+          while IFS= read -r file; do
+            label="${file#build/coverage-platforms/coverage-lcov-}"
+            inputs+=("${label%%/*}=$file")
+          done < <(find build/coverage-platforms -name coverage.lcov | sort)
+          if [ "${#inputs[@]}" -eq 0 ]; then
+            echo "::error::no platform's coverage.lcov"
+            exit 1
+          fi
+          python3 -I scripts/coverage_merge.py build/coverage-merged "${inputs[@]}"
+          cat build/coverage-merged/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: HTML
+        run: |
+          genhtml --branch-coverage --ignore-errors inconsistent,range,unmapped \
+            --title "libhdrgrading: every platform" --output-directory build/coverage-merged/html \
+            build/coverage-merged/merged.lcov
+          cp build/coverage-merged/summary.md build/coverage-merged/uncovered.md \
+            build/coverage-merged/html/
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: coverage-html
+          path: build/coverage-merged/html
+          retention-days: 14
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: coverage-uncovered
+          path: |
+            build/coverage-merged/summary.md
+            build/coverage-merged/uncovered.md
+            build/coverage-merged/merged.lcov
+          retention-days: 14
+
+  macos:
+    name: macOS ${{ matrix.runner }} ${{ matrix.preset }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26
+            preset: dev
+          - runner: macos-26
+            preset: asan-ubsan
+          - runner: macos-26-intel
+            preset: release
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - run: scripts/jobs.sh cmake --workflow --preset ${{ matrix.preset }}
+
+  windows:
+    # Not verified yet on Windows: kept non-blocking until the first green run.
+    name: Windows ${{ matrix.arch }} ${{ matrix.compiler }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-2025' }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            compiler: clang-cl
+          - arch: arm64
+            compiler: clang-cl
+          - arch: x64
+            compiler: cl
+          # 32-bit x86: MSVC's x64-to-x86 cross compiler on the x64 runner
+          - arch: x86
+            compiler: cl
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+        shell: bash
+      - uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: ${{ matrix.arch == 'x86' && 'amd64_x86' || matrix.arch }}
+      - name: Build and test
+        shell: bash
+        run: |
+          cmake -S . -B build/windows -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=${{ matrix.compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+          cmake --build build/windows
+          ctest --test-dir build/windows --output-on-failure --parallel
+
+  gui:
+    # hdrg-gui (tools/gui) on each platform with its tests (kodim23 through the player and the
+    # export, no window): Linux with GStreamer and with FFmpeg (the development image), macOS,
+    # Windows (not yet green on GitHub: non-blocking)
+    name: GUI ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: linux-gstreamer, runner: ubuntu-26.04, kind: dev-image, options: '', experimental: false}
+          - {name: linux-ffmpeg, runner: ubuntu-26.04, kind: dev-image, options: '-DHDRG_GUI_MEDIA=ffmpeg', experimental: false}
+          - {name: macos, runner: macos-26, kind: macos, options: '', experimental: false}
+          - {name: windows-x64, runner: windows-2025, kind: windows, arch: x64, options: '', experimental: true}
+          - {name: windows-arm64, runner: windows-11-arm, kind: windows, arch: arm64, options: '', experimental: true}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+        shell: bash
+      - if: matrix.kind == 'dev-image'
+        uses: $/.github/actions/dev-image
+        with:
+          arch: amd64
+      - if: matrix.kind == 'dev-image'
+        name: Build and test (the development image)
+        run: |
+          scripts/docker_dev.sh bash -c 'cmake --preset dev -B build/linux-gui -DHDRG_BUILD_GUI=ON ${{ matrix.options }} &&
+            cmake --build build/linux-gui --target hdrg-gui &&
+            ctest --test-dir build/linux-gui -R test_gui --output-on-failure --no-tests=error'
+      - if: matrix.kind == 'macos'
+        name: Build and test
+        run: |
+          scripts/jobs.sh bash -c 'cmake --preset dev -B build/gui -DHDRG_BUILD_GUI=ON &&
+            cmake --build build/gui --target hdrg-gui &&
+            ctest --test-dir build/gui -R test_gui --output-on-failure --no-tests=error'
+      - if: matrix.kind == 'windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+        with:
+          arch: ${{ matrix.arch }}
+      - if: matrix.kind == 'windows'
+        name: Build and test (clang-cl)
+        shell: bash
+        run: |
+          cmake -S . -B build/gui -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DHDRG_BUILD_GUI=ON
+          cmake --build build/gui --target hdrg-gui
+          ctest --test-dir build/gui -R test_gui --output-on-failure --no-tests=error

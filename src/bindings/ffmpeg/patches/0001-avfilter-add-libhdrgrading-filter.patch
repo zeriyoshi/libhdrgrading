@@ -1,0 +1,855 @@
+From 30fa58d8618f5fa39b2d866d5d4312c9265cac15 Mon Sep 17 00:00:00 2001
+From: Go Kudo <zeriyoshi@gmail.com>
+Date: Sat, 7 Nov 2026 03:26:22 +0900
+Subject: [PATCH] avfilter: add libhdrgrading filter
+
+Grade SDR video into single-layer PQ HDR over BT.2020 with libhdrgrading
+(https://github.com/zeriyoshi/libhdrgrading). Each output frame carries the
+mastering display and its own HDR10+ and SMPTE ST 2094-50 metadata.
+
+The filter holds the frames of its statistics window and sends them on at
+the end of the stream; it can change the output size and frame rate (the
+frames between interpolated by the library).
+---
+ configure                      |   4 +
+ doc/filters.texi               |  86 ++++
+ libavfilter/Makefile           |   1 +
+ libavfilter/allfilters.c       |   1 +
+ libavfilter/vf_libhdrgrading.c | 668 +++++++++++++++++++++++++++++++++
+ 5 files changed, 760 insertions(+)
+ create mode 100644 libavfilter/vf_libhdrgrading.c
+
+diff --git a/configure b/configure
+index 374bd5c..8cac448 100755
+--- a/configure
++++ b/configure
+@@ -237,6 +237,7 @@ External library support:
+   --enable-libfreetype     enable libfreetype, needed for drawtext filter [no]
+   --enable-libfribidi      enable libfribidi, improves drawtext filter [no]
+   --enable-libharfbuzz     enable libharfbuzz, needed for drawtext filter [no]
++  --enable-libhdrgrading   enable SDR to HDR grading via libhdrgrading [no]
+   --enable-libgme          enable Game Music Emu via libgme [no]
+   --enable-libgsm          enable GSM de/encoding via libgsm [no]
+   --enable-libiec61883     enable iec61883 via libiec61883 [no]
+@@ -2089,6 +2090,7 @@ EXTERNAL_LIBRARY_LIST="
+     libfreetype
+     libfribidi
+     libharfbuzz
++    libhdrgrading
+     libgme
+     libgsm
+     libiec61883
+@@ -4209,6 +4211,7 @@ kerndeint_filter_deps="gpl"
+ ladspa_filter_deps="ladspa libdl"
+ lcevc_filter_deps="liblcevc_dec"
+ lensfun_filter_deps="liblensfun version3"
++libhdrgrading_filter_deps="libhdrgrading"
+ libplacebo_filter_deps="libplacebo vulkan"
+ lv2_filter_deps="lv2"
+ mcdeint_filter_deps="avcodec gpl"
+@@ -7347,6 +7350,7 @@ enabled libfontconfig     && require_pkg_config libfontconfig fontconfig "fontco
+ enabled libfreetype       && require_pkg_config libfreetype freetype2 "ft2build.h FT_FREETYPE_H" FT_Init_FreeType
+ enabled libfribidi        && require_pkg_config libfribidi fribidi fribidi.h fribidi_version_info
+ enabled libharfbuzz       && require_pkg_config libharfbuzz harfbuzz hb.h hb_buffer_create
++enabled libhdrgrading     && require_pkg_config libhdrgrading "hdrgrading >= 0.0.1" hdrgrading/video.h hdrg_hdr10plus_t35
+ enabled libgme            && { check_pkg_config libgme libgme gme/gme.h gme_new_emu ||
+                                require libgme gme/gme.h gme_new_emu -lgme -lstdc++; }
+ enabled libgsm            && { for gsm_hdr in "gsm.h" "gsm/gsm.h"; do
+diff --git a/doc/filters.texi b/doc/filters.texi
+index 3534c87..e7d7434 100644
+--- a/doc/filters.texi
++++ b/doc/filters.texi
+@@ -16702,6 +16702,92 @@ ffmpeg -i input.mov -vf lensfun=make=Canon:model="Canon EOS 100D":lens_model="Ca
+ Low Complexity Enhancement Video Codec filter based on liblcevc_dec
+ (@url{https://github.com/v-novaltd/LCEVCdec}).
+ 
++@section libhdrgrading
++
++Grade SDR video into HDR with libhdrgrading
++(@url{https://github.com/zeriyoshi/libhdrgrading}): the frames come out as
++single-layer PQ (SMPTE ST 2084) over BT.2020, brighter where the content
++allows (light sources, highlights) while the diffuse surfaces stay close to
++the SDR's. Each output frame carries the mastering display (Display P3 up to
++the rendition ceiling) and its own HDR10+ and SMPTE ST 2094-50 metadata.
++
++The statistics a frame is graded on average over a window of the frames of
++its scene, so the filter holds that many frames (@option{future}) before
++sending one on. The window, @samp{recursive} and @option{fps} need a
++libhdrgrading built with its temporal features (off by default); without
++them each frame is graded on its own statistics and those options are
++refused.
++
++To enable compilation of this filter you need to configure FFmpeg with
++@code{--enable-libhdrgrading}.
++
++The filter accepts the following options:
++
++@table @option
++@item preset
++The content's preset: @samp{photo} (photographs and live action, the
++default), @samp{anime} or @samp{game}.
++
++@item temporal
++How the statistics follow the frames: @samp{windowed} (the mean over a window
++of the scene, the default), @samp{recursive} (an exponential moving average,
++no latency) or @samp{static} (one fixed mapping, no statistics).
++
++@item latency
++The latency profile: @samp{offline} (converting a file, the default),
++@samp{playback} (watched, keeping up on average) or @samp{low} (each frame
++within its interval, no frames ahead).
++
++@item past
++@item future
++The frames before and after a frame its statistics average over (-1: the
++library's defaults; @option{future} defaults to @option{past}).
++
++@item proxy
++The longest side of the image the frames are analyzed on under the realtime
++effort (the default of the @samp{playback} and @samp{low} latencies; the
++quality effort analyzes at full size; 0: full size). Default value is @code{960}.
++
++@item w
++@item h
++The output size, through the library's scaler; one side 0 keeps the aspect
++ratio. Default is the input's.
++
++@item fps
++The output frame rate; the frames between the input's are interpolated.
++Default is the input's.
++
++@item threads
++The library's threads (0: one per core). Default value is @code{0}.
++
++@item gpu
++What runs on the GPU: @samp{off} (the default), @samp{auto} (the filters,
++the conversion and the grading) or @samp{filters} (the filters only).
++
++@item flash_limit
++Limit the harmful flashes the grading would make stronger (ITU-R BT.1702-3).
++Enabled by default.
++
++@item dither
++Dither the output. Enabled by default.
++
++@item settings
++Any of the library's settings by their names, after the preset, as a list of
++@var{name}=@var{value} pairs separated by @samp{:} (e.g.
++@code{diffuse-max=1.5:peak-nits=1000}).
++@end table
++
++The output is @code{yuv420p10}, @code{p010} or @code{rgb48}.
++
++@subsection Examples
++@itemize
++@item
++Grade an SDR file into 10-bit HEVC:
++@example
++ffmpeg -i in.mp4 -vf libhdrgrading=preset=anime -c:v libx265 -pix_fmt yuv420p10le out.mkv
++@end example
++@end itemize
++
+ @section libplacebo
+ 
+ Flexible GPU-accelerated processing filter based on libplacebo
+diff --git a/libavfilter/Makefile b/libavfilter/Makefile
+index ce40cf3..6bf453b 100644
+--- a/libavfilter/Makefile
++++ b/libavfilter/Makefile
+@@ -373,6 +373,7 @@ OBJS-$(CONFIG_LCEVC_FILTER)                  += vf_lcevc.o
+ OBJS-$(CONFIG_LATENCY_FILTER)                += f_latency.o
+ OBJS-$(CONFIG_LENSCORRECTION_FILTER)         += vf_lenscorrection.o
+ OBJS-$(CONFIG_LENSFUN_FILTER)                += vf_lensfun.o
++OBJS-$(CONFIG_LIBHDRGRADING_FILTER)          += vf_libhdrgrading.o
+ OBJS-$(CONFIG_LIBPLACEBO_FILTER)             += vf_libplacebo.o vulkan.o vulkan_filter.o
+ OBJS-$(CONFIG_LIBVMAF_FILTER)                += vf_libvmaf.o framesync.o
+ OBJS-$(CONFIG_LIBVMAF_CUDA_FILTER)           += vf_libvmaf.o framesync.o
+diff --git a/libavfilter/allfilters.c b/libavfilter/allfilters.c
+index 402b843..63bb32a 100644
+--- a/libavfilter/allfilters.c
++++ b/libavfilter/allfilters.c
+@@ -347,6 +347,7 @@ extern const FFFilter ff_vf_latency;
+ extern const FFFilter ff_vf_lcevc;
+ extern const FFFilter ff_vf_lenscorrection;
+ extern const FFFilter ff_vf_lensfun;
++extern const FFFilter ff_vf_libhdrgrading;
+ extern const FFFilter ff_vf_libplacebo;
+ extern const FFFilter ff_vf_libvmaf;
+ extern const FFFilter ff_vf_libvmaf_cuda;
+diff --git a/libavfilter/vf_libhdrgrading.c b/libavfilter/vf_libhdrgrading.c
+new file mode 100644
+index 0000000..5dfc22e
+--- /dev/null
++++ b/libavfilter/vf_libhdrgrading.c
+@@ -0,0 +1,668 @@
++/*
++ * Copyright (c) 2026 Go Kudo
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a copy
++ * of this software and associated documentation files (the "Software"), to deal
++ * in the Software without restriction, including without limitation the rights
++ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++ * copies of the Software, and to permit persons to whom the Software is
++ * furnished to do so, subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included in
++ * all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++ * SOFTWARE.
++ */
++
++/**
++ * @file
++ * SDR to HDR grading through libhdrgrading: SDR video in, single-layer PQ
++ * over BT.2020 out, with the mastering display and each frame's HDR10+ and
++ * SMPTE ST 2094-50 metadata.
++ */
++
++#include <hdrgrading/hdrgrading.h>
++#include <hdrgrading/video.h>
++
++#include "libavutil/dict.h"
++#include "libavutil/eval.h"
++#include "libavutil/fifo.h"
++#include "libavutil/hdr_dynamic_metadata.h"
++#include "libavutil/mastering_display_metadata.h"
++#include "libavutil/opt.h"
++#include "libavutil/pixdesc.h"
++
++#include "avfilter.h"
++#include "filters.h"
++#include "formats.h"
++#include "video.h"
++
++/* the session's time base when the frame rate changes: the frames between the input's land
++ * on their own times */
++#define SESSION_TIME_BASE (AVRational){ 1, 90000 }
++
++typedef struct HdrgStamp {
++    AVFrame *props; /* a sent frame's properties, no data */
++    int64_t pts;    /* its pts in the session's time base */
++} HdrgStamp;
++
++typedef struct LibHdrgradingContext {
++    const AVClass *class;
++
++    /* options */
++    int preset;
++    int temporal;
++    int latency;
++    int past, future;
++    int proxy;
++    int w, h;
++    AVRational rate;
++    int threads;
++    int gpu;
++    int flash_limit;
++    int dither;
++    AVDictionary *settings;
++
++    hdrg_context_t *hdrg;
++    hdrg_session_t *session;
++    hdrg_params_t params;
++    hdrg_display_caps_t caps;
++    hdrg_session_config_t config;
++    hdrg_session_format_t format;
++    AVRational session_tb;
++    AVFifo *stamps;  /* the sent frames' properties, oldest first */
++    int64_t sent;    /* frames sent: a missing pts */
++    float peak;      /* the rendition ceiling, the mastering display's maximum */
++} LibHdrgradingContext;
++
++static int hdrg_error(void *log, hdrg_status_t status, const char *what)
++{
++    av_log(log, AV_LOG_ERROR, "%s: %s\n", what, hdrg_status_string(status));
++
++    switch (status) {
++    case HDRG_ERR_NOMEM:
++        return AVERROR(ENOMEM);
++    case HDRG_ERR_INVALID_ARG:
++    case HDRG_ERR_INVALID_STATE:
++    case HDRG_ERR_NOT_FOUND:
++        return AVERROR(EINVAL);
++    case HDRG_ERR_UNSUPPORTED:
++    case HDRG_ERR_UNSUPPORTED_FORMAT:
++        return AVERROR(ENOSYS);
++    default:
++        return AVERROR_EXTERNAL;
++    }
++}
++
++static av_cold int init(AVFilterContext *ctx)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    const AVDictionaryEntry *e = NULL;
++    hdrg_context_desc_t desc;
++    hdrg_status_t status;
++
++    hdrg_params_init(&s->params, s->preset);
++    hdrg_display_caps_init(&s->caps);
++    /* Y'CbCr output takes a BT.2020 container; the colors stay within Display P3 */
++    s->caps.gamut = HDRG_GAMUT_BT2020;
++
++    /* the settings after the preset, by the names of hdrg-cli's options */
++    while ((e = av_dict_iterate(s->settings, e))) {
++        char *end;
++        double value = av_strtod(e->value, &end);
++
++        if (end == e->value || *end) {
++            av_log(ctx, AV_LOG_ERROR, "Setting %s: '%s' is not a number.\n", e->key, e->value);
++            return AVERROR(EINVAL);
++        }
++
++        status = hdrg_setting_set(e->key, value, &s->params, &s->caps, NULL);
++        if (status != HDRG_OK) {
++            av_log(ctx, AV_LOG_ERROR, "Setting %s=%s: %s\n", e->key, e->value,
++                   hdrg_status_string(status));
++            return AVERROR(EINVAL);
++        }
++    }
++
++    hdrg_context_desc_init(&desc);
++    desc.thread_count = s->threads;
++    desc.gpu = s->gpu;
++
++    status = hdrg_context_create(&desc, &s->hdrg);
++    if (status != HDRG_OK)
++        return hdrg_error(ctx, status, "Cannot create the libhdrgrading context");
++
++    s->stamps = av_fifo_alloc2(16, sizeof(HdrgStamp), AV_FIFO_FLAG_AUTO_GROW);
++    if (!s->stamps)
++        return AVERROR(ENOMEM);
++
++    return 0;
++}
++
++static av_cold void uninit(AVFilterContext *ctx)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    HdrgStamp stamp;
++
++    /* the frames the session still holds are released into their AVFrames */
++    hdrg_session_destroy(s->session);
++    s->session = NULL;
++    hdrg_context_destroy(s->hdrg);
++    s->hdrg = NULL;
++
++    while (s->stamps && av_fifo_read(s->stamps, &stamp, 1) >= 0)
++        av_frame_free(&stamp.props);
++    av_fifo_freep2(&s->stamps);
++}
++
++static const enum AVPixelFormat input_formats[] = {
++    AV_PIX_FMT_YUV420P,   AV_PIX_FMT_YUV422P,   AV_PIX_FMT_YUV444P,
++    AV_PIX_FMT_YUV420P10, AV_PIX_FMT_YUV422P10, AV_PIX_FMT_YUV444P10,
++    AV_PIX_FMT_YUV420P12, AV_PIX_FMT_YUV422P12, AV_PIX_FMT_YUV444P12,
++    AV_PIX_FMT_YUV420P16, AV_PIX_FMT_YUV422P16, AV_PIX_FMT_YUV444P16,
++    AV_PIX_FMT_NV12,      AV_PIX_FMT_NV16,      AV_PIX_FMT_NV24,
++    AV_PIX_FMT_P010,      AV_PIX_FMT_P012,      AV_PIX_FMT_P016,
++    AV_PIX_FMT_RGB24,     AV_PIX_FMT_RGB48,
++    AV_PIX_FMT_NONE
++};
++
++static const enum AVPixelFormat output_formats[] = {
++    AV_PIX_FMT_YUV420P10, AV_PIX_FMT_P010, AV_PIX_FMT_RGB48, AV_PIX_FMT_NONE
++};
++
++static const enum AVColorSpace input_spaces[] = {
++    AVCOL_SPC_BT709, AVCOL_SPC_BT470BG, AVCOL_SPC_SMPTE170M, AVCOL_SPC_BT2020_NCL,
++    AVCOL_SPC_UNSPECIFIED, -1
++};
++
++static int query_formats(const AVFilterContext *ctx,
++                         AVFilterFormatsConfig **cfg_in,
++                         AVFilterFormatsConfig **cfg_out)
++{
++    int ret;
++
++    if ((ret = ff_formats_ref(ff_make_pixel_format_list(input_formats), &cfg_in[0]->formats)) < 0 ||
++        (ret = ff_formats_ref(ff_make_format_list((const int *)input_spaces),
++                              &cfg_in[0]->color_spaces)) < 0 ||
++        (ret = ff_formats_ref(ff_all_color_ranges(), &cfg_in[0]->color_ranges)) < 0)
++        return ret;
++
++    if ((ret = ff_formats_ref(ff_make_pixel_format_list(output_formats), &cfg_out[0]->formats)) < 0 ||
++        (ret = ff_formats_ref(ff_make_formats_list_singleton(AVCOL_SPC_BT2020_NCL),
++                              &cfg_out[0]->color_spaces)) < 0 ||
++        (ret = ff_formats_ref(ff_make_formats_list_singleton(AVCOL_RANGE_MPEG),
++                              &cfg_out[0]->color_ranges)) < 0)
++        return ret;
++
++    return 0;
++}
++
++static int config_output(AVFilterLink *outlink)
++{
++    AVFilterContext *ctx = outlink->src;
++    LibHdrgradingContext *s = ctx->priv;
++    AVFilterLink *inlink = ctx->inputs[0];
++    FilterLink *il = ff_filter_link(inlink);
++    FilterLink *ol = ff_filter_link(outlink);
++    int64_t w = s->w, h = s->h;
++
++    /* one side 0 keeps the aspect ratio, as libhdrgrading resolves it */
++    if (!w && !h) {
++        w = inlink->w;
++        h = inlink->h;
++    } else if (!w) {
++        w = FFMAX(((int64_t)inlink->w * h + inlink->h / 2) / inlink->h, 1);
++    } else if (!h) {
++        h = FFMAX(((int64_t)inlink->h * w + inlink->w / 2) / inlink->w, 1);
++    }
++
++    if (w > INT_MAX || h > INT_MAX)
++        return AVERROR(EINVAL);
++
++    outlink->w = w;
++    outlink->h = h;
++    outlink->sample_aspect_ratio = inlink->sample_aspect_ratio;
++
++    if (s->rate.num > 0 && s->rate.den > 0) {
++        if (il->frame_rate.num <= 0 || il->frame_rate.den <= 0) {
++            av_log(ctx, AV_LOG_ERROR, "A frame rate change needs the input's frame rate.\n");
++            return AVERROR(EINVAL);
++        }
++        ol->frame_rate = s->rate;
++        outlink->time_base = av_inv_q(s->rate);
++        s->session_tb = SESSION_TIME_BASE;
++    } else {
++        ol->frame_rate = il->frame_rate;
++        outlink->time_base = inlink->time_base;
++        s->session_tb = inlink->time_base;
++    }
++
++    return 0;
++}
++
++/* the session's pixels of a format: planar Y'CbCr (one plane each, or Cb and Cr alternating
++ * in the second), or packed R'G'B' (layout 0) */
++static void pixels_of(const AVPixFmtDescriptor *desc, hdrg_session_pixfmt_t *pixels)
++{
++    memset(pixels, 0, sizeof(*pixels));
++
++    if (desc->flags & AV_PIX_FMT_FLAG_RGB) {
++        pixels->bits = desc->comp[0].depth > 8 ? 16 : 8;
++        return;
++    }
++
++    pixels->layout = desc->log2_chroma_h ? HDRG_YUV_420 :
++                     desc->log2_chroma_w ? HDRG_YUV_422 : HDRG_YUV_444;
++    pixels->bits        = desc->comp[0].depth;
++    pixels->interleaved = desc->comp[1].plane == desc->comp[2].plane;
++    pixels->msb         = !!desc->comp[0].shift;
++}
++
++/* the session over the first frame's size and colors */
++static int create_session(AVFilterContext *ctx, const AVFrame *in)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    AVFilterLink *inlink = ctx->inputs[0];
++    AVFilterLink *outlink = ctx->outputs[0];
++    FilterLink *il = ff_filter_link(inlink);
++    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(in->format);
++    const AVPixFmtDescriptor *odesc = av_pix_fmt_desc_get(outlink->format);
++    hdrg_session_config_t *config = &s->config;
++    enum AVColorPrimaries primaries = in->color_primaries;
++    enum AVColorTransferCharacteristic trc = in->color_trc;
++    enum AVColorSpace matrix = in->colorspace;
++    int rgb = !!(desc->flags & AV_PIX_FMT_FLAG_RGB);
++    hdrg_status_t status;
++
++    if (trc == AVCOL_TRC_SMPTE2084 || trc == AVCOL_TRC_ARIB_STD_B67) {
++        av_log(ctx, AV_LOG_ERROR, "The input is HDR already (%s).\n",
++               av_color_transfer_name(trc));
++        return AVERROR(EINVAL);
++    }
++
++    if (primaries == AVCOL_PRI_UNSPECIFIED)
++        primaries = AVCOL_PRI_BT709;
++    if (trc == AVCOL_TRC_UNSPECIFIED)
++        trc = rgb ? AVCOL_TRC_IEC61966_2_1 : AVCOL_TRC_BT709;
++
++    memset(&s->format, 0, sizeof(s->format));
++    s->format.width     = in->width;
++    s->format.height    = in->height;
++    s->format.primaries = primaries;
++    s->format.transfer  = trc;
++
++    hdrg_session_config_init(config);
++    pixels_of(desc, &config->input);
++
++    if (rgb) {
++        s->format.bit_depth = config->input.bits;
++        s->format.stride    = in->linesize[0];
++        memset(&config->input, 0, sizeof(config->input));
++    } else {
++        if (matrix == AVCOL_SPC_UNSPECIFIED)
++            matrix = primaries == AVCOL_PRI_BT2020 ? AVCOL_SPC_BT2020_NCL :
++                     primaries == AVCOL_PRI_BT470BG || primaries == AVCOL_PRI_SMPTE170M ?
++                     AVCOL_SPC_SMPTE170M : AVCOL_SPC_BT709;
++        config->input.matrix = matrix == AVCOL_SPC_BT2020_NCL ? HDRG_MATRIX_BT2020 :
++                               matrix == AVCOL_SPC_BT709 ? HDRG_MATRIX_BT709 : HDRG_MATRIX_BT601;
++        config->input.full_range = in->color_range == AVCOL_RANGE_JPEG;
++        /* AVChromaLocation is H.273's chroma_sample_loc_type + 1 */
++        config->input.chroma_loc = in->chroma_location > AVCHROMA_LOC_UNSPECIFIED &&
++                                   in->chroma_location <= AVCHROMA_LOC_BOTTOM ?
++                                   in->chroma_location - 1 : HDRG_CHROMA_LEFT;
++    }
++
++    pixels_of(odesc, &config->output);
++    if (!(odesc->flags & AV_PIX_FMT_FLAG_RGB))
++        config->output.matrix = HDRG_MATRIX_BT2020;
++
++    if (il->frame_rate.num > 0 && il->frame_rate.den > 0) {
++        config->rate_num = il->frame_rate.num;
++        config->rate_den = il->frame_rate.den;
++    }
++    if (s->rate.num > 0 && s->rate.den > 0) {
++        config->out_rate_num = s->rate.num;
++        config->out_rate_den = s->rate.den;
++    }
++
++    config->output_width  = s->w;
++    config->output_height = s->h;
++    config->temporal      = s->temporal;
++    config->latency       = s->latency;
++    config->proxy         = s->proxy;
++    config->flash_off     = !s->flash_limit;
++    config->dither_off    = !s->dither;
++    if (s->past >= 0)
++        config->past = s->past;
++    config->future = s->future >= 0 ? s->future : HDRG_SESSION_AUTO;
++
++    status = hdrg_session_create(s->hdrg, &s->format, &s->params, &s->caps, config, &s->session);
++    if (status != HDRG_OK)
++        return hdrg_error(ctx, status, "Cannot create the libhdrgrading session");
++
++    s->peak = hdrg_session_peak(s->session);
++
++    return 0;
++}
++
++static void release_frame(void *opaque)
++{
++    AVFrame *frame = opaque;
++
++    av_frame_free(&frame);
++}
++
++/* the frame into the session, which holds it until its pixels are read */
++static int send_frame(AVFilterContext *ctx, AVFrame *in)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    AVFilterLink *inlink = ctx->inputs[0];
++    hdrg_session_frame_t frame = { 0 };
++    hdrg_status_t status;
++    HdrgStamp stamp;
++    int64_t pts;
++    int ret;
++
++    if (!s->session && (ret = create_session(ctx, in)) < 0) {
++        av_frame_free(&in);
++        return ret;
++    }
++
++    if (in->width != s->format.width || in->height != s->format.height ||
++        (s->format.stride && in->linesize[0] != (int)s->format.stride) ||
++        in->linesize[0] <= 0 || in->linesize[1] < 0 || in->linesize[2] < 0) {
++        av_log(ctx, AV_LOG_ERROR, "The frames' size or layout changed.\n");
++        av_frame_free(&in);
++        return AVERROR(EINVAL);
++    }
++
++    pts = in->pts != AV_NOPTS_VALUE ? in->pts : s->sent;
++    pts = av_rescale_q(pts, inlink->time_base, s->session_tb);
++
++    stamp.pts   = pts;
++    stamp.props = av_frame_alloc();
++    if (!stamp.props || (ret = av_frame_copy_props(stamp.props, in)) < 0 ||
++        (ret = av_fifo_write(s->stamps, &stamp, 1)) < 0) {
++        av_frame_free(&stamp.props);
++        av_frame_free(&in);
++        return stamp.props ? ret : AVERROR(ENOMEM);
++    }
++
++    for (int p = 0; p < 3 && in->data[p]; p++) {
++        frame.planes[p]  = in->data[p];
++        frame.strides[p] = in->linesize[p];
++    }
++    frame.pts     = pts;
++    frame.release = release_frame;
++    frame.opaque  = in;
++
++    status = hdrg_session_send_frame(s->session, &frame);
++    if (status != HDRG_OK) {
++        av_frame_free(&in);
++        return hdrg_error(ctx, status, "Cannot send a frame");
++    }
++
++    s->sent++;
++
++    return 0;
++}
++
++static const enum AVFrameSideDataType dropped[] = {
++    AV_FRAME_DATA_MASTERING_DISPLAY_METADATA,
++    AV_FRAME_DATA_CONTENT_LIGHT_LEVEL,
++    AV_FRAME_DATA_ICC_PROFILE,
++    AV_FRAME_DATA_DYNAMIC_HDR_PLUS,
++    AV_FRAME_DATA_DYNAMIC_HDR_SMPTE_2094_APP5,
++    AV_FRAME_DATA_DYNAMIC_HDR_VIVID,
++    AV_FRAME_DATA_DOVI_RPU_BUFFER,
++    AV_FRAME_DATA_DOVI_METADATA,
++    AV_FRAME_DATA_AMBIENT_VIEWING_ENVIRONMENT,
++    AV_FRAME_DATA_FILM_GRAIN_PARAMS,
++    AV_FRAME_DATA_VIDEO_ENC_PARAMS,
++};
++
++/* the output's colors, mastering display and dynamic metadata */
++static int finish_frame(AVFilterContext *ctx, AVFrame *out, const hdrg_session_output_t *res)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    static const AVRational p3[4][2] = {
++        { { 34000, 50000 }, { 16000, 50000 } }, { { 13250, 50000 }, { 34500, 50000 } },
++        { {  7500, 50000 }, {  3000, 50000 } }, { { 15635, 50000 }, { 16450, 50000 } },
++    };
++    AVMasteringDisplayMetadata *master;
++    AVDynamicHDRSmpte2094App5 *app5;
++    AVDynamicHDRPlus *plus;
++    uint8_t t35[FFMAX(HDRG_HDR10PLUS_T35_BYTES, HDRG_ST2094_50_T35_MAX)];
++    size_t size;
++    int rgb = !!(av_pix_fmt_desc_get(out->format)->flags & AV_PIX_FMT_FLAG_RGB);
++
++    for (int i = 0; i < FF_ARRAY_ELEMS(dropped); i++)
++        av_frame_remove_side_data(out, dropped[i]);
++
++    out->color_trc       = AVCOL_TRC_SMPTE2084;
++    out->color_primaries = AVCOL_PRI_BT2020;
++    out->colorspace      = rgb ? AVCOL_SPC_RGB : AVCOL_SPC_BT2020_NCL;
++    out->color_range     = rgb ? AVCOL_RANGE_JPEG : AVCOL_RANGE_MPEG;
++    out->chroma_location = rgb ? AVCHROMA_LOC_UNSPECIFIED : AVCHROMA_LOC_LEFT;
++
++    /* Display P3 (D65) up to the rendition ceiling */
++    master = av_mastering_display_metadata_create_side_data(out);
++    if (!master)
++        return AVERROR(ENOMEM);
++    for (int i = 0; i < 3; i++) {
++        master->display_primaries[i][0] = p3[i][0];
++        master->display_primaries[i][1] = p3[i][1];
++    }
++    master->white_point[0] = p3[3][0];
++    master->white_point[1] = p3[3][1];
++    master->min_luminance  = av_make_q(50, 10000);
++    master->max_luminance  = av_make_q(lrintf(s->peak * 10000.0f), 10000);
++    master->has_primaries  = 1;
++    master->has_luminance  = 1;
++
++    size = hdrg_hdr10plus_t35(&res->hdr10plus, t35, sizeof(t35));
++    if (size) {
++        plus = av_dynamic_hdr_plus_create_side_data(out);
++        if (!plus)
++            return AVERROR(ENOMEM);
++        if (av_dynamic_hdr_plus_from_t35(plus, t35, size) < 0)
++            return AVERROR_BUG;
++        plus->itu_t_t35_country_code = 0xB5;
++    }
++
++    size = hdrg_st2094_50_t35(&res->st2094_50, t35, sizeof(t35));
++    if (size) {
++        app5 = av_dynamic_hdr_smpte2094_app5_create_side_data(out);
++        if (!app5)
++            return AVERROR(ENOMEM);
++        if (av_dynamic_hdr_smpte2094_app5_from_t35(app5, t35, size) < 0)
++            return AVERROR_BUG;
++    }
++
++    return 0;
++}
++
++/* one frame out of the session, if it has one: 1 sent on, 0 none yet, AVERROR_EOF the end */
++static int receive_frame(AVFilterContext *ctx)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    AVFilterLink *outlink = ctx->outputs[0];
++    hdrg_session_output_t res = { 0 };
++    hdrg_status_t status;
++    HdrgStamp stamp;
++    AVFrame *out;
++    int64_t want;
++    int ret;
++
++    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
++    if (!out)
++        return AVERROR(ENOMEM);
++
++    for (int p = 0; p < 3 && out->data[p]; p++) {
++        res.planes[p]  = out->data[p];
++        res.strides[p] = out->linesize[p];
++    }
++
++    status = hdrg_session_receive_frame(s->session, &res);
++    if (status == HDRG_ERR_AGAIN || status == HDRG_EOF) {
++        av_frame_free(&out);
++        return status == HDRG_EOF ? AVERROR_EOF : 0;
++    }
++    if (status != HDRG_OK) {
++        av_frame_free(&out);
++        return hdrg_error(ctx, status, "Cannot receive a frame");
++    }
++
++    /* the input frame's properties (a frame between two: the nearer one's) */
++    want = !res.synthetic ? res.pts : res.src_pts[res.phase < 32768 ? 0 : 1];
++    while (av_fifo_can_read(s->stamps) > 1 && av_fifo_peek(s->stamps, &stamp, 1, 0) >= 0 &&
++           stamp.pts < want) {
++        av_fifo_drain2(s->stamps, 1);
++        av_frame_free(&stamp.props);
++    }
++
++    if (av_fifo_peek(s->stamps, &stamp, 1, 0) >= 0 &&
++        (ret = av_frame_copy_props(out, stamp.props)) < 0) {
++        av_frame_free(&out);
++        return ret;
++    }
++
++    /* without fps one output a frame, in order (timestamps or none): its properties done */
++    if (!(s->rate.num > 0 && s->rate.den > 0) && av_fifo_read(s->stamps, &stamp, 1) >= 0)
++        av_frame_free(&stamp.props);
++
++    if (s->rate.num > 0 && s->rate.den > 0) {
++        out->pts      = av_rescale_q(res.pts, s->session_tb, outlink->time_base);
++        out->duration = 1;
++    } else {
++        out->pts = res.pts;
++    }
++
++    if ((ret = finish_frame(ctx, out, &res)) < 0) {
++        av_frame_free(&out);
++        return ret;
++    }
++
++    ret = ff_filter_frame(outlink, out);
++
++    return ret < 0 ? ret : 1;
++}
++
++/* every frame the session has out: *got set when one went on */
++static int drain(AVFilterContext *ctx, int *got)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    int ret = 0;
++
++    while (s->session && (ret = receive_frame(ctx)) > 0)
++        *got = 1;
++
++    return ret == AVERROR_EOF ? 0 : ret;
++}
++
++static int activate(AVFilterContext *ctx)
++{
++    LibHdrgradingContext *s = ctx->priv;
++    AVFilterLink *inlink = ctx->inputs[0];
++    AVFilterLink *outlink = ctx->outputs[0];
++    hdrg_status_t status;
++    AVFrame *in;
++    int64_t pts;
++    int ret, err, got = 0;
++
++    FF_FILTER_FORWARD_STATUS_BACK(outlink, inlink);
++
++    /* the frames out first, then each input frame into the session */
++    if ((ret = drain(ctx, &got)) < 0)
++        return ret;
++
++    while ((ret = ff_inlink_consume_frame(inlink, &in)) > 0) {
++        if ((ret = send_frame(ctx, in)) < 0 || (ret = drain(ctx, &got)) < 0)
++            return ret;
++    }
++    if (ret < 0)
++        return ret;
++
++    if (got)
++        return 0;
++
++    /* the end: every frame the session holds out */
++    if (ff_inlink_acknowledge_status(inlink, &ret, &pts)) {
++        if (s->session) {
++            status = hdrg_session_send_frame(s->session, NULL);
++            if (status != HDRG_OK)
++                return hdrg_error(ctx, status, "Cannot end the stream");
++            if ((err = drain(ctx, &got)) < 0)
++                return err;
++        }
++        ff_outlink_set_status(outlink, ret, av_rescale_q(pts, inlink->time_base,
++                                                         outlink->time_base));
++        return 0;
++    }
++
++    FF_FILTER_FORWARD_WANTED(outlink, inlink);
++
++    return FFERROR_NOT_READY;
++}
++
++#define OFFSET(x) offsetof(LibHdrgradingContext, x)
++#define FLAGS AV_OPT_FLAG_FILTERING_PARAM | AV_OPT_FLAG_VIDEO_PARAM
++
++static const AVOption libhdrgrading_options[] = {
++    { "preset", "the content's preset", OFFSET(preset), AV_OPT_TYPE_INT, { .i64 = HDRG_PRESET_PHOTO }, 0, HDRG_PRESET_GAME, FLAGS, .unit = "preset" },
++        { "photo", "photographs and live action", 0, AV_OPT_TYPE_CONST, { .i64 = HDRG_PRESET_PHOTO }, 0, 0, FLAGS, .unit = "preset" },
++        { "anime", "animation",                   0, AV_OPT_TYPE_CONST, { .i64 = HDRG_PRESET_ANIME }, 0, 0, FLAGS, .unit = "preset" },
++        { "game",  "games",                       0, AV_OPT_TYPE_CONST, { .i64 = HDRG_PRESET_GAME },  0, 0, FLAGS, .unit = "preset" },
++    { "temporal", "how the statistics follow the frames", OFFSET(temporal), AV_OPT_TYPE_INT, { .i64 = HDRG_TEMPORAL_WINDOWED }, 0, HDRG_TEMPORAL_STATIC, FLAGS, .unit = "temporal" },
++        { "windowed",  "the mean over a window of the scene", 0, AV_OPT_TYPE_CONST, { .i64 = HDRG_TEMPORAL_WINDOWED },  0, 0, FLAGS, .unit = "temporal" },
++        { "recursive", "an exponential moving average",       0, AV_OPT_TYPE_CONST, { .i64 = HDRG_TEMPORAL_RECURSIVE }, 0, 0, FLAGS, .unit = "temporal" },
++        { "static",    "one fixed mapping",                   0, AV_OPT_TYPE_CONST, { .i64 = HDRG_TEMPORAL_STATIC },    0, 0, FLAGS, .unit = "temporal" },
++    { "latency", "the latency profile", OFFSET(latency), AV_OPT_TYPE_INT, { .i64 = HDRG_LATENCY_OFFLINE }, 0, HDRG_LATENCY_OFFLINE, FLAGS, .unit = "latency" },
++        { "playback", "watched: keeps up on average",          0, AV_OPT_TYPE_CONST, { .i64 = HDRG_LATENCY_PLAYBACK }, 0, 0, FLAGS, .unit = "latency" },
++        { "low",      "each frame within its interval",        0, AV_OPT_TYPE_CONST, { .i64 = HDRG_LATENCY_LOW },      0, 0, FLAGS, .unit = "latency" },
++        { "offline",  "converting a file nobody watches",      0, AV_OPT_TYPE_CONST, { .i64 = HDRG_LATENCY_OFFLINE },  0, 0, FLAGS, .unit = "latency" },
++    { "past",   "frames before a frame its statistics average over (-1: the library's default)", OFFSET(past), AV_OPT_TYPE_INT, { .i64 = -1 }, -1, HDRG_SESSION_MAX_WINDOW, FLAGS },
++    { "future", "frames after it (-1: the past's)", OFFSET(future), AV_OPT_TYPE_INT, { .i64 = -1 }, -1, HDRG_SESSION_MAX_WINDOW, FLAGS },
++    { "proxy",  "longest side of the analysis image (0: full size)", OFFSET(proxy), AV_OPT_TYPE_INT, { .i64 = 960 }, 0, UINT16_MAX, FLAGS },
++    { "w",      "output width (0: the input's, or the aspect ratio's)", OFFSET(w), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, FLAGS },
++    { "h",      "output height (0: the input's, or the aspect ratio's)", OFFSET(h), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, INT_MAX, FLAGS },
++    { "fps",    "output frame rate, the frames between interpolated (0: the input's)", OFFSET(rate), AV_OPT_TYPE_RATIONAL, { .dbl = 0 }, 0, INT_MAX, FLAGS },
++    { "threads", "the library's threads (0: one per core)", OFFSET(threads), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, 1024, FLAGS },
++    { "gpu", "what runs on the GPU", OFFSET(gpu), AV_OPT_TYPE_INT, { .i64 = HDRG_GPU_OFF }, 0, HDRG_GPU_FILTERS, FLAGS, .unit = "gpu" },
++        { "off",     "nothing",                          0, AV_OPT_TYPE_CONST, { .i64 = HDRG_GPU_OFF },     0, 0, FLAGS, .unit = "gpu" },
++        { "auto",    "the filters, the conversion and the grading", 0, AV_OPT_TYPE_CONST, { .i64 = HDRG_GPU_AUTO }, 0, 0, FLAGS, .unit = "gpu" },
++        { "filters", "the filters only",                 0, AV_OPT_TYPE_CONST, { .i64 = HDRG_GPU_FILTERS }, 0, 0, FLAGS, .unit = "gpu" },
++    { "flash_limit", "limit harmful flashes (ITU-R BT.1702-3)", OFFSET(flash_limit), AV_OPT_TYPE_BOOL, { .i64 = 1 }, 0, 1, FLAGS },
++    { "dither", "dither the output", OFFSET(dither), AV_OPT_TYPE_BOOL, { .i64 = 1 }, 0, 1, FLAGS },
++    { "settings", "settings by their names, after the preset (e.g. diffuse-max=1.5:peak-nits=1000)", OFFSET(settings), AV_OPT_TYPE_DICT, { .str = NULL }, 0, 0, FLAGS },
++    { NULL }
++};
++
++AVFILTER_DEFINE_CLASS(libhdrgrading);
++
++static const AVFilterPad outputs[] = {
++    {
++        .name         = "default",
++        .type         = AVMEDIA_TYPE_VIDEO,
++        .config_props = config_output,
++    },
++};
++
++const FFFilter ff_vf_libhdrgrading = {
++    .p.name        = "libhdrgrading",
++    .p.description = NULL_IF_CONFIG_SMALL("Grade SDR video into HDR (PQ) with libhdrgrading."),
++    .p.priv_class  = &libhdrgrading_class,
++    .priv_size     = sizeof(LibHdrgradingContext),
++    .init          = init,
++    .uninit        = uninit,
++    .activate      = activate,
++    FILTER_INPUTS(ff_video_default_filterpad),
++    FILTER_OUTPUTS(outputs),
++    FILTER_QUERY_FUNC2(query_formats),
++};
+-- 
+2.56.0
+

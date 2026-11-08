@@ -1,0 +1,55 @@
+<p class="lead">規約の全体は {{src:CLAUDE.md}} にあります。このページはその要点で、機械的に確かめられるものは {{src:scripts/check_style.py}} が CI で検査します。</p>
+
+<h2>C のコード</h2>
+<ul>
+<li>C11。<code>stdint.h</code> の固定幅の型と <code>bool</code>、収まる最小の型、符号が要らなければ符号なし。</li>
+<li>変数の宣言は関数の最上位だけで、入れ子のブロックや <code>for</code> の見出しでは宣言しません。1 つの型は 1 つの宣言文 (同じ型のポインタ・配列・初期化付きも同じ文) で、順は <code>const</code> のもの、プロジェクトと依存の型、<code>uint64_t</code> … <code>uint8_t</code>、<code>int64_t</code> … <code>int8_t</code>、<code>size_t</code>、<code>bool</code>、<code>char</code>、<code>double</code>、<code>float</code>、<code>void *</code>。</li>
+<li><code>{}</code> は省きません。<code>typedef</code> はどれも <code>_t</code> で終わります。</li>
+<li>ファイルの並び: include、マクロ、<code>static inline</code> 関数、<code>static</code> 関数、通常の関数、公開する関数 (<code>extern</code> を付ける)。</li>
+<li>処理のまとまりごとに空行 (宣言の後、ブロックの前 (直前の文が見出しで確かめるものを代入しているときを除く)、閉じ括弧の後、ほかの文に続く <code>return</code> の前、確保・代入・副作用・後始末の間)。</li>
+<li>コメントはコードから読めないことだけ。どのファイルにも SPDX のヘッダ (<code>Apache-2.0 OR MIT</code>)。</li>
+<li>書式は <code>.clang-format</code>、静的解析は <code>.clang-tidy</code> (LLVM 23、zendriver の <code>common/</code> と同じ)。</li>
+</ul>
+
+<h2>メモリ</h2>
+<ul>
+<li><code>src/</code> の中では <code>malloc</code> などを直接呼びません: 本体は <code>hdrg_mem_*</code> (コンテキストのアロケータ、そろえた確保は <code>hdrg_mem_aligned_alloc</code>)、内蔵フィルタと GPU の層は API 表の <code>mem_*</code>。依存が確保して解放を求めるものだけを <code>free</code> で返し、その行に "the dependency's" と書きます (check_style の <code>raw-alloc</code>)。</li>
+<li>リアルタイムの経路では全解像度の float の面を持ちません。</li>
+</ul>
+
+<h2>決定性</h2>
+<ul>
+<li>乱数とディザは {{src:src/foundation/include/hdrgrading/foundation/hash.h|hash.h}} のカウンタのハッシュ (鍵・x・y・標本) だけ。<code>rand()</code> と逐次の乱数の列は使いません。</li>
+<li>超越関数は {{src:src/foundation/include/hdrgrading/foundation/math.h|math.h}} (画素のループでは {{src:src/foundation/include/hdrgrading/foundation/fmath.h|fmath.h}}) を使い、libm の <code>powf</code>・<code>expf</code>・<code>log2f</code> は使いません。</li>
+<li>並列はコンテキストのプールを決まった分け方で使い (<code>hdrg_exec_t</code>)、出力がスレッド数で変わることはありません。FP の環境は入口とワーカーで固定し、縮約はしません (<code>-ffp-contract=off</code>)。</li>
+<li>時間方向の 3 つの機能はプラグインで、ライブラリは段の ABI だけで呼び、ほかの内蔵プラグインと同じく選んで組みます (<code>HDRG_WITH_TEMPORAL</code>): フレームをまたぐ統計は STATS のプラグイン ({{src:src/plugins/stats}})、動き補償の補間は interp の中 (<code>HDRG_INTERP_MC</code>)、多フレームの拡大は edge の中 (<code>HDRG_SCALE_TEMPORAL</code>)。本体はビルドを知りません: セッションの既定はあるフィルタに従います (STATS のフィルタがあれば過去のウィンドウ)。それに触れる処理はそのプラグインに置き、テストは生成する <code>HDRG_BUILTIN_STATS</code> / <code>_INTERP_MC</code> / <code>_SCALE_TEMPORAL</code> で分け、OFF (既定) と ON (<code>temporal</code>) の両方で組めてテストが通ることを保ちます。</li>
+</ul>
+
+<h2>公開 API とプラグインの ABI</h2>
+<ul>
+<li>公開する関数は公開ヘッダに <code>HDRG_API</code> を付けて 1 行で宣言します: CMake がその行から共有ライブラリの公開の一覧を作り、<code>test_exports</code> が確かめます。</li>
+<li>状態の値・種類・フラグは enum でなく決まった <code>uint32_t</code> / <code>uint8_t</code> の定数。育つ構造体は <code>struct_size</code> を持ちます。</li>
+<li>フィルタの ABI ({{src:include/hdrgrading/filter.h}}) はフリーズまで版 1 のままで、それまでは表の並び・シグネチャ・意味を版を上げずに変えてよく、表は用途ごとに並べます。</li>
+<li>内蔵プラグイン ({{src:src/plugins}}) は公開ヘッダ・自分のディレクトリ・土台の層 ({{src:src/foundation}}・{{src:src/gpu}}・{{src:src/plugins/shared}}) だけを include し、コアは include しません (check_style の <code>filter-include</code>)。外部のプラグインとバインディングは公開ヘッダだけです。プラグインからの文字列は長さを明示して受け取り、検証して複製します。</li>
+<li><code>HDRG_PLUGINS_EXCLUDE</code> で外せる内蔵プラグイン ({{src:src/plugins/CMakeLists.txt}} の一覧) はそのまま保ちます: ライブラリはどれがなくても動き (既定は切れ、明示して使えば {{api:HDRG_ERR_UNSUPPORTED}})、<code>minimal</code> がそれを保ち、テストは外したものを避けます。</li>
+</ul>
+
+<h2>SIMD とシェーダ</h2>
+<ul>
+<li>カーネルは ISA ごとの基本演算 (<code>v_&lt;isa&gt;.h</code>) の上に {{src:src/kernels/vmath.h}} で 1 回だけ書きます。どの階層も scalar の参照の演算の順をなぞり、近似の命令は使いません。積の直後の和は <code>hdrg_vf_fma</code> と書き、融合するかは <code>HDRG_WITH_SIMD_FMA</code> で決まります。カーネルを足すときは test_kernels の比較も足します。</li>
+<li>シェーダのリファレンスは WGSL で、MSL / SPIR-V / HLSL は {{src:scripts/gen_shaders.sh}} で作り直してコミットします。ループの中の <code>var</code> には必ず初期化子を書きます (lavapipe は初期化子なしの <code>var</code> を回るたびに 0 にしない)。</li>
+<li>GPU の結果は CPU と L2 で一致させ、GPU のテストに比較を足します。</li>
+</ul>
+
+<h2>プリセットと評価</h2>
+<ul>
+<li>PHOTO の既定値は忠実さの数値 (16bit の真値・劣化のない元との PSNR・色差の誤差・質感が残るか) で詰めます。</li>
+<li>ANIME の既定値と手法の採否は、200〜400% の拡大での目視で決めます。数値は回帰の確認に使い、順位付けには使いません。線そのものには既定で手を出しません。</li>
+<li>評価の画像はリポジトリにも公開のページにも入れません。</li>
+</ul>
+
+<h2>記録</h2>
+<ul>
+<li>{{src:CLAUDE.md}}: ファイル構造。ファイルや名前が変わったら合わせて直します。</li>
+<li>汎用の振る舞いを優先し、特定のプラットフォームやサービスに合わせた調整はしません。</li>
+</ul>

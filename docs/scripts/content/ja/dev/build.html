@@ -1,0 +1,74 @@
+<p class="lead">ライブラリの依存は <code>third_party/</code> のソースから CMake が組みます (事前のビルドなし)。AVIF と HEIF のモジュールはシステムの libavif / libheif を使います。1 つのコマンドでプリセットの構成・ビルド・テストができます。</p>
+
+<h2>最初のビルド</h2>
+<pre><code>scripts/fetch_deps.sh                              # submodule と jpegli の入れ子の依存
+scripts/jobs.sh cmake --workflow --preset dev      # 構成 + ビルド + テストを空きメモリに合わせた並列で</code></pre>
+<p>{{src:scripts/jobs.sh}} は <code>CMAKE_BUILD_PARALLEL_LEVEL</code> と <code>CTEST_PARALLEL_LEVEL</code> を min(コア数, (空きメモリ − 総量の 1/8 (最低 2 GiB)) / 1 GiB) にし、空きメモリに 1 ジョブ分の余裕もなければ警告して 1 ジョブずつ走らせます。Linux は開発イメージで動かします: {{src:scripts/docker_dev.sh}} が DevContainer ({{src:.devcontainer}}: Debian 13・LLVM 23・GCC 16・Valgrind・emsdk・lavapipe 付きの Dawn・VapourSynth・FFmpeg・GStreamer) と同じイメージでコマンドを走らせ、ビルドディレクトリは <code>build/linux-&lt;preset&gt;</code> です。コンテナの <code>~/.cache</code> (Emscripten のシステムライブラリと port、ccache) は実行をまたいで残る Docker のボリュームで、<code>HDRG_DEV_CACHE</code> を指定するとホストのディレクトリをそこにマウントします。</p>
+
+<h2>プリセット</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>プリセット</th><th>中身</th></tr></thead>
+<tbody>
+<tr><td><code>dev</code> / <code>release</code></td><td>Debug の静的ライブラリ / Release の共有ライブラリ (公開する記号を確かめる <code>test_exports</code> は共有のときだけ。install した物を使う <code>test_install</code> はどちらでも走り、外すのはサニタイザ・coverage・fuzz・WASM・Windows のビルドだけ)</td></tr>
+<tr><td><code>nolcms2</code></td><td>lcms2 なし: JPEG はゲインマップの形だけで、JPEG XL はない。PQ 前提のテストは飛ばす</td></tr>
+<tr><td><code>minimal</code></td><td>任意の内蔵プラグインなしの Debug (<code>HDRG_PLUGINS_EXCLUDE</code> に <code>filters;png;gif;jxl</code>: Lanczos と JPEG だけ)。テストの一式を走らせ、外したもののテストは ignore か組まない</td></tr>
+<tr><td><code>temporal</code></td><td><code>HDRG_WITH_TEMPORAL</code> あり: フレームをまたぐ統計・動き補償の補間・多フレームの拡大 (既定は OFF。カバレッジのプリセットも ON にする)</td></tr>
+<tr><td><code>heif</code></td><td>HEIF あり (システムの libheif、なければビルド時に libde265・x265・libheif を取得。x265 は GPL-2.0)</td></tr>
+<tr><td><code>avif</code></td><td>AVIF のモジュールあり (システムの libavif: macOS は <code>brew install libavif</code>、開発イメージには <code>libavif-dev</code> がある)</td></tr>
+<tr><td><code>asan-ubsan</code>・<code>tsan</code>・<code>msan-core</code></td><td>サニタイザ (MSan は Linux と Clang、コーデックなしのコア: <code>HDRG_PLUGINS_EXCLUDE=codecs</code>)</td></tr>
+<tr><td><code>valgrind</code></td><td>テストの起動に memcheck、Debug (最適化しない)。WebGPU・Vulkan なし</td></tr>
+<tr><td><code>coverage</code>・<code>coverage-msvc</code></td><td>Clang の source-based coverage。レポートは {{src:scripts/coverage.sh}}</td></tr>
+<tr><td><code>fuzz</code></td><td>全体を計装した libFuzzer と ASan / UBSan。シードは <code>fuzz_seeds</code> から</td></tr>
+<tr><td><code>wasm</code>・<code>wasm-mt</code>・<code>wasm-scalar</code>・<code>wasm-scalar-mt</code>・<code>wasm-webgpu</code>・<code>wasm-debug</code></td><td>Emscripten のビルド (SIMD128 か scalar、単一スレッドか pthreads、ブラウザの WebGPU)。テストは node で</td></tr>
+</tbody></table></div>
+
+<h2>主なオプション</h2>
+<p>名前は 1 つの流儀です: <code>HDRG_WITH_&lt;名前&gt;</code> は依存・バックエンド・組み込む機能、<code>HDRG_BUILD_&lt;名前&gt;</code> はライブラリの隣に作るもの、<code>HDRG_PLUGINS_EXCLUDE</code> は外す内蔵プラグイン。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>オプション</th><th>既定</th><th>効果</th></tr></thead>
+<tbody>
+<tr><td><code>BUILD_SHARED_LIBS</code></td><td>OFF</td><td><code>HDRG_API</code> の関数だけを公開する共有ライブラリ</td></tr>
+<tr><td><code>HDRG_BUILD_TOOLS</code>・<code>HDRG_BUILD_TESTS</code></td><td>トップレベルなら ON</td><td>ツール (hdrg-cli・hdrg-video・hdrg-inspect、FFmpeg があれば hdrg-ffmpeg)、テストと開発者向けのツール (hdrg-bench・hdrg-predictor-data)</td></tr>
+<tr><td><code>HDRG_WITH_LCMS2</code></td><td>ON</td><td>LUT 型の ICC の入力、P3 / PQ のプロファイルの生成、JPEG XL の書き手の色の管理 (なければ jxl の系統を外す)</td></tr>
+<tr><td><code>HDRG_PLUGINS_EXCLUDE</code></td><td>(空)</td><td>ライブラリから外す内蔵プラグインの一覧: 系統 bilinear・denoise・deblock・dering・defringe・deband・mctf・interp・fsr・nis・edge・predict とコーデック jpeg・png・gif・jxl、またはまとまり <code>filters</code>・<code>codecs</code>・<code>all</code> (polyphase はいつも残る。コーデックはそれぞれ自分の依存を連れてくるので、外した系統の依存は組まない)</td></tr>
+<tr><td><code>HDRG_WITH_AVIF</code></td><td>OFF</td><td>AVIF のモジュール、読み書き (システムの libavif 1.2 以降、pkg-config で)</td></tr>
+<tr><td><code>HDRG_WITH_HEIF</code></td><td>OFF</td><td>HEIF のモジュール、書き (libheif)</td></tr>
+<tr><td><code>HDRG_WITH_SIMD</code>・<code>HDRG_WITH_SIMD_FMA</code></td><td>ON・ON</td><td>SIMD のカーネル、その中の積和の融合 (無効なら全階層が scalar とバイト一致。Debug のプリセットは無効にする)</td></tr>
+<tr><td><code>HDRG_WITH_TEMPORAL</code></td><td>OFF</td><td>時間方向の機能: フレームをまたぐ統計 (内蔵の STATS のフィルタ <code>hdrg.stats.temporal</code>: そのときセッションの過去のウィンドウの既定は 8)・<code>hdrg.interp.mc</code>・<code>hdrg.scale.temporal</code>。それぞれは <code>HDRG_WITH_TEMPORAL_FILTER</code>・<code>_INTERP</code>・<code>_SR</code> で (AUTO: まとめに従う、ON、OFF)</td></tr>
+<tr><td><code>HDRG_WITH_WEBGPU</code></td><td>Dawn があれば</td><td>WebGPU のフィルタとコア (<code>scripts/build_dawn.sh</code> が Dawn を <code>build/deps/dawn</code> に組む)</td></tr>
+<tr><td><code>HDRG_WITH_METAL</code></td><td>Apple で ON</td><td>Metal のフィルタ・コア・MetalFX、CVPixelBuffer のフレーム</td></tr>
+<tr><td><code>HDRG_WITH_VULKAN</code></td><td>Vulkan のヘッダがあれば</td><td>Vulkan のフィルタとコア (ローダーは実行時に開く)</td></tr>
+<tr><td><code>HDRG_WITH_FFMPEG</code>・<code>HDRG_BUILD_GSTREAMER</code>・<code>HDRG_BUILD_VAPOURSYNTH</code></td><td>見つかれば</td><td>hdrg-ffmpeg とその補助、バインディング</td></tr>
+<tr><td><code>HDRG_BUILD_GUI</code>・<code>HDRG_GUI_MEDIA</code></td><td>OFF・platform</td><td>hdrg-gui、そのデコーダとエンコーダ (プラットフォームのもの、または <code>ffmpeg</code>)</td></tr>
+<tr><td><code>HDRG_WITH_SYSTEM_DEPS</code></td><td>OFF</td><td>システムの zlib・libpng・giflib・lcms2 (jpegli・Highway・libjxl・brotli はいつも同梱)</td></tr>
+<tr><td><code>HDRG_WARNINGS_AS_ERRORS</code></td><td>トップレベルなら ON</td><td>警告でビルドを失敗にする (別に組むプラグインのプロジェクトは決定性のフラグだけ)</td></tr>
+<tr><td><code>HDRG_MEMORY_HEADER</code></td><td>(なし)</td><td>既定の確保のマクロを差し替えるヘッダ</td></tr>
+<tr><td><code>HDRG_INSTALL</code></td><td>トップレベルなら ON</td><td>install の規則・CMake のパッケージ・pkg-config</td></tr>
+</tbody></table></div>
+
+<h2>既定で OFF のオプション</h2>
+<p><code>HDRG_WITH_TEMPORAL</code> (<code>HDRG_WITH_TEMPORAL_FILTER</code>・<code>_INTERP</code>・<code>_SR</code> も)・<code>HDRG_WITH_AVIF</code>・<code>HDRG_WITH_HEIF</code> は、第三者の権利との関係で利用が安全だと言い切れないため、既定で OFF にしています。有効にする場合は自己責任で行い、ご自身でビルドしてください。プリセットの <code>temporal</code>・<code>avif</code>・<code>heif</code> とカバレッジのプリセットは、このプロジェクトの検証のために ON にするもので、どれかを ON にした構成は CMake がそのことを知らせます。</p>
+
+<h2>GPU の道具</h2>
+<ul>
+<li><strong>Dawn</strong>: {{src:scripts/build_dawn.sh}} がピンしたタグを <code>build/deps/dawn</code> に組みます (開発イメージは <code>/opt/dawn</code>。タグは Dockerfile の <code>DAWN_TAG</code> と一致させる)。</li>
+<li><strong>Tint</strong>: <code>scripts/build_dawn.sh --tint</code> が Tint の CLI を作り、{{src:scripts/gen_shaders.sh}} が WGSL から MSL・SPIR-V・HLSL を作り直します (<code>--check</code> は差分で失敗)。生成物は WGSL と一緒にコミットします。</li>
+<li><strong>Vulkan</strong>: ビルド時はヘッダだけ。開発イメージでは Mesa の lavapipe でテストを走らせます。</li>
+<li><strong>Apple シリコンでの x86</strong>: <code>-DCMAKE_OSX_ARCHITECTURES=x86_64 -DHDRG_WITH_WEBGPU=OFF</code> で Rosetta 2 の上で動きます (SSE4.1、<code>ROSETTA_ADVERTISE_AVX=1</code> で AVX2)。</li>
+</ul>
+
+<h2>FFmpeg</h2>
+<p>開発イメージは Debian の FFmpeg 7.1 です。macOS では {{src:scripts/build_ffmpeg.sh}} が最新の stable を <code>build/deps/ffmpeg</code> に組み、<code>PKG_CONFIG_PATH=$PWD/build/deps/ffmpeg/lib/pkgconfig</code> で構成します。FFmpeg のフィルタは、共有ライブラリを install し (<code>cmake --install build/release --prefix build/deps/hdrgrading</code>)、<code>scripts/build_ffmpeg.sh --filter build/deps/hdrgrading</code> でパッチを当てた FFmpeg を <code>build/deps/ffmpeg-filter</code> に組み、その pkg-config のパスで構成すると <code>test_filter</code> が加わります (<code>-DHDRG_WITH_TEMPORAL_INTERP=ON</code> ならフィルタの <code>fps</code> も確かめます。フィルタはテストのビルドのライブラリを読みます)。</p>
+
+<h2>WebAssembly</h2>
+<pre><code>scripts/docker_dev.sh bash -c 'source "$HDRG_EMSDK_DIR/emsdk_env.sh" &amp;&amp; cmake --workflow --preset wasm'
+scripts/docker_dev.sh scripts/wasm_demo.sh            # build/web にサイト: ドキュメント・5 つのモジュール・デモ</code></pre>
+<p>pthreads の版はプールのワーカーを前もって作ります (<code>PTHREAD_POOL_SIZE</code>)。WASM の SIMD128 には FMA がないので、いつも exact です。</p>
+
+<h2>install と使い方</h2>
+<pre><code>cmake -B build/out -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+cmake --build build/out
+cmake --install build/out --prefix /usr/local</code></pre>
+<pre><code>find_package(hdrgrading 0.0.1 REQUIRED)
+target_link_libraries(app PRIVATE hdrgrading::hdrgrading)</code></pre>
+<p>または <code>pkg-config --cflags --libs hdrgrading</code> (静的なライブラリは <code>--static</code>。C++ の実行時ライブラリと依存も付く)。どちらのパッケージも install 先を動かして使えます。版は API をフリーズするまで 0.x (SOVERSION 0) で、minor が上がると互換が壊れえます。静的なライブラリは同梱の依存の記号を含むので、自分の libpng や zlib を静的にリンクするアプリは、共有ライブラリか <code>HDRG_WITH_SYSTEM_DEPS</code> を使います。</p>

@@ -1,0 +1,36 @@
+<p class="lead">The public API is eight headers. Each page below lists a header's declarations in the header's order, with its comments, and links every identifier the comments name.</p>
+
+<div class="table-wrap"><table>
+<thead><tr><th>Header</th><th>For</th><th>Main entries</th></tr></thead>
+<tbody>
+<tr><td>{{page:api/hdrgrading}}</td><td>Everyone</td><td>{{api:hdrg_context_create}}, {{api:hdrg_convert}}, {{api:hdrg_convert_raw}}, {{api:hdrg_params_init}}, {{api:hdrg_setting_set}}, {{api:hdrg_params_t}}, {{api:hdrg_display_caps_t}}, {{api:hdrg_encode_params_t}}, {{api:hdrg_context_desc_t}}</td></tr>
+<tr><td>{{page:api/video}}</td><td>Video</td><td>{{api:hdrg_session_create}}, {{api:hdrg_session_send_frame}}, {{api:hdrg_session_receive_frame}}, {{api:hdrg_session_preroll}}, {{api:hdrg_session_latency_report}}, {{api:hdrg_session_config_t}}, {{api:hdrg_session_output_t}}, {{api:hdrg_lut3d_export}}, {{api:hdrg_hdr10plus_t35}}</td></tr>
+<tr><td>{{page:api/gpu}}</td><td>Apps that share their GPU</td><td>{{api:hdrg_context_set_device}}, {{api:hdrg_device_frame_t}}, {{api:hdrg_shader}}, {{api:hdrg_apply_state_t}}, {{api:hdrg_vulkan_device_t}}</td></tr>
+<tr><td>{{page:api/metadata}}</td><td>Video and still HDR metadata</td><td>{{api:hdrg_hdr10plus_t}}, {{api:hdrg_st2094_50_t}}, {{api:hdrg_hdr10plus_t35}}, {{api:hdrg_st2094_50_t35}}</td></tr>
+<tr><td>{{page:api/sidedata}}</td><td>Apps and filters exchanging frames' side data</td><td>{{api:HDRG_SD_NOISE}}, {{api:HDRG_SD_MOTION}}, {{api:HDRG_SD_FILM_GRAIN}}</td></tr>
+<tr><td>{{page:api/plugin}}</td><td>Apps that use plugins</td><td>{{api:hdrg_context_register_plugin}}, {{api:hdrg_context_load_plugin}}, {{api:hdrg_context_add_filter}}, {{api:hdrg_context_set_device}}, {{api:hdrg_options_create}}</td></tr>
+<tr><td>{{page:api/filter}}</td><td>Plugin authors</td><td>{{api:hdrg_plugin_api}}, {{api:HDRG_PLUGIN_DEFINE}}, {{api:HDRG_FORMAT_RGB16}}, {{api:hdrg_filter_submit_fn_t}}, {{api:HDRG_STAGE_PREFILTER}}</td></tr>
+<tr><td>{{page:api/codec}}</td><td>Codec plugin authors</td><td>{{api:hdrg_codec_probe_fn_t}}, {{api:hdrg_codec_read_fn_t}}, {{api:hdrg_codec_create_fn_t}}, {{api:hdrg_codec_rows_fn_t}}, {{api:HDRG_CODEC_FORM}}, {{api:HDRG_CODEC_ROWS_RGB16}}</td></tr>
+</tbody></table></div>
+<p><code>version.h</code> (made by CMake from <code>version.h.in</code>) defines <code>HDRG_VERSION_MAJOR</code>, <code>HDRG_VERSION_MINOR</code>, <code>HDRG_VERSION_PATCH</code> and <code>HDRG_VERSION_STRING</code>; {{api:hdrg_version}} returns the library's string at run time.</p>
+
+<h2>Conventions of the API</h2>
+<ul>
+<li>A function that can fail returns an {{api:hdrg_status_t}} (a few return NULL or 0 instead). {{api:hdrg_status_string}} names a status; {{api:hdrg_context_error}} gives the detail of a failed plugin, filter or option call.</li>
+<li>Settings structs are initialized with their <code>*_init</code> function (the defaults live in the library, so they can be re-tuned) and carry <code>struct_size</code>; NULL stands for the defaults.</li>
+<li>A context is used by one thread at a time; distinct contexts are independent. A session likewise.</li>
+<li>Buffers the library returns are freed with {{api:hdrg_free}}, even after the context is gone.</li>
+<li>Constants are fixed integers (<code>UINT32_C</code> / <code>UINT8_C</code>), never renumbered; status codes are only added.</li>
+<li>The library is 0.x: a minor version may break the API. The filter ABI ({{api:HDRG_PLUGIN_ABI_VERSION}} 1) is not frozen.</li>
+</ul>
+
+<h2>Lifecycle at a glance</h2>
+<pre><code>hdrg_context_desc_init(&amp;desc);            /* allocator, threads, SIMD cap, GPU */
+hdrg_context_create(&amp;desc, &amp;ctx);
+  hdrg_context_load_plugin(ctx, path);     /* optional: plugins, filters, a device */
+  hdrg_context_add_filter(ctx, HDRG_STAGE_SCALE, "hdrg.scale.edge", NULL);
+  hdrg_convert(ctx, ...);                  /* stills, any number of times */
+  hdrg_session_create(ctx, ..., &amp;session); /* video */
+    hdrg_session_send_frame / hdrg_session_receive_frame ...
+  hdrg_session_destroy(session);
+hdrg_context_destroy(ctx);</code></pre>

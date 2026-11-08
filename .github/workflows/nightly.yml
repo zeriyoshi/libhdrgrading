@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# The checks too slow for every push and pull request: Valgrind memcheck
+# on the Debug build. It stays unoptimized: optimized code gives memcheck false reports and hides
+# real ones. The sanitizers (ci.yml) cover the pushes.
+name: Nightly
+
+on:
+  schedule:
+    - cron: '23 17 * * *' # 02:23 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  valgrind:
+    name: Linux ${{ matrix.arch }} valgrind
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-26.04' }}
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: ${{ matrix.arch }}
+      - name: Build and test under memcheck
+        run: scripts/docker_dev.sh env CC=gcc CXX=g++ cmake --workflow --preset valgrind

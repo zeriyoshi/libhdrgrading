@@ -1,0 +1,40 @@
+<p class="lead">ライブラリは 1 つの静的か共有のライブラリ (<code>libhdrgrading</code>) で、依存が一方向の層からなります。呼び出す側は公開ヘッダを使い、入口が pipeline を動かし、pipeline がその下の処理の本体を使います。</p>
+
+{{fig:layers}}
+
+<h2>層</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>層</th><th>場所</th><th>持っているもの</th></tr></thead>
+<tbody>
+<tr><td>公開 API</td><td>{{src:include/hdrgrading}}</td><td>{{src:include/hdrgrading/hdrgrading.h|hdrgrading.h}} (コンテキスト・設定・静止画の変換・統計)、{{src:include/hdrgrading/video.h|video.h}} (セッション・3D LUT の書き出し)、{{src:include/hdrgrading/gpu.h|gpu.h}} (アプリと共有する device・アプリの GPU の上のフレーム・そこで適用を走らせるシェーダと状態)、{{src:include/hdrgrading/metadata.h|metadata.h}} (HDR10+ と ST 2094-50 とその T.35 のペイロード)、{{src:include/hdrgrading/sidedata.h|sidedata.h}} (フレームのノイズ・動き・粒のサイドデータ)、{{src:include/hdrgrading/plugin.h|plugin.h}} (プラグインの登録・フィルタの追加・書き手の選択)、{{src:include/hdrgrading/filter.h|filter.h}} と {{src:include/hdrgrading/codec.h|codec.h}} (プラグインが実装する ABI: フィルタ・読み手・書き手)。公開する関数はどれも <code>HDRG_API</code> を付け、共有のビルドはそれだけを公開します。</td></tr>
+<tr><td>コンテキストと設定</td><td>{{src:src/context.c}}・{{src:src/params.c}}・{{src:src/priv.h}}</td><td>アロケータ・スレッドプール・SIMD の階層・GPU のモード・内蔵プラグインを登録したプラグインのホスト・直前の統計。プリセットの既定値、設定の検査、名前での設定 (バインディングが使う hdrg-cli のオプション名)。</td></tr>
+<tr><td>入口</td><td>{{src:src/convert.c}}・{{src:src/session}}・{{src:src/lut3d.c}}・{{src:src/core/dynamic.c}}</td><td>静止画の変換 (デコード・向き・pipeline・容器)、動画のセッション (フレームの待ち行列・シーンの切れ目・フラッシュリミッタ・出力のレート・遅延のレポート。フレームをまたぐ統計は STATS の段で)、STATIC のマッピングの 3D LUT、HDR10+ と ST 2094-50 のペイロード。</td></tr>
+<tr><td>パイプライン</td><td>{{src:src/pipeline}}・{{src:src/pipeline.h}}・{{src:src/host/defaults.c}}</td><td>系列 (ソースの色とその表・色の LUT・適用の作業領域) とそのフレーム: 解析・プラン・描画・SCALE 段への結び付け・帯ごとの適用。PREFILTER の連鎖を開き、内蔵のフィルタを選びます (GPU のコンテキストでは GPU 版を)。</td></tr>
+<tr><td>容器と I/O</td><td>{{src:src/container.c}}・{{src:src/io}}・{{src:src/host/codec_host.c}}</td><td>コーデックのホスト (読み手を順に試す、変換の書き手とそのオプション)、ホストが書き手に渡すもの: ゲインマップとそのメタデータ (ISO 21496-1・XMP)、ICC プロファイルと HAGC のタグ、測った光。コーデックそのものはプラグインです ({{src:src/plugins}})。</td></tr>
+<tr><td>コア</td><td>{{src:src/core}}</td><td>走査 A (解析・ノイズ・ANALYZE の段へ渡す判定した光の記録と、その確からしさでの上乗せ)、走査 B (プラン)、描画、走査 C (適用)、色 (ソースの色・色域マッピング・3D LUT)、Y'CbCr の変換、粒の再合成、動きのサイドデータ、行並列の実行器。コアの GPU 版 (gpu_core・gpu_convert・gpu_apply・gpu_analyze・gpu_gather) もここです。</td></tr>
+<tr><td>SIMD カーネル</td><td>{{src:src/kernels}}</td><td>走査 B と C の内側のループ。ISA ごとの基本演算 (SSE4.1・AVX2・NEON・WASM SIMD128。AVX-512 と SVE は仮実装) の上に 1 回だけ書き、scalar の参照と比べて確かめます。</td></tr>
+<tr><td>プラグインのホスト</td><td>{{src:src/host}}</td><td>プラグインの登録・検証・方針・フリーズ、モジュールの読み込み、オプション、段の実行器 (帯・全画面・時間のウィンドウ・クリップ・飛行中の ASYNC のジョブ・device のフレーム)、ANALYZE と STATS の段、ジョブのフレームの形式、コンテキストの GPU の device (共有の ABI <code>gpu_share.h</code> でネイティブのハンドルとしてプラグインに渡す)。</td></tr>
+<tr><td>内蔵プラグイン</td><td>{{src:src/plugins}}</td><td>どれも自分の CMake のプロジェクトで、ライブラリにリンクし、コンテキストを作るときに公開の ABI で登録します: フィルタの系統ごとに 1 つ (scaler・deblock・dering・defringe・deband・空間と時間方向のノイズ低減・フレーム補間。多くは WebGPU・Metal・Vulkan のクラスとそのシェーダも持ち、MetalFX の scaler は Metal だけ)、光の予測器 (ANALYZE)、時間方向の統計 (STATS、任意の <code>HDRG_WITH_TEMPORAL</code> のとき)、コーデック (JPEG・PNG・GIF・JPEG XL)。AVIF と HEIF は同じ形の読み込むモジュールです。任意のものはビルドから外せます (<code>HDRG_PLUGINS_EXCLUDE</code>)。公開ヘッダと下の層だけを include します (scripts/check_style.py が検査)。</td></tr>
+<tr><td>GPU の層</td><td>{{src:src/gpu}}</td><td>自分のプロジェクト (<code>hdrgrading-gpu</code>): Dawn の上の WebGPU、Metal、Vulkan (実行時に読み込む)、Metal と Vulkan の共通の層 (gk.h)、Apple の CVPixelBuffer、Android の AHardwareBuffer の取り込み、GPU のプラグインの部分 (コンテキストのネイティブの device をプラグイン自身の層のもので包む・ジョブのフレーム)。公開の API ではありません。</td></tr>
+<tr><td>foundation</td><td>{{src:src/foundation}}</td><td>ライブラリとプラグインの土台の自分のプロジェクト (<code>hdrgrading-foundation</code>): 確保のマクロ、libm を使わない数学 (正確な参照と画素ごとの float の多項式)、カウンタのハッシュ、浮動小数点の環境、スレッド、常駐のプール、単調な時計、ライブラリとプラグインの間で GPU の device と device のフレームを共有する ABI (<code>gpu_share.h</code>)。</td></tr>
+<tr><td>WebAssembly の層</td><td>{{src:src/wasm}}</td><td>JavaScript 向けの関数だけのインタフェース: 名前での設定・変換・対話プレビューの状態。</td></tr>
+</tbody></table></div>
+
+<h2>ビルドの形</h2>
+<ul>
+<li>ソースは 1 回だけオブジェクトライブラリにコンパイルし、<code>hdrgrading</code> (静的、<code>BUILD_SHARED_LIBS</code> なら共有) はそのオブジェクトと、内蔵プラグイン・foundation・GPU の層・同梱の依存 (jpegli・Highway・libpng・zlib・giflib・lcms2・libjxl・brotli。<code>HDRG_WITH_SYSTEM_DEPS</code> なら zlib・libpng・giflib・lcms2 はシステムのもの) のオブジェクトからなります。共有ライブラリは <code>HDRG_API</code> の関数だけを公開し、{{src:tests/install/exports.cmake|test_exports}} がその一覧を確かめます。</li>
+<li>テストと内部のツールは <code>${HDRG_INTERNAL}</code> をリンクします: 静的なライブラリそのもの、共有のときは同じオブジェクトの静的な <code>hdrgrading_internal</code>。</li>
+<li>インストールしたパッケージは層とプラグインの関数も持ちます (<code>hdrgrading::headers</code>・<code>hdrgrading::foundation</code>・<code>hdrgrading::gpu</code>・<code>hdrgrading::plugin_shared</code>・<code>hdrg_plugin</code>): プラグインのプロジェクトはそれに対して別に組めます ({{page:plugins}})。</li>
+<li>任意の部分は CMake のオプションです: lcms2 (なければ JPEG XL もなし)・AVIF・HEIF・SIMD・FMA・時間方向の機能 (<code>HDRG_WITH_TEMPORAL</code>、既定は OFF: フレームをまたぐ統計・動き補償の補間・多フレームの拡大)・WebGPU・Metal・Vulkan・FFmpeg・バインディング・GUI と、ビルドから外す内蔵プラグイン (<code>HDRG_PLUGINS_EXCLUDE</code>。{{dev:build}})。</li>
+</ul>
+
+<h2>メモリ・スレッド・浮動小数点の環境</h2>
+<ul>
+<li>ライブラリ・内蔵プラグイン・GPU の層・libpng・zlib・lcms2 の確保 (libjxl の画像の領域も) は、すべてコンテキストのアロケータ ({{api:hdrg_allocator_t}}) を通ります。プラグインは API 表の <code>mem_*</code> で確保します。{{src:src/bindings}} のほかでは <code>malloc</code> を直接呼びません。依存が確保したバッファは <code>free</code> で返し、jpegli と giflib の中の確保はシステムのものです。</li>
+<li>コンテキストは 1 度に 1 つのスレッドから使い、別のコンテキストは独立です。そのプールは行並列の走査を決まった分け方で動かすので、スレッド数で出力は変わりません。</li>
+<li>公開の入口とプールのワーカーはどれも浮動小数点の環境を固定し (最近接丸め、flush-to-zero なし)、ビルドは <code>-ffp-contract=off</code> です。</li>
+<li>画素のループは libm の代わりにライブラリ自身の float の多項式 ({{src:src/foundation/include/hdrgrading/foundation/fmath.h|fmath.h}}) を使い、乱数のような値は位置とフレームを鍵にしたカウンタのハッシュ ({{src:src/foundation/include/hdrgrading/foundation/hash.h|hash.h}}) から取ります。</li>
+</ul>
+
+<h2>次に読むもの</h2>
+<p>{{page:pipeline}}は 1 枚のフレームがコアを通る流れ、{{page:still}}と{{page:video}}はその周りの 2 つの入口です。{{dev:sources}}がディレクトリの一覧です。</p>

@@ -1,0 +1,369 @@
+[
+ {
+  "key": "cb1972e66d032e56",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading codec plugin ABI: the still-image file formats a context",
+   "reads and writes, as classes of a plugin (filter.h's API table, the same",
+   "registration, options and memory). A class made with class_create is a",
+   "codec once it has a reader or a writer (class_set_reader,",
+   "class_set_writer), never a filter too.",
+   "",
+   "- A reader recognizes a file by its first bytes (probe) and decodes it",
+   "  (read) into a picture the host allocates (read_image): interleaved",
+   "  R'G'B' with its color (read_set_cicp / xy / icc), Exif and orientation.",
+   "  The host resolves the color (an ICC profile through lcms2 where it needs a",
+   "  CMM, else a DCF Adobe RGB Exif, else sRGB), rejects HDR transfers (PQ,",
+   "  HLG: HDRG_ERR_ICC_UNSUPPORTED) and turns the picture upright. The",
+   "  readers of a context are probed in registration order (the built-in",
+   "  ones first).",
+   "- A writer takes the rendition's rows in order (rows) in the format it",
+   "  declared, then the file's gain map, metadata and light (finish), and",
+   "  appends the file's bytes (write_output). The host picks the form and the",
+   "  base's color for the writer's color signaling: hdrg_context_set_writer",
+   "  chooses it for the following conversions (default hdrg.jpeg).",
+   "- The Y'CbCr conversions of the library (its chroma from luma) are the",
+   "  table's yuv_to_rgb16 and rgb16_to_yuv; a codec's work on threads goes",
+   "  through run_parallel, on the context's threads.",
+   "",
+   "A codec plugin includes filter.h: the table, its registration and its",
+   "memory, which includes this header."
+  ],
+  "ja": [
+   "libhdrgrading のコーデックプラグインの ABI: コンテキストが読み書きする静止画のファイルの形式を、プラグインのクラスとして (filter.h の API 表、同じ登録・オプション・メモリ)。class_create で作ったクラスは、読み手か書き手 (class_set_reader、class_set_writer) を持つとコーデックになり、フィルタを兼ねることはありません。",
+   "",
+   "- 読み手はファイルをその頭のバイト列で認識し (probe)、ホストが確保する絵 (read_image) へ復号します (read): 詰めた R'G'B' とその色 (read_set_cicp / xy / icc)、Exif と向き。ホストは色を解決し (CMM が要るところは lcms2 で ICC プロファイル、なければ DCF の Adobe RGB の Exif、なければ sRGB)、HDR の伝達特性 (PQ、HLG: HDRG_ERR_ICC_UNSUPPORTED) を拒否し、絵の向きを正します。コンテキストの読み手は登録した順に試します (内蔵のものが先)。",
+   "- 書き手は描画の行を順に、申告した形式で受け取り (rows)、次にファイルのゲインマップ・メタデータ・光を受け取って (finish)、ファイルのバイト列を書き足します (write_output)。ホストは書き手の色の伝え方に合わせて形と基本の色を選びます: hdrg_context_set_writer が以後の変換の書き手を選びます (既定は hdrg.jpeg)。",
+   "- ライブラリの Y'CbCr の変換 (その chroma from luma) は表の yuv_to_rgb16 と rgb16_to_yuv です。コーデックのスレッドでの仕事は run_parallel を通り、コンテキストのスレッドで動きます。",
+   "",
+   "コーデックのプラグインは filter.h を include します: 表とその登録・メモリで、filter.h がこのヘッダを include します。"
+  ]
+ },
+ {
+  "key": "961badcd8af326f8",
+  "of": "hdrg_reader_t",
+  "en": [
+   "a file being read"
+  ],
+  "ja": [
+   "読んでいるファイル"
+  ]
+ },
+ {
+  "key": "c0180635150ff1bf",
+  "of": "hdrg_writer_t",
+  "en": [
+   "a file being written"
+  ],
+  "ja": [
+   "書いているファイル"
+  ]
+ },
+ {
+  "key": "5def98824c7fc096",
+  "of": "HDRG_CODEC_FORM",
+  "en": [
+   "the forms a writer takes (class_set_writer): bits of the HDRG_OUTPUT_* values"
+  ],
+  "ja": [
+   "書き手が受ける形 (class_set_writer): HDRG_OUTPUT_* の値のビット"
+  ]
+ },
+ {
+  "key": "fe4c9875d721c5fa",
+  "of": "HDRG_CODEC_COLOR_CICP",
+  "en": [
+   "how a writer signals its base's color. CICP: H.273 code points (or the",
+   "format's equivalent): an SDR base in sRGB or Display P3, a PQ base in a",
+   "BT.2020 container (its colors within P3). ICC: a profile the host makes",
+   "(write_icc): Display P3 or sRGB (none) for an SDR base and \"P3 PQ\" for a",
+   "PQ one with lcms2; without it sRGB alone, and no PQ base",
+   "(HDRG_ERR_ICC_UNSUPPORTED)"
+  ],
+  "ja": [
+   "書き手が基本の色を伝える方法。CICP: H.273 のコードポイント (か形式の同等のもの): SDR の基本は sRGB か Display P3、PQ の基本は BT.2020 の入れ物 (色は P3 の内)。ICC: ホストが作るプロファイル (write_icc): lcms2 があれば SDR の基本には Display P3 か sRGB (なし)、PQ の基本には \"P3 PQ\"。lcms2 がなければ sRGB だけで、PQ の基本はなし (HDRG_ERR_ICC_UNSUPPORTED)"
+  ]
+ },
+ {
+  "key": "907e1209a27f2323",
+  "of": "HDRG_CODEC_ROWS_RGB8",
+  "en": [
+   "the rows a writer takes"
+  ],
+  "ja": [
+   "書き手が受け取る行"
+  ]
+ },
+ {
+  "key": "b527ed5a05ec026f",
+  "of": "HDRG_CODEC_ROWS_RGB8",
+  "en": [
+   "interleaved 8-bit R'G'B' (encode->dither)"
+  ],
+  "ja": [
+   "詰めた 8bit の R'G'B' (encode->dither)"
+  ]
+ },
+ {
+  "key": "b50bec3b2fbe454c",
+  "of": "HDRG_CODEC_ROWS_RGB16",
+  "en": [
+   "interleaved 16-bit (the codes x 65535)"
+  ],
+  "ja": [
+   "詰めた 16bit (符号値 x 65535)"
+  ]
+ },
+ {
+  "key": "73b27004816ef94a",
+  "of": "HDRG_GAINMAP_BASE_HEADROOM",
+  "en": [
+   "write_gainmap's values: log2 but the gamma"
+  ],
+  "ja": [
+   "write_gainmap の値: ガンマを除いて log2"
+  ]
+ },
+ {
+  "key": "d960e6d8ed012c0c",
+  "of": "HDRG_GAINMAP_BASE_HEADROOM",
+  "en": [
+   "the base's HDR headroom"
+  ],
+  "ja": [
+   "基本の HDR のヘッドルーム"
+  ]
+ },
+ {
+  "key": "37af3843b67b1be9",
+  "of": "HDRG_GAINMAP_ALT_HEADROOM",
+  "en": [
+   "the alternate rendition's"
+  ],
+  "ja": [
+   "代替の描画のもの"
+  ]
+ },
+ {
+  "key": "8c1d09044d0094cc",
+  "of": "HDRG_GAINMAP_MIN",
+  "en": [
+   "the gain a stored 0 decodes to"
+  ],
+  "ja": [
+   "格納した 0 を復号したゲイン"
+  ]
+ },
+ {
+  "key": "596a2010b6c97627",
+  "of": "HDRG_GAINMAP_MAX",
+  "en": [
+   "... a stored 1"
+  ],
+  "ja": [
+   "... 格納した 1"
+  ]
+ },
+ {
+  "key": "5d4760dd57adb67a",
+  "of": "HDRG_GAINMAP_GAMMA",
+  "en": [
+   "the stored map's encoding gamma"
+  ],
+  "ja": [
+   "格納したマップの符号化のガンマ"
+  ]
+ },
+ {
+  "key": "fb5a70a736527867",
+  "of": "HDRG_GAINMAP_BASE_OFFSET",
+  "en": [
+   "ISO 21496-1's offsets, linear"
+  ],
+  "ja": [
+   "ISO 21496-1 のオフセット、線形"
+  ]
+ },
+ {
+  "key": "1e0ed1289fbbcdff",
+  "of": "HDRG_YUVD_WIDTH",
+  "en": [
+   "a Y'CbCr picture's description (yuv_to_rgb16, rgb16_to_yuv):",
+   "HDRG_YUVD_WORDS words. Samples of 8 bits are bytes, of more uint16_t in",
+   "native order"
+  ],
+  "ja": [
+   "Y'CbCr の絵の記述 (yuv_to_rgb16、rgb16_to_yuv): HDRG_YUVD_WORDS 語。8bit の標本はバイト、それより多いものはネイティブの順の uint16_t"
+  ]
+ },
+ {
+  "key": "e78b38a3d5404a9b",
+  "of": "HDRG_YUVD_LAYOUT",
+  "en": [
+   "HDRG_YUV_420 / 422 / 444 (hdrgrading.h)"
+  ],
+  "ja": [
+   "HDRG_YUV_420 / 422 / 444 (hdrgrading.h)"
+  ]
+ },
+ {
+  "key": "2cc9fa5ae2136f77",
+  "of": "HDRG_YUVD_MATRIX",
+  "en": [
+   "HDRG_MATRIX_* (hdrgrading.h)"
+  ],
+  "ja": [
+   "HDRG_MATRIX_* (hdrgrading.h)"
+  ]
+ },
+ {
+  "key": "0207f4597b64603c",
+  "of": "HDRG_YUVD_BITS",
+  "en": [
+   "8 to 16"
+  ],
+  "ja": [
+   "8〜16"
+  ]
+ },
+ {
+  "key": "a0aaa64a9e083d56",
+  "of": "HDRG_YUVD_SITING",
+  "en": [
+   "HDRG_CHROMA_* (hdrgrading.h)"
+  ],
+  "ja": [
+   "HDRG_CHROMA_* (hdrgrading.h)"
+  ]
+ },
+ {
+  "key": "b0cabf54d02f7a88",
+  "of": "HDRG_YUVD_FLAGS",
+  "en": [
+   "HDRG_YUVF_*"
+  ],
+  "ja": [
+   "HDRG_YUVF_*"
+  ]
+ },
+ {
+  "key": "69a7d76e03206756",
+  "of": "HDRG_YUVF_FULL_RANGE",
+  "en": [
+   "else video (limited) range"
+  ],
+  "ja": [
+   "でなければビデオ (リミテッド) レンジ"
+  ]
+ },
+ {
+  "key": "1b1e07acf21a8ff6",
+  "of": "HDRG_YUVF_JFIF",
+  "en": [
+   "JFIF's chroma center (128 / 255), full range"
+  ],
+  "ja": [
+   "JFIF の色差の中心 (128 / 255)、フルレンジ"
+  ]
+ },
+ {
+  "key": "126816608d2c0ecf",
+  "of": "HDRG_YUVF_INTERLEAVED",
+  "en": [
+   "Cb, Cr alternating in planes[1]"
+  ],
+  "ja": [
+   "planes[1] に Cb、Cr が交互"
+  ]
+ },
+ {
+  "key": "ac96f1f7c8f70a65",
+  "of": "HDRG_YUVF_MSB",
+  "en": [
+   "the bits in the high bits of the samples"
+  ],
+  "ja": [
+   "ビットを標本の上位のビットに"
+  ]
+ },
+ {
+  "key": "f15300c0ff84db6b",
+  "of": "hdrg_codec_probe_fn_t",
+  "en": [
+   "required of a reader: 1 when data (size bytes, the whole file) is a file",
+   "of the class's by its first bytes, else 0. Cheap: every reader's probe may",
+   "run on every input"
+  ],
+  "ja": [
+   "読み手に必須: data (size バイト、ファイル全体) がその頭のバイト列でクラスのファイルなら 1、ほかは 0。軽く済ませます: どの読み手の probe もどの入力で走ることもあります"
+  ]
+ },
+ {
+  "key": "19921d19ad78b92d",
+  "of": "hdrg_codec_read_fn_t",
+  "en": [
+   "required of a reader: decodes data into the picture of read_image with",
+   "its color; the first picture of a file of several. The input is not",
+   "trusted: a reader checks every size it reads before using it"
+  ],
+  "ja": [
+   "読み手に必須: data を read_image の絵へ、その色とともに復号します。複数の絵のファイルでは最初の絵。入力は信頼できません: 読み手は読んだ大きさをどれも使う前に確かめます"
+  ]
+ },
+ {
+  "key": "b24111661e30465e",
+  "of": "hdrg_codec_create_fn_t",
+  "en": [
+   "required of a writer: the instance (*inst) writing one file",
+   "(write_image describes it) from validated options, valid within this",
+   "call alone. A failure leaves nothing of the instance (destroy is not",
+   "called)"
+  ],
+  "ja": [
+   "書き手に必須: 1 つのファイル (write_image が記述します) を書くインスタンス (*inst) を、検証したオプション (この呼び出しの中でだけ有効) から。失敗したらインスタンスの何も残しません (destroy は呼ばれません)"
+  ]
+ },
+ {
+  "key": "af6bbba7954b0264",
+  "of": "hdrg_codec_rows_fn_t",
+  "en": [
+   "required of a writer: rows [y0, y0 + rows) of the picture in order, in the",
+   "class's row format, rows of stride bytes valid within the call"
+  ],
+  "ja": [
+   "書き手に必須: 絵の行 [y0, y0 + rows) を順に、クラスの行の形式で。行は stride バイトで、呼び出しの中で有効"
+  ]
+ },
+ {
+  "key": "b3abd16ee4595e04",
+  "of": "hdrg_codec_finish_fn_t",
+  "en": [
+   "required of a writer, after the last rows: the gain map, its metadata and",
+   "the light are known (write_gainmap, write_light); the file goes out",
+   "through write_output"
+  ],
+  "ja": [
+   "書き手に必須、最後の行の後: ゲインマップとそのメタデータと光が分かっています (write_gainmap、write_light)。ファイルは write_output で出します"
+  ]
+ },
+ {
+  "key": "137165a0ea8d8f56",
+  "of": "hdrg_codec_destroy_fn_t",
+  "en": [
+   "required of a writer, whether finish ran or not"
+  ],
+  "ja": [
+   "書き手に必須、finish が走ったかどうかによらず"
+  ]
+ },
+ {
+  "key": "075a8332acc5ea21",
+  "of": "hdrg_parallel_fn_t",
+  "en": [
+   "run_parallel's work: index in [0, count), worker below run_workers' count"
+  ],
+  "ja": [
+   "run_parallel の仕事: index は [0, count)、worker は run_workers の数より小さい"
+  ]
+ }
+]

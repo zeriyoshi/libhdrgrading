@@ -1,0 +1,45 @@
+<p class="lead">{{src:docs}} の下は、{{src:docs/scripts}} と {{src:docs/assets}} を除いてすべて生成物で、同じものが GitHub Pages のサイトになります。生成は標準ライブラリだけを使う Python のスクリプト 1 つです (Python 3.9 以降)。</p>
+
+<pre><code>python3 -I docs/scripts/build.py            # docs/ を書き直す (変わるファイルだけ)
+python3 -I docs/scripts/build.py --check    # docs/ が古ければ 1 で終わる
+python3 -I docs/scripts/build.py --strict   # 図の配置の警告でも失敗する
+python3 -I docs/scripts/build.py --out DIR --site --source-base https://github.com/OWNER/REPO/blob/SHA
+                                              # 公開するサイト: 資産も含むドキュメントを DIR に、
+                                              # トップから demo/ と coverage/ へ、ソースへの
+                                              # リンクは GitHub のリポジトリへ</code></pre>
+
+<h2>何を直すか</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>変えたいもの</th><th>直すファイル</th></tr></thead>
+<tbody>
+<tr><td>ページの文章</td><td>{{src:docs/scripts/content|docs/scripts/content/&lt;言語&gt;/&lt;ページ&gt;.html}} (と <code>dev/&lt;ページ&gt;.html</code>)。英語と日本語は別のファイルなので、両方を直します。</td></tr>
+<tr><td>ページの一覧・題・ページのひな形</td><td>{{src:docs/scripts/build.py}} (<code>USER_PAGES</code>・<code>DEV_PAGES</code>・<code>Site.page</code>)</td></tr>
+<tr><td>図</td><td>{{src:docs/scripts/diagrams.py}}: 図ごとに関数が 1 つ。箱は座標を明示し、ラベルは <code>L(英語, 日本語)</code>。</td></tr>
+<tr><td>図の描き方 (色・矢印・文字)</td><td>{{src:docs/scripts/svgdiagram.py}}</td></tr>
+<tr><td>API リファレンス</td><td>{{src:include/hdrgrading}} のコメントそのもの (日本語の訳は {{src:docs/scripts/api_ja}})。読み取りと配置は {{src:docs/scripts/apiref.py}}。</td></tr>
+<tr><td>ページの色と配置</td><td>{{src:docs/assets/manual.css}}</td></tr>
+</tbody></table></div>
+
+<h2>置き換えの記法</h2>
+<p>ページの元は HTML で、生成のときに置き換えて確かめる記法を含みます。ファイルや記号の名前が変わると、リンクが切れたまま残らずに生成が失敗します:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>記法</th><th>置き換え先</th><th>確かめること</th></tr></thead>
+<tbody>
+<tr><td><code>{&#8203;{fig:名前}}</code></td><td>図をページに埋め込み (テーマの切り替えが効く)、SVG のファイルへのリンクを付ける</td><td>図があること。使われない図は警告</td></tr>
+<tr><td><code>{&#8203;{src:パス}}</code>・<code>{&#8203;{src:パス|文字}}</code></td><td>リポジトリのファイルかディレクトリへのリンク</td><td>パスがあること</td></tr>
+<tr><td><code>{&#8203;{api:記号}}</code>・<code>{&#8203;{api:構造体.メンバ|文字}}</code></td><td>API リファレンスへのリンク</td><td>公開ヘッダにあること</td></tr>
+<tr><td><code>{&#8203;{page:名前}}</code>・<code>{&#8203;{man:名前}}</code>・<code>{&#8203;{dev:名前}}</code></td><td>同じ部・マニュアル・dev/ のページへのリンク</td><td>ページがあること</td></tr>
+</tbody></table></div>
+
+<h2>図</h2>
+<p>図は <code>Diagram(名前, 幅, 高さ, 題, 説明)</code> に、<code>box</code> (種類で色が決まる: app・api・entry・core・io・plugin・filter・gpu・common・ext・data)、<code>group</code>、<code>edge</code> (辺・アンカーの位置 <code>sa</code> / <code>da</code>・経由点 <code>via</code>・<code>dashed</code>・ラベル)、<code>line</code>、<code>text</code> を足したものです。生成は言語ごとに <code>docs/&lt;言語&gt;/img/&lt;名前&gt;.svg</code> を書き、同じ SVG をページに埋め込みます。文字の幅を見積もって、ラベルが箱からはみ出すときや箱が重なるときに警告します。見積もりは控えめなので、ブラウザでも見て確かめます。SVG はシステムのライト・ダークのテーマに従い、ページに埋め込んだものはページのテーマの切り替えにも従います。</p>
+
+<h2>API リファレンス</h2>
+<p>ヘッダは、宣言の前とメンバの後ろに書いた通常のコメントで自分を説明しています。Doxygen と libclang はドキュメント用のコメント (<code>/** */</code>・<code>///&lt;</code>) しか拾わないので、使うにはヘッダのコメントをすべて書き換えるか、ビルドに依存を足すことになります。そこで {{src:docs/scripts/apiref.py}} がヘッダ自体の並び (clang-format と check_style.py が保つもの) を読みます。分からない行に出会えばエラーで止まり、ヘッダの <code>HDRG_API</code> の関数がすべてリファレンスに載っていなければ生成が失敗します。英語のページはコメントを書いたまま載せ、日本語のページは日本語の訳を載せてその下に英語の原文を開けます。どちらの識別子も項目へリンクします。</p>
+<p>訳は {{src:docs/scripts/api_ja}} にヘッダごとに置き、コメントの英語のハッシュを鍵にします。英語の変わらないコメントは訳をそのまま使い、新しいコメントと変わったコメントだけを訳します (手順・決まり・語は {{src:docs/scripts/api_ja/README.md}})。普通に生成するとファイルをヘッダに合わせ (新しいコメントと変わったコメントは <code>"ja": null</code> で入り、使わなくなったものは消える)、訳のないコメントや原文と形の合わない訳 (まとまり・箇条・識別子) があれば失敗します。1 つのファイルは <code>python3 -I docs/scripts/apiref.py docs/scripts/api_ja/&lt;ヘッダ&gt;.json</code> で確かめます。</p>
+
+<h2>確かめる</h2>
+<p>公開ヘッダかページの元を変えたら <code>--check</code> を走らせ、生成物を作り直してコミットする必要があるかを見ます。CI のリポジトリの検査が <code>--check --strict</code> を走らせるので ({{src:.github/workflows/ci.yml}})、マニュアルを作り直さずにヘッダを変えるとそこで失敗します。</p>
+
+<h2>公開</h2>
+<p>GitHub Pages ({{src:.github/workflows/pages.yml}}) はドキュメントをサイト全体として <code>--out site --site</code> と、GitHub のそのコミットを指す <code>--source-base</code> で作り直すので、ソースへのリンクはページが説明するファイルへ届きます (ディレクトリは <code>tree/</code>、ファイルは <code>blob/</code>、API リファレンスの行のアンカーも)。サイトのトップ (ドキュメント自身の <code>index.html</code>) は、ほかのジョブが隣に置く WASM のデモとカバレッジへもリンクします (CI の実行に合算のカバレッジがなくても、その場所に案内のページを置いてサイトを公開します)。{{src:scripts/wasm_demo.sh}} はデモ付きの同じサイトを <code>build/web</code> に組むので、手元で試せます。CMake のターゲット <code>hdrg_web</code> (<code>cmake --build &lt;ビルド&gt; --target hdrg_web</code>) は、デモなしのサイトを <code>&lt;ビルド&gt;/web</code> に組みます。コミットするドキュメントは、手元の checkout で読めるよう相対のリンクのままです。</p>

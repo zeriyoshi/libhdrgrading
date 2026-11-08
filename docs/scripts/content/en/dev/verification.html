@@ -1,0 +1,58 @@
+<p class="lead">Tests use Unity ({{src:third_party/unity}}) and run through CTest. Every configuration runs the whole suite: the guarantees cross modules, so tests are not picked by what changed.</p>
+
+<h2>Test suites</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Directory</th><th>What it checks</th></tr></thead>
+<tbody>
+<tr><td>{{src:tests/unit}}</td><td>Modules on their own: noise estimation, color, the plan and the lights, the render, Y'CbCr conversions, the session's contracts, the luminance rules' evaluation set, the SIMD kernels against scalar (checkasm style), math, hash, threads and the pool; the Metal and Vulkan lower layers.</td></tr>
+<tr><td>{{src:tests/conformance}}</td><td>The library from the outside: the output forms, gain maps, HAGC, gamut, determinism (thread counts, FTZ, SIMD tiers), allocation balance and failure sweeps, plugins and the stage runner, MCTF, interpolation, grain, upscaling, dynamic metadata, AVIF, HEIF, the GPU versions against the CPU (WebGPU, Metal, Vulkan), fuzz seeds.</td></tr>
+<tr><td>{{src:tests/plugins}}</td><td>Test plugin modules (a scaler, ABI versions too new and too old).</td></tr>
+<tr><td>{{src:tests/ffmpeg}}, {{src:tests/gstreamer}}, {{src:tests/vapoursynth}}</td><td>The bindings: every frame equals the session's output byte for byte; colors, metadata, timestamps, latency, output rates.</td></tr>
+<tr><td>{{src:tests/wasm}}</td><td>The browser module on node (bytes equal to the same build's hdrg-cli).</td></tr>
+<tr><td>{{src:tests/install}}</td><td>The shared library's exported symbols equal the <code>HDRG_API</code> list; an installed consumer builds through the CMake package and pkg-config.</td></tr>
+<tr><td>{{src:tests/tools}}</td><td>hdrg-video's HDR10+ and ST 2094-50 JSON.</td></tr>
+<tr><td>{{src:tests/fuzz}}</td><td><code>fuzz_convert</code> (libFuzzer over <code>hdrg_convert</code>) and <code>fuzz_seeds</code> (the seed corpus, also used by <code>test_seeds</code>).</td></tr>
+</tbody></table></div>
+
+<h2>The three tiers</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tier</th><th>When</th><th>What runs</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>After every edit</td><td><code>dev</code> and <code>temporal</code> (the temporal features are off by default), all tests</td></tr>
+<tr><td>2</td><td>Before a commit</td><td><code>dev</code>, <code>temporal</code>, <code>release</code> and <code>asan-ubsan</code>, plus the configurations the change calls for (below)</td></tr>
+<tr><td>3</td><td>At a milestone (the end of a phase, before a push)</td><td>Every configuration: Linux 17, macOS 9, x86 2 and WASM 5 configurations, plus the FFmpeg binding (macOS), the FFmpeg filter (macOS and Linux) and hdrg-gui (macOS, and Linux's GStreamer and FFmpeg builds), with Valgrind, coverage and fuzzing. Problems found here are fixed with additional commits.</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Change</th><th>Add in tier 2</th></tr></thead>
+<tbody>
+<tr><td>The built-in plugins: what is built in, their defaults</td><td><code>minimal</code></td></tr>
+<tr><td>Temporal processing (the STATS filter, interpolation, temporal upscaling)</td><td><code>tsan</code> and <code>asan-ubsan</code> with <code>HDRG_WITH_TEMPORAL</code> on</td></tr>
+<tr><td>Concurrency, asynchronous jobs, GPU completions</td><td><code>tsan</code></td></tr>
+<tr><td>SIMD kernels, fmath</td><td>x86 (Rosetta) and <code>wasm</code></td></tr>
+<tr><td>WebGPU</td><td>Linux (lavapipe)</td></tr>
+<tr><td>ICC, color</td><td><code>nolcms2</code></td></tr>
+<tr><td>Bindings</td><td>Linux <code>dev</code></td></tr>
+<tr><td>HEIF, AVIF, still containers</td><td><code>heif</code> and <code>avif</code> on macOS and Linux</td></tr>
+<tr><td>install, the CMake package</td><td><code>test_install</code> of <code>release</code> and <code>dev</code> on macOS and Linux</td></tr>
+</tbody></table></div>
+<p><code>minimal</code> runs the whole suite on a build without the optional built-in plugins; the tests of those left out are ignored (<code>HDRG_TEST_REQUIRE_BUILTIN</code>, <code>HDRG_TEST_BUILTIN_STATUS</code> in {{src:tests/test_util.h}}) or not built (<code>hdrg_builtins_have</code> in {{src:CMakeLists.txt}}). Before tests, look at the free memory: {{src:scripts/jobs.sh}} sets the parallelism, and warns and runs one job at a time when the free memory leaves room for less than one job. Valgrind runs nightly in CI only ({{src:.github/workflows/nightly.yml}}), at <code>-O0</code>.</p>
+
+<h2>CI</h2>
+<ul>
+<li>{{src:.github/workflows/ci.yml}}: style and format checks (with the shader check, the Actions lockfile and the docs), Linux (amd64 / arm64, GCC / Clang, Debug / Release, without lcms2, with the temporal features), sanitizers, fuzzing, the FFmpeg filter, WASM, coverage on 11 platforms merged into one report, macOS, Windows, the GUI.</li>
+<li>{{src:.github/workflows/nightly.yml}}: Valgrind.</li>
+<li>{{src:.github/workflows/pages.yml}}: GitHub Pages (these docs as the site, the demo, the merged coverage).</li>
+</ul>
+<p>The Actions cache keeps what does not change from run to run, written only outside pull requests: the development image's layers, FFmpeg's clone of its tag and the ccache of its compiles (the filter job), Emscripten's cache per WASM build (and the demo's), and the fuzzing corpus, which grows from run to run (a crash's input is uploaded as an artifact).</p>
+
+<h2 id="determinism">Determinism levels</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Level</th><th>Scope</th><th>Promise</th></tr></thead>
+<tbody>
+<tr><td>L0 (public)</td><td>The CPU path's pixels before encoding, gain maps, metadata</td><td>Byte-identical for the same input, settings, build and SIMD tier, whatever the thread count, run or FP environment</td></tr>
+<tr><td>L0x</td><td>Across SIMD tiers, compilers, OSes</td><td>Within a tolerance of the scalar reference (measured: at most one code, a tiny share of samples)</td></tr>
+<tr><td>L2</td><td>GPU versions against the CPU</td><td>Within a tolerance; the golden is always the CPU scalar reference</td></tr>
+<tr><td>Not promised</td><td>Encoded bytes (jpegli and libjxl pick their instructions; the system's libaom differs by version and, in some versions, by its thread count); vendor-specific filters (MetalFX)</td><td>&mdash;</td></tr>
+<tr><td>Video</td><td>Session outputs</td><td>Under L0, WINDOWED, TWO_PASS and STATIC are pure functions of the input sequence and settings: equal after a seek. RECURSIVE is not.</td></tr>
+</tbody></table></div>
+<p>{{src:tests/conformance/test_determinism.c}} checks thread counts and FTZ, and that the exact SIMD tiers equal scalar; {{src:tests/unit/test_kernels.c}} compares every tier's kernels with the scalar ones.</p>

@@ -1,0 +1,1685 @@
+[
+ {
+  "key": "0a455a9d5ce95a86",
+  "of": "(header)",
+  "en": [
+   "libhdrgrading — SDR to HDR grading: brightens SDR images naturally on HDR",
+   "displays and encodes the result with standard HDR signaling.",
+   "",
+   "Default output is an ISO/TS 21496-1 gain-map JPEG: a real SDR base (sRGB,",
+   "or Display P3 when the gamut is expanded) plus a monochrome gain map in a",
+   "second JPEG stream linked via MPF, with Apple HDRGainMap and Adobe/Google",
+   "hdrgm XMP alongside the ISO metadata. Gain-map readers (iOS 18+ / macOS",
+   "15+, Android 15+, Chrome, libultrahdr-based tools) show HDR; everything",
+   "else shows the correct SDR image.",
+   "",
+   "HDRG_OUTPUT_HYBRID writes a PQ-encoded Display P3 primary (\"P3 PQ\" ICC",
+   "profile with cicp and a HAGC tag) plus an SDR-recovering gain map declared",
+   "as an HDR-base pair (gain map in [-H, 0] stops): viewers that honor only",
+   "the ICC profile show HDR as well, but color-unmanaged SDR viewers show it",
+   "dark and flat, and libultrahdr rejects the HDR-base direction.",
+   "HDRG_OUTPUT_PQ is the bare single-layer PQ form.",
+   "",
+   "The default rendition lifts the whole frame to one diffuse",
+   "level (up to diffuse_max, 2x SDR white by default, for a lit scene, less",
+   "for a dark one), so the ratios between surfaces stay those of the SDR original",
+   "(Didyk et al. 2008: the diffuse surfaces keep their ratios). Only what",
+   "shows evidence of being a light — a bright region whose surround falls",
+   "off evenly in every direction (a glow, a bloom, a specular's soft edge) —",
+   "rises further, toward the display's ceiling. Text, UI, white walls,",
+   "documents and snow carry no such evidence and stay at the diffuse level.",
+   "An average-picture-level budget (a quarter of the ceiling, BT.2408)",
+   "bounds the whole frame. The analysis runs on the source values; gamut",
+   "expansion happens afterwards. Contrast / local contrast / saturation",
+   "grade on top. All luminance operations are ratio-scales on RGB, so hue",
+   "is structurally preserved; shadows never drop below the SDR original.",
+   "",
+   "Thread safety: a context must not be used concurrently; distinct contexts",
+   "are fully independent.",
+   "",
+   "Determinism: identical input bytes + identical params produce identical",
+   "output bytes, regardless of the context's thread count."
+  ],
+  "ja": [
+   "libhdrgrading — SDR から HDR へのグレーディング: SDR の画像を HDR ディスプレイで違和感なく明るくし、その結果を標準的な HDR の信号で書き出します。",
+   "",
+   "既定の出力は ISO/TS 21496-1 のゲインマップの JPEG です: 本物の SDR の基本 (sRGB、色域を広げたときは Display P3) に、MPF でつないだ 2 つ目の JPEG のストリームのモノクロのゲインマップを加え、ISO のメタデータと並べて Apple の HDRGainMap と Adobe / Google の hdrgm の XMP を付けます。ゲインマップを読む環境 (iOS 18+ / macOS 15+、Android 15+、Chrome、libultrahdr を使うツール) は HDR を表示し、ほかはどこでも正しい SDR の画像を表示します。",
+   "",
+   "HDRG_OUTPUT_HYBRID は、PQ で符号化した Display P3 のプライマリ (cicp と HAGC のタグの付いた「P3 PQ」の ICC プロファイル) に、HDR が基本の組として宣言した SDR へ戻すゲインマップ (ゲインマップは [-H, 0] 段) を加えて書きます: ICC プロファイルだけに従う表示でも HDR が見えますが、カラーマネジメントのない SDR の表示では暗く平板に見え、libultrahdr は HDR が基本の向きを拒否します。HDRG_OUTPUT_PQ は素の単層 PQ の形です。",
+   "",
+   "既定の描画は、フレーム全体を 1 つの拡散面の水準へ持ち上げます (明るい場面では diffuse_max まで、既定は SDR の白の 2 倍。暗い場面ではそれより小さく)。そのため面どうしの比は SDR の元のままです (Didyk et al. 2008: 拡散面は比を保つ)。光である手がかりのあるもの — 周りがどの向きにも均等に落ちていく明るい領域 (グロー・にじみ・鏡面のやわらかい縁) — だけが、表示の上限へ向けてさらに上がります。文字・UI・白い壁・文書・雪にはその手がかりがなく、拡散面の水準に留まります。平均輝度の予算 (上限の 4 分の 1、BT.2408) がフレーム全体を抑えます。解析はソースの値で行い、色域の拡張はその後です。コントラスト・局所コントラスト・彩度のグレーディングをその上に重ねます。輝度の操作はどれも RGB に比を掛けるので色相は構造的に保たれ、影が SDR の元より暗くなることはありません。",
+   "",
+   "スレッド安全性: 1 つのコンテキストを並行して使ってはいけません。別のコンテキストは完全に独立です。",
+   "",
+   "決定性: 同じ入力のバイト列と同じ params からは、コンテキストのスレッド数によらず同じ出力のバイト列ができます。"
+  ]
+ },
+ {
+  "key": "a46c1d5d7efadb58",
+  "of": "HDRG_API",
+  "en": [
+   "Platform dependent: one of these, by the build and the compiler."
+  ],
+  "ja": [
+   "プラットフォームに依存します: ビルドとコンパイラに応じて、これらのどれかです。"
+  ]
+ },
+ {
+  "key": "4e0849ab187341fb",
+  "of": "hdrg_status_t",
+  "en": [
+   "Status codes. Fixed values (they also cross the filter plugin ABI, which",
+   "uses no enums): codes are only ever added."
+  ],
+  "ja": [
+   "状態コード。値は固定です (列挙型を使わないフィルタプラグインの ABI もまたぐため): コードは足すだけです。"
+  ]
+ },
+ {
+  "key": "ed68f20310580939",
+  "of": "HDRG_ERR_INVALID_STATE",
+  "en": [
+   "e.g. a registration call after the freeze"
+  ],
+  "ja": [
+   "例: フリーズの後の登録の呼び出し"
+  ]
+ },
+ {
+  "key": "c2d3e7c7cf285b0c",
+  "of": "HDRG_ERR_UNSUPPORTED",
+  "en": [
+   "not available in this build / version"
+  ],
+  "ja": [
+   "このビルド / 版では使えない"
+  ]
+ },
+ {
+  "key": "1261bcf8c7ceb62a",
+  "of": "HDRG_ERR_NOT_FOUND",
+  "en": [
+   "unknown filter id / option key"
+  ],
+  "ja": [
+   "知らないフィルタの ID / オプションのキー"
+  ]
+ },
+ {
+  "key": "09ac7523fd2d0925",
+  "of": "HDRG_ERR_PLUGIN",
+  "en": [
+   "a plugin was rejected or a filter failed"
+  ],
+  "ja": [
+   "プラグインが拒否された、またはフィルタが失敗した"
+  ]
+ },
+ {
+  "key": "a75b57ccc880103b",
+  "of": "HDRG_ERR_AGAIN",
+  "en": [
+   "a session: send / receive again later"
+  ],
+  "ja": [
+   "セッション: 後でもう一度 send / receive する"
+  ]
+ },
+ {
+  "key": "fe527d2fa8b3eb4d",
+  "of": "HDRG_EOF",
+  "en": [
+   "a session: every frame was received"
+  ],
+  "ja": [
+   "セッション: すべてのフレームを受け取った"
+  ]
+ },
+ {
+  "key": "41f4eedae06d684f",
+  "of": "HDRG_ERR_LIMIT",
+  "en": [
+   "larger than the context's max_pixels"
+  ],
+  "ja": [
+   "コンテキストの max_pixels より大きい"
+  ]
+ },
+ {
+  "key": "9b712116c017f7a1",
+  "of": "HDRG_PRIMARIES_BT709",
+  "en": [
+   "Color of raw pixels: ITU-T H.273 code points for the primaries and the",
+   "transfer characteristics, plus the two common still-image spaces H.273",
+   "lacks. Decoders resolve the color of files themselves (ICC, cICP, EXIF)."
+  ],
+  "ja": [
+   "raw の画素の色: 原色と伝達特性の ITU-T H.273 の符号に、H.273 にない静止画でよく使う 2 つの色空間を加えたもの。ファイルの色はデコーダが自分で解決します (ICC、cICP、EXIF)。"
+  ]
+ },
+ {
+  "key": "adff137c24abe8ad",
+  "of": "HDRG_PRIMARIES_BT709",
+  "en": [
+   "also sRGB"
+  ],
+  "ja": [
+   "sRGB も"
+  ]
+ },
+ {
+  "key": "aea2f4e525c2a17d",
+  "of": "HDRG_PRIMARIES_DCI_P3",
+  "en": [
+   "theater white"
+  ],
+  "ja": [
+   "劇場の白"
+  ]
+ },
+ {
+  "key": "516daf16a1c4e243",
+  "of": "HDRG_PRIMARIES_P3_D65",
+  "en": [
+   "Display P3"
+  ],
+  "ja": [
+   "Display P3"
+  ]
+ },
+ {
+  "key": "bbd417a6df633982",
+  "of": "HDRG_PRIMARIES_PROPHOTO",
+  "en": [
+   "ROMM RGB, D50 white"
+  ],
+  "ja": [
+   "ROMM RGB、D50 の白"
+  ]
+ },
+ {
+  "key": "3fcd84371fd2adb1",
+  "of": "HDRG_TRANSFER_BT709",
+  "en": [
+   "1 / 6 / 14 / 15: decoded with BT.1886 (gamma 2.4)"
+  ],
+  "ja": [
+   "1 / 6 / 14 / 15: BT.1886 (ガンマ 2.4) で復号する"
+  ]
+ },
+ {
+  "key": "d432bad21e123a57",
+  "of": "HDRG_TRANSFER_ADOBE_RGB",
+  "en": [
+   "gamma 563/256"
+  ],
+  "ja": [
+   "ガンマ 563/256"
+  ]
+ },
+ {
+  "key": "b97bd7ece0f9321f",
+  "of": "HDRG_TRANSFER_PROPHOTO",
+  "en": [
+   "ROMM: gamma 1.8, linear below 1/32"
+  ],
+  "ja": [
+   "ROMM: ガンマ 1.8、1/32 未満はリニア"
+  ]
+ },
+ {
+  "key": "07847c36331751a2",
+  "of": "HDRG_YUV_420",
+  "en": [
+   "planar Y'CbCr layouts (hdrg_session_pixfmt_t.layout)"
+  ],
+  "ja": [
+   "平面の Y'CbCr の並び (hdrg_session_pixfmt_t.layout)"
+  ]
+ },
+ {
+  "key": "3ca66fbf13394aca",
+  "of": "HDRG_CHROMA_LEFT",
+  "en": [
+   "where subsampled chroma sits (ITU-T H.273 chroma_sample_loc_type,",
+   "hdrg_session_pixfmt_t.chroma_loc): on the even luma columns (LEFT) or",
+   "between two (CENTER); 4:2:0 between the two rows of a pair, on the first",
+   "(TOP) or on the second (BOTTOM)"
+  ],
+  "ja": [
+   "間引いた色差の置かれる位置 (ITU-T H.273 の chroma_sample_loc_type、hdrg_session_pixfmt_t.chroma_loc): 偶数の輝度の列の上 (LEFT) か 2 つの列の間 (CENTER)。4:2:0 の縦は組になる 2 行の間か、1 行目の上 (TOP) か、2 行目の上 (BOTTOM)"
+  ]
+ },
+ {
+  "key": "4599e9cdb95882a4",
+  "of": "HDRG_CHROMA_LEFT",
+  "en": [
+   "the default of MPEG-2, H.264 / HEVC; AV1's VERTICAL"
+  ],
+  "ja": [
+   "MPEG-2、H.264 / HEVC の既定。AV1 の VERTICAL"
+  ]
+ },
+ {
+  "key": "4d31fd3edf8b9b87",
+  "of": "HDRG_CHROMA_CENTER",
+  "en": [
+   "JPEG, MPEG-1"
+  ],
+  "ja": [
+   "JPEG、MPEG-1"
+  ]
+ },
+ {
+  "key": "491040a617680aa4",
+  "of": "HDRG_CHROMA_TOPLEFT",
+  "en": [
+   "AV1 colocated, much UHD / HDR content"
+  ],
+  "ja": [
+   "AV1 の colocated、多くの UHD / HDR のコンテンツ"
+  ]
+ },
+ {
+  "key": "f24e68364d06bf29",
+  "of": "HDRG_MATRIX_BT709",
+  "en": [
+   "ITU-T H.273 matrix coefficients the conversions know"
+  ],
+  "ja": [
+   "変換が扱う ITU-T H.273 の行列の係数"
+  ]
+ },
+ {
+  "key": "2f2b2866eba874c5",
+  "of": "HDRG_MATRIX_BT601",
+  "en": [
+   "SMPTE 170M (5, BT.470 BG, is the same)"
+  ],
+  "ja": [
+   "SMPTE 170M (5 の BT.470 BG も同じ)"
+  ]
+ },
+ {
+  "key": "571becada65eba9c",
+  "of": "HDRG_MATRIX_BT2020",
+  "en": [
+   "non-constant luminance"
+  ],
+  "ja": [
+   "非定輝度"
+  ]
+ },
+ {
+  "key": "5ecfd6b2c13589fe",
+  "of": "HDRG_OUTPUT_AUTO",
+  "en": [
+   "the writer's own (hdrg_codec_info_t.default_form)"
+  ],
+  "ja": [
+   "書き手自身のもの (hdrg_codec_info_t.default_form)"
+  ]
+ },
+ {
+  "key": "1265d8f91999339d",
+  "of": "HDRG_OUTPUT_GAINMAP",
+  "en": [
+   "SDR base + HDR gain map (ISO 21496-1)"
+  ],
+  "ja": [
+   "SDR の基本 + HDR へのゲインマップ (ISO 21496-1)"
+  ]
+ },
+ {
+  "key": "16614fa35353b215",
+  "of": "HDRG_OUTPUT_HYBRID",
+  "en": [
+   "PQ primary + SDR-recovering gain map"
+  ],
+  "ja": [
+   "PQ のプライマリ + SDR へ戻すゲインマップ"
+  ]
+ },
+ {
+  "key": "8dc757eeeaefc8fa",
+  "of": "HDRG_OUTPUT_PQ",
+  "en": [
+   "single-layer PQ, no gain map"
+  ],
+  "ja": [
+   "単層 PQ、ゲインマップなし"
+  ]
+ },
+ {
+  "key": "fe68522d3799ead9",
+  "of": "hdrg_params_t",
+  "en": [
+   "The content intent: how the picture is graded, whatever display it is",
+   "shown on (the display is hdrg_display_caps_t, a still file's form",
+   "hdrg_encode_params_t). Initialize with hdrg_params_init(); defaults live",
+   "in the implementation so they can be re-tuned without ABI breakage.",
+   "Fields added in later minor versions go at the end; struct_size gates",
+   "their visibility."
+  ],
+  "ja": [
+   "コンテンツの意図: どの表示で見せるかによらない、絵のグレーディングの仕方です (表示は hdrg_display_caps_t、静止画のファイルの形は hdrg_encode_params_t)。hdrg_params_init() で初期化します。既定値は実装の中にあるので、ABI を壊さずに調整し直せます。後のマイナー版で足す欄は末尾に置き、それが見えるかどうかは struct_size で決まります。"
+  ]
+ },
+ {
+  "key": "64ac0bd083fb920d",
+  "of": "hdrg_params_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_params_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_params_t) にする"
+  ]
+ },
+ {
+  "key": "1d075d096a27f32d",
+  "of": "hdrg_params_t / luminance (title)",
+  "en": [
+   "luminance"
+  ],
+  "ja": [
+   "輝度"
+  ]
+ },
+ {
+  "key": "1cd1492a701d924e",
+  "of": "hdrg_params_t.global_strength",
+  "en": [
+   "0.0-1.0 multiplier on the diffuse level and the lights'",
+   "boost. default 1.0"
+  ],
+  "ja": [
+   "拡散面の水準と光の上乗せに掛ける倍率 0.0-1.0。既定 1.0"
+  ]
+ },
+ {
+  "key": "9be975fcab5fcaea",
+  "of": "hdrg_params_t.diffuse_max",
+  "en": [
+   "how far diffuse content rises, in multiples of its SDR",
+   "level: a normally exposed frame takes all of it, a dark",
+   "(low-key) one keeps the SDR level and its lights carry",
+   "the HDR. One level for the frame, so diffuse surfaces",
+   "(walls, paper, skin, text) keep their ratios; only",
+   "lights and reflections (a bright region whose surround",
+   "falls off gradually: a glow, a bloom, a specular's soft",
+   "edge) rise above it, toward the peak. 1.0-4.0,",
+   "default 2.0"
+  ],
+  "ja": [
+   "拡散面の内容がどこまで上がるか (SDR の水準の倍数): 普通の露出のフレームはそのすべてを使い、暗い (ローキーの) フレームは SDR の水準のままで、その光が HDR を担います。フレームで 1 つの水準なので、拡散面 (壁・紙・肌・文字) は比を保ち、光と反射 (周りがなだらかに落ちる明るい領域: グロー・にじみ・鏡面のやわらかい縁) だけがそれを超えてピークへ向けて上がります。1.0-4.0、既定 2.0"
+  ]
+ },
+ {
+  "key": "771da875d94991b4",
+  "of": "hdrg_params_t.apl_budget_nits",
+  "en": [
+   "average picture level ceiling in nits, 0 = none",
+   "(BT.2408 comfort in a dim room: BBC finds 5-80",
+   "comfortable, up to 160 for creative effect). The",
+   "gain is scaled by one common factor (binary search",
+   "on a low-res proxy) until the estimated APL fits",
+   "the stricter of this and apl_peak_fraction * peak.",
+   "The SDR level itself is never reduced, so content",
+   "brighter than the limit at SDR (a white document)",
+   "gets no gain. default 0: the library does not",
+   "assume dark rooms"
+  ],
+  "ja": [
+   "平均輝度の上限 (nits)、0 = なし (薄暗い部屋での BT.2408 の快適さ: BBC は 5-80 を快適とし、演出の効果では 160 まで)。見積もった APL がこれと apl_peak_fraction * peak の厳しいほうに収まるまで、ゲインを 1 つの共通の係数で縮めます (低解像度の縮小画での二分探索)。SDR の水準そのものは下げないので、SDR で上限より明るい内容 (白い文書) にはゲインがかかりません。既定 0: ライブラリは暗い部屋を想定しません"
+  ]
+ },
+ {
+  "key": "117210f6cd1c4ac2",
+  "of": "hdrg_params_t.apl_peak_fraction",
+  "en": [
+   "APL ceiling as a fraction of the peak (NHK: under",
+   "25% of peak is not judged \"too bright\").",
+   "0 = no peak-relative limit. Both limits 0 =",
+   "no APL budget at all. default 0.25"
+  ],
+  "ja": [
+   "ピークに対する割合での APL の上限 (NHK: ピークの 25% 未満は「明るすぎる」と判断されない)。0 = ピークに対する上限なし。両方の上限が 0 = APL の予算なし。既定 0.25"
+  ]
+ },
+ {
+  "key": "0221830b98059120",
+  "of": "hdrg_params_t.colored_lights",
+  "en": [
+   "judge saturated lights too: a region whose",
+   "brightest channel clips while its luminance",
+   "stays low (a red neon tube, a colored LED, an",
+   "orange sun) rises when it glows as a white",
+   "light must. Off, only regions near white are",
+   "lights. Saturated surfaces of a photograph",
+   "(flowers, a blue sky) would be taken for",
+   "lights now and then. preset default (ANIME",
+   "on, else off)"
+  ],
+  "ja": [
+   "彩度の高い光も判定する: 最も明るいチャネルがクリップし、輝度は低いままの領域 (赤いネオン管・色の付いた LED・橙色の太陽) が、白い光に求めるのと同じようにグローを持つとき上がります。オフでは、白に近い領域だけが光です。写真の彩度の高い面 (花・青空) がときどき光と取られることになります。プリセットの既定 (ANIME はオン、ほかはオフ)"
+  ]
+ },
+ {
+  "key": "f28a356affa2fada",
+  "of": "hdrg_params_t.light_predictor",
+  "en": [
+   "the learned check of the judged lights:",
+   "each light's boost",
+   "scaled by (1 - this) + this x the small",
+   "predictor's chance that it is a light (0..1),",
+   "so it lowers a doubtful light, never raises",
+   "one past the rules. 0..1, default 0 (off: the",
+   "rules alone)"
+  ],
+  "ja": [
+   "判定した光の学習による確かめ: 光ごとの上乗せを (1 - これ) + これ x 小型予測器が付けた光である確からしさ (0..1) 倍にするので、疑わしい光を下げるだけで、規則を超えて上げることはありません。0..1、既定 0 (オフ: 規則だけ)"
+  ]
+ },
+ {
+  "key": "2a596e572c568522",
+  "of": "hdrg_params_t / grading (all hue-preserving; neutral values disable) (title)",
+  "en": [
+   "grading (all hue-preserving; neutral values disable)"
+  ],
+  "ja": [
+   "グレーディング (どれも色相を保つ。中立の値で無効)"
+  ]
+ },
+ {
+  "key": "1ac2298c4eca7146",
+  "of": "hdrg_params_t.contrast",
+  "en": [
+   "log-luminance S-slope around mid-gray 0.18.",
+   ">1 deepens shadows / expands highlights",
+   "(shadows never drop below the SDR",
+   "original). 1.0 = neutral. default 1.0",
+   "(the surfaces keep their SDR ratios)"
+  ],
+  "ja": [
+   "中間の灰色 0.18 を中心にした対数輝度の S 字の傾き。>1 で影を深め、ハイライトを広げます (影は SDR の元より暗くならない)。1.0 = 中立。既定 1.0 (面は SDR の比を保つ)"
+  ]
+ },
+ {
+  "key": "5db0c360e4a37c44",
+  "of": "hdrg_params_t.clarity",
+  "en": [
+   "local contrast (log-luminance unsharp mask)",
+   "strength. 0 = off. default 0"
+  ],
+  "ja": [
+   "局所コントラスト (対数輝度のアンシャープマスク) の強さ。0 = オフ。既定 0"
+  ]
+ },
+ {
+  "key": "7944e40d382d4937",
+  "of": "hdrg_params_t.saturation",
+  "en": [
+   "perceptual chroma scale (Oklab, with the",
+   "gamut mapping in the color LUT). 1.0 =",
+   "neutral. preset default (ANIME 1.0, else",
+   "1.05)"
+  ],
+  "ja": [
+   "知覚的なクロマの倍率 (Oklab、色の LUT の中で色域写像とともに)。1.0 = 中立。プリセットの既定 (ANIME 1.0、ほかは 1.05)"
+  ]
+ },
+ {
+  "key": "3ced1b146b8eb0ff",
+  "of": "hdrg_params_t.highlight_desat",
+  "en": [
+   "progressive desaturation toward white as",
+   "luminance approaches peak (from the 75%",
+   "shoulder point). Lets saturated highlights",
+   "reach near-peak brightness instead of being",
+   "luminance-limited by one channel — trades",
+   "color fidelity for visual brightness.",
+   "0 = off. preset default (PHOTO 0.4, ANIME",
+   "0.15, GAME 0.3)"
+  ],
+  "ja": [
+   "輝度がピークに近づくにつれて白へ向かう段階的な脱飽和 (75% の肩の点から)。彩度の高いハイライトが、1 つのチャネルで輝度を抑えられずにピーク近くの明るさへ届くようにします — 色の忠実さを見た目の明るさと引き換えにします。0 = オフ。プリセットの既定 (PHOTO 0.4、ANIME 0.15、GAME 0.3)"
+  ]
+ },
+ {
+  "key": "07e985db960cdf99",
+  "of": "hdrg_params_t.expand_strength",
+  "en": [
+   "0-1 gamut expansion toward the target",
+   "gamut (Display P3), in Oklab LCh with",
+   "lightness and hue fixed: only colors near",
+   "the source boundary and near their hue's",
+   "cusp move; neutrals, pastels, dark tones",
+   "and skin stay colorimetric.",
+   "Sources wider than the target are",
+   "compressed into it instead. The target",
+   "is sRGB without lcms2 (no P3 profile),",
+   "or when expand_strength is 0 for a source",
+   "within sRGB (base stays in the source's",
+   "colors). preset default (PHOTO 0.7)"
+  ],
+  "ja": [
+   "目標の色域 (Display P3) へ向けた色域の拡張 0-1。Oklab の LCh で明度と色相を固定します: ソースの境界の近くで、かつ色相のカスプの近くの色だけが動き、無彩色・パステル・暗い色・肌は測色的なままです。目標より広いソースは、代わりに目標の中へ圧縮します。lcms2 がないとき (P3 のプロファイルがない)、または sRGB の内側のソースで expand_strength が 0 のとき (基本はソースの色のまま)、目標は sRGB です。プリセットの既定 (PHOTO 0.7)"
+  ]
+ },
+ {
+  "key": "842b855fd87c5a16",
+  "of": "hdrg_params_t.expand_reach",
+  "en": [
+   "0-1: how far toward the target boundary",
+   "the expansion goes. PHOTO 0.85"
+  ],
+  "ja": [
+   "0-1: 拡張が目標の境界へどこまで向かうか。PHOTO 0.85"
+  ]
+ },
+ {
+  "key": "dfa2c2a1a5b837f5",
+  "of": "hdrg_params_t.expand_skin",
+  "en": [
+   "0-1 protection of skin hues. PHOTO 0.9"
+  ],
+  "ja": [
+   "肌の色相の保護 0-1。PHOTO 0.9"
+  ]
+ },
+ {
+  "key": "16d5a5e6c0ee9a7c",
+  "of": "hdrg_params_t.expand_memory",
+  "en": [
+   "0-1 protection of sky and foliage hues.",
+   "PHOTO 0.5"
+  ],
+  "ja": [
+   "空と草木の色相の保護 0-1。PHOTO 0.5"
+  ]
+ },
+ {
+  "key": "74284d9dcbcc0992",
+  "of": "hdrg_params_t / color (title)",
+  "en": [
+   "color"
+  ],
+  "ja": [
+   "色"
+  ]
+ },
+ {
+  "key": "4f3d668a3d9eb781",
+  "of": "hdrg_params_t.preset",
+  "en": [
+   "HDRG_PRESET_*: set by hdrg_params_init, selects the",
+   "shape of the gamut mapping (knees, dark-tone",
+   "protection) the strengths above scale"
+  ],
+  "ja": [
+   "HDRG_PRESET_*: hdrg_params_init が設定し、上の強さが倍率を掛ける色域写像の形 (膝・暗い色の保護) を選ぶ"
+  ]
+ },
+ {
+  "key": "1792071b182eefea",
+  "of": "hdrg_params_t.sdr_eotf",
+  "en": [
+   "HDRG_SDR_EOTF_*: how sources tagged with the sRGB",
+   "curve are decoded to light. AUTO keeps the sRGB",
+   "piecewise curve; GAMMA22 / BT1886 (2.4) follow",
+   "displays that ignore the linear toe (darker",
+   "shadows). preset default"
+  ],
+  "ja": [
+   "HDRG_SDR_EOTF_*: sRGB の曲線の付いたソースを光へどう復号するか。AUTO は sRGB の区分的な曲線のまま、GAMMA22 / BT1886 (2.4) はリニアの足を無視する表示に従います (影が暗くなる)。プリセットの既定"
+  ]
+ },
+ {
+  "key": "84d010d51638cc71",
+  "of": "hdrg_params_t.chroma_fit",
+  "en": [
+   "HDRG_CHROMA_FIT_*: how subsampled chroma (a 4:2:0 /",
+   "4:2:2 JPEG's, a session's Y'CbCr input) follows",
+   "the luma when it is upsampled. LINEAR: a straight",
+   "line in the luma over each chroma sample's 3 x 3",
+   "neighborhood. SEGMENTED: where a straight line",
+   "leaves a residual, a line bent at the window's",
+   "middle luma (an outline between two fills keeps",
+   "neither fill's color). preset default (ANIME",
+   "SEGMENTED, else LINEAR)"
+  ],
+  "ja": [
+   "HDRG_CHROMA_FIT_*: 間引いた色差 (4:2:0 / 4:2:2 の JPEG のもの、セッションの Y'CbCr の入力) を拡大するときに輝度へどう従わせるか。LINEAR: 色差の標本ごとの 3 x 3 の近傍での輝度の直線。SEGMENTED: 直線で残差が残るところでは、ウィンドウの中央の輝度で曲げた線 (2 つの塗りの間の輪郭線にどちらの塗りの色も乗らない)。プリセットの既定 (ANIME は SEGMENTED、ほかは LINEAR)"
+  ]
+ },
+ {
+  "key": "95f71351fd0aa536",
+  "of": "hdrg_params_t / size (the SCALE stage) (title)",
+  "en": [
+   "size (the SCALE stage)"
+  ],
+  "ja": [
+   "寸法 (SCALE の段)"
+  ]
+ },
+ {
+  "key": "0c18a09830827f1b",
+  "of": "hdrg_params_t.upscaler",
+  "en": [
+   "HDRG_UPSCALER_*: the built-in scaler of an output larger than",
+   "the input on both sides, when no filter is added to the SCALE",
+   "stage (any other size: Lanczos). LANCZOS (hdrg.scale.lanczos),",
+   "EDGE (hdrg.scale.edge: the library's edge-adaptive kernel, lines",
+   "kept smooth), FSR1 (hdrg.scale.fsr1: AMD FSR 1's EASU), NIS",
+   "(hdrg.scale.nis: NVIDIA Image Scaling, up to 2x on each side:",
+   "Lanczos past that); each its GPU version on a",
+   "GPU context. preset default (PHOTO LANCZOS: the closest to the",
+   "photographs; ANIME, GAME EDGE: by eye)"
+  ],
+  "ja": [
+   "HDRG_UPSCALER_*: SCALE 段にフィルタを足していないときの、両方の辺で入力より大きい出力の内蔵の scaler (ほかの寸法は Lanczos)。LANCZOS (hdrg.scale.lanczos)、EDGE (hdrg.scale.edge: ライブラリ独自のエッジ適応のカーネル、線をなめらかに保つ)、FSR1 (hdrg.scale.fsr1: AMD FSR 1 の EASU)、NIS (hdrg.scale.nis: NVIDIA Image Scaling、それぞれの辺で 2 倍まで: それを超えれば Lanczos)。GPU のコンテキストではそれぞれの GPU 版。プリセットの既定 (PHOTO は LANCZOS: 写真に最も近い。ANIME と GAME は EDGE: 目視で)"
+  ]
+ },
+ {
+  "key": "efe2a5c09e6d49d7",
+  "of": "hdrg_params_t / noise (title)",
+  "en": [
+   "noise"
+  ],
+  "ja": [
+   "ノイズ"
+  ]
+ },
+ {
+  "key": "f2e29a049b470e91",
+  "of": "hdrg_params_t.grain_policy",
+  "en": [
+   "HDRG_GRAIN_*. PRESERVE keeps the source's grain and",
+   "noise as they are: the gain, the clarity detail and",
+   "the highlight desaturation follow the noise-cored",
+   "luminance, so the boost does not amplify them.",
+   "REDUCE runs the PREFILTER stage first: the filters",
+   "added to it, else the built-in spatial noise",
+   "reduction (hdrg.denoise.spatial, linked to the",
+   "measured noise). RESYNTH (a video session's; a still:",
+   "HDRG_ERR_UNSUPPORTED) reduces as REDUCE, then adds",
+   "grain to the output in PQ with the source's grain",
+   "as measured (its level at each luma, its",
+   "correlation, HDRG_SD_NOISE) and as it looked in",
+   "SDR: not amplified by the expansion. AUTO (the",
+   "default): RESYNTH in PHOTO's video sessions,",
+   "PRESERVE in the rest (stills, ANIME, GAME)"
+  ],
+  "ja": [
+   "HDRG_GRAIN_*。PRESERVE はソースの粒とノイズをそのまま保ちます: ゲイン・clarity の詳細・ハイライトの脱飽和はノイズをコアリングした輝度に従うので、上乗せがそれらを増幅しません。REDUCE は先に PREFILTER 段を走らせます: 段に足したフィルタ、なければ内蔵の空間のノイズ低減 (hdrg.denoise.spatial、測ったノイズに連動)。RESYNTH (動画のセッションのもの。静止画は HDRG_ERR_UNSUPPORTED) は REDUCE と同じように減らしてから、出力に PQ で粒を足します。粒はソースの測ったとおり (輝度ごとの量・相関、HDRG_SD_NOISE) で、SDR で見えていたとおりです: 拡張で増幅しません。AUTO (既定): PHOTO の動画のセッションでは RESYNTH、ほか (静止画・ANIME・GAME) では PRESERVE"
+  ]
+ },
+ {
+  "key": "14f9c66df8db857a",
+  "of": "hdrg_params_t.denoise_strength",
+  "en": [
+   "REDUCE with the built-in filter: its smoothing",
+   "threshold over the measured noise level, 0-4;",
+   "< 0 = 1. default -1"
+  ],
+  "ja": [
+   "内蔵のフィルタでの REDUCE: 測ったノイズの水準に対する平滑化の閾値、0-4。< 0 = 1。既定 -1"
+  ]
+ },
+ {
+  "key": "0a4524ea85ef2918",
+  "of": "hdrg_params_t.grain_amount",
+  "en": [
+   "RESYNTH: the grain added over the source's as it",
+   "looked in SDR, 0-4 (0 = none). default 1"
+  ],
+  "ja": [
+   "RESYNTH: SDR で見えていたソースの粒に対する、足す粒の量、0-4 (0 = なし)。既定 1"
+  ]
+ },
+ {
+  "key": "96f5fb68435d2bba",
+  "of": "hdrg_params_t.deblock_strength",
+  "en": [
+   "the PREFILTER stage's built-in deblocking of the",
+   "8-pixel grid before the noise reduction",
+   "(hdrg.deblock, linked to the measured block",
+   "step; nothing without block artifacts): its",
+   "thresholds over that step, 0-4; 0 = off. Filters",
+   "added to the stage replace it. preset default",
+   "(PHOTO / ANIME 1, GAME 0)"
+  ],
+  "ja": [
+   "ノイズ低減の前の、PREFILTER 段の内蔵の 8 画素の格子の deblock (hdrg.deblock、測ったブロックの段差に連動。ブロックの跡がなければ何もしない): その段差に対する閾値、0-4。0 = オフ。段に足したフィルタがこれに代わります。プリセットの既定 (PHOTO / ANIME 1、GAME 0)"
+  ]
+ },
+ {
+  "key": "5da2b1594f6ce69d",
+  "of": "hdrg_params_t.dering_strength",
+  "en": [
+   "the PREFILTER stage's built-in deringing after",
+   "the deblocking (hdrg.dering: in the 8-pixel",
+   "blocks with an edge, the mean of the window's",
+   "samples within a range set by the measured",
+   "ringing, the block's contrast and the local",
+   "slope; nothing without ringing): the window's",
+   "radius is 1 + 2 x this, 0-3; 0 = off. preset",
+   "default (ANIME 2, else 0). A frame no filter has",
+   "anything to do for skips the stage: a still is",
+   "then converted as without it"
+  ],
+  "ja": [
+   "deblock の後の、PREFILTER 段の内蔵の dering (hdrg.dering: エッジのある 8 画素のブロックで、測ったリンギング・ブロックのコントラスト・その場の傾きで決まる範囲の内にあるウィンドウの標本の平均。リンギングがなければ何もしない): ウィンドウの半径は 1 + 2 x これ、0-3。0 = オフ。プリセットの既定 (ANIME 2、ほかは 0)。どのフィルタもすることのないフレームは段を飛ばします: そのとき静止画は段なしと同じに変換されます"
+  ]
+ },
+ {
+  "key": "c5bdc2a6ea936e53",
+  "of": "hdrg_params_t.defringe_strength",
+  "en": [
+   "the PREFILTER stage's built-in defringing after",
+   "the deringing (hdrg.defringe: near luma edges,",
+   "the chroma of the window's samples of a close",
+   "Y' and chroma; Y' kept; nothing without",
+   "ringing): the window's radius is 1 + 2 x this,",
+   "0-3; 0 = off. preset default (ANIME 3,",
+   "else 0)"
+  ],
+  "ja": [
+   "dering の後の、PREFILTER 段の内蔵の defringe (hdrg.defringe: 輝度の輪郭の近くで、Y' と色差の近いウィンドウの標本の色差。Y' は保つ。リンギングがなければ何もしない): ウィンドウの半径は 1 + 2 x これ、0-3。0 = オフ。プリセットの既定 (ANIME 3、ほかは 0)"
+  ]
+ },
+ {
+  "key": "43ab49d00ddebcd3",
+  "of": "hdrg_params_t.deband_strength",
+  "en": [
+   "the PREFILTER stage's built-in debanding after",
+   "the defringing (hdrg.deband: each sample toward",
+   "the plane fitted to its window where the fit's",
+   "residual is small, away from luma edges):",
+   "scales that residual (0.8 to 1.6 8-bit codes),",
+   "0-3; 0 = off. preset default (PHOTO 0.5,",
+   "ANIME 2.5, GAME 0)"
+  ],
+  "ja": [
+   "defringe の後の、PREFILTER 段の内蔵の deband (hdrg.deband: 輝度の輪郭から離れ、当てはめの残差が小さいところで、各標本をそのウィンドウに当てはめた平面へ寄せる): その残差 (8bit で 0.8 から 1.6 コード) に掛ける倍率、0-3。0 = オフ。プリセットの既定 (PHOTO 0.5、ANIME 2.5、GAME 0)"
+  ]
+ },
+ {
+  "key": "9e6b5760671c6a5e",
+  "of": "hdrg_params_t.mctf_strength",
+  "en": [
+   "a video session's PREFILTER stage's built-in",
+   "temporal noise reduction after the debanding",
+   "(hdrg.mctf: each pixel averaged with the 2",
+   "frames before and after along their motion,",
+   "weighted by its difference over the measured",
+   "noise; 2 frames of delay, LOW reads only the",
+   "frames before): scales that noise, 0-4; 0 =",
+   "off. preset default (PHOTO 1, ANIME 1, GAME 0).",
+   "Stills have no frames around them"
+  ],
+  "ja": [
+   "deband の後の、動画のセッションの PREFILTER 段の内蔵の時間方向のノイズ低減 (hdrg.mctf: 各画素を前後 2 フレームと動きに沿って平均し、測ったノイズに対する差で重みを付ける。遅延は 2 フレーム、LOW は前のフレームだけを読む): そのノイズに掛ける倍率、0-4。0 = オフ。プリセットの既定 (PHOTO 1、ANIME 1、GAME 0)。静止画には前後のフレームがありません"
+  ]
+ },
+ {
+  "key": "a4f12c3895258d0b",
+  "of": "hdrg_params_t / effort (title)",
+  "en": [
+   "effort"
+  ],
+  "ja": [
+   "解き方の細かさ"
+  ]
+ },
+ {
+  "key": "4e5b27599c6ec6ae",
+  "of": "hdrg_params_t.effort",
+  "en": [
+   "HDRG_EFFORT_*: how finely the same rules are solved. REALTIME",
+   "judges the lights on 4 x 4 pixel cells and keeps their boost on",
+   "8-pixel cells, within a video session's budget;",
+   "QUALITY works on finer ones and analyzes a session's frames at",
+   "full resolution, without a time budget. AUTO: QUALITY for a still",
+   "image and an OFFLINE session, REALTIME for a watched one.",
+   "default AUTO"
+  ],
+  "ja": [
+   "HDRG_EFFORT_*: 同じ規則をどれだけ細かく解くか。REALTIME は 4 x 4 画素のセルで光を判定し、その上乗せを 8 画素のセルに持ち、動画のセッションの予算に収めます。QUALITY はより細かいセルで働き、セッションのフレームを時間の予算なしに全解像度で解析します。AUTO: 静止画と OFFLINE のセッションは QUALITY、視聴するセッションは REALTIME。既定 AUTO"
+  ]
+ },
+ {
+  "key": "a7f8c6f1dbd9a4d3",
+  "of": "hdrg_encode_params_t",
+  "en": [
+   "A still file's form, whatever the codec writing it (plugin.h's",
+   "hdrg_context_set_writer: the format and its own options, such as the",
+   "quality): the output kind, the gain map, the output size. Initialize with",
+   "hdrg_encode_params_init()."
+  ],
+  "ja": [
+   "静止画のファイルの形。どのコーデックが書くかによりません (plugin.h の hdrg_context_set_writer: 形式とそれ自身のオプション、たとえば品質): 出力の種類・ゲインマップ・出力の寸法。hdrg_encode_params_init() で初期化します。"
+  ]
+ },
+ {
+  "key": "dc4c6e4e1c07f714",
+  "of": "hdrg_encode_params_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_encode_params_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_encode_params_t) にする"
+  ]
+ },
+ {
+  "key": "44bbb069e7663028",
+  "of": "hdrg_encode_params_t.output_mode",
+  "en": [
+   "hdrg_output_mode_t value. default HDRG_OUTPUT_AUTO: the",
+   "writer's (hdrg.jpeg: GAINMAP, real SDR pixels and HDR through",
+   "the gain map; hdrg.jxl: HYBRID). HYBRID and PQ show dark, flat",
+   "pixels in color-unmanaged SDR viewers. Note: the iOS Photos zoom",
+   "pipeline dims single-layer PQ irreversibly; HYBRID carries a",
+   "gain map that keeps ISO-aware Apple pipelines on the gain-map",
+   "path. A writer refuses a form it does not take",
+   "(HDRG_ERR_UNSUPPORTED)"
+  ],
+  "ja": [
+   "hdrg_output_mode_t の値。既定 HDRG_OUTPUT_AUTO: 書き手のもの (hdrg.jpeg: GAINMAP、本物の SDR の画素とゲインマップを通した HDR。hdrg.jxl: HYBRID)。HYBRID と PQ は、カラーマネジメントのない SDR の表示では暗く平板な画素に見えます。注意: iOS の写真アプリのズームの経路は単層 PQ を元に戻せない形で暗くします。HYBRID はゲインマップを運ぶので、ISO に対応した Apple の経路はゲインマップの道に留まります。書き手は受けない形を拒否します (HDRG_ERR_UNSUPPORTED)"
+  ]
+ },
+ {
+  "key": "4b28505db3a02abe",
+  "of": "hdrg_encode_params_t.gainmap_scale_shift",
+  "en": [
+   "resolution of the stored gain map, 1/(2^n), 0-4 (0: the",
+   "image's; the gain itself is rendered at full resolution).",
+   "default 1"
+  ],
+  "ja": [
+   "格納するゲインマップの解像度、1/(2^n)、0-4 (0: 画像のもの。ゲインそのものは全解像度で描く)。既定 1"
+  ]
+ },
+ {
+  "key": "c4c54ae7f1af4ffa",
+  "of": "hdrg_encode_params_t.gainmap_headroom_cap_stops",
+  "en": [
+   "cap on the gain-map rendition's peak and declared",
+   "alternate headroom, log2. ISO 21496-1 viewers scale",
+   "the WHOLE gain map by w = display_headroom /",
+   "declared, so a display with less headroom shows",
+   "every gain scaled down (never below SDR). The file",
+   "for an unknown display declares this much (a peak of",
+   "SDR white x 2^cap, 1624 nits at 3 stops, not PQ's",
+   "1000): 1600-nit phones, tablets and laptops reach it",
+   "in dim viewing.",
+   "0 = uncapped. GAINMAP mode only: HYBRID",
+   "and PQ keep the PQ peak so the ICC-only view matches",
+   "--pq. default 3.0"
+  ],
+  "ja": [
+   "ゲインマップの描画のピークと、宣言する代替のヘッドルームの上限、log2。ISO 21496-1 の表示はゲインマップの全体を w = display_headroom / declared で縮めるので、ヘッドルームの小さい表示ではどのゲインも縮みます (SDR を下回ることはない)。知らない表示へのファイルはこれだけを宣言します (ピークは SDR の白 x 2^cap、3 段で 1624 nits。PQ の 1000 ではない): 1600 nits のスマートフォン・タブレット・ノートパソコンは薄暗い視聴でそれに届きます。0 = 上限なし。GAINMAP の形だけ: HYBRID と PQ は PQ のピークを保つので、ICC だけの表示は --pq と一致します。既定 3.0"
+  ]
+ },
+ {
+  "key": "e6096100c86a9469",
+  "of": "hdrg_encode_params_t.gainmap_gamma",
+  "en": [
+   "encoding gamma of the stored gain map. default 1.0"
+  ],
+  "ja": [
+   "格納するゲインマップの符号化のガンマ。既定 1.0"
+  ]
+ },
+ {
+  "key": "beb2e2d8335ee73c",
+  "of": "hdrg_encode_params_t.tonemap_knee",
+  "en": [
+   "SDR rendition tone-map knee K in diffuse-white units: identity below",
+   "K, C1 exponential approach to 1.0 above. The scale is applied per",
+   "pixel to all channels (hue/saturation preserving, exactly invertible",
+   "by the monochrome gain map). default 0.75"
+  ],
+  "ja": [
+   "SDR の描画のトーンマップの膝 K (拡散面の白を単位とする): K 未満は恒等、その上は 1.0 へ C1 の指数関数で近づきます。倍率は画素ごとにすべてのチャネルへ掛けます (色相 / 彩度を保ち、モノクロのゲインマップでちょうど戻せる)。既定 0.75"
+  ]
+ },
+ {
+  "key": "e035fc30a3f4802b",
+  "of": "hdrg_encode_params_t.output_width",
+  "en": [
+   "output pixels, at most 65535 and the writer's limit (a JPEG's",
+   "65500: a larger side, the input's too, is HDRG_ERR_INVALID_ARG).",
+   "0 = derived from the other side keeping the aspect ratio; both 0 =",
+   "the input size. A different size runs the SCALE stage: the filter",
+   "added with hdrg_context_add_filter, else a built-in scaler (larger",
+   "on both sides: hdrg_params_t.upscaler's, else hdrg.scale.lanczos:",
+   "3 lobes, anti-ringing). Analysis and plan stay at the input size.",
+   "default 0"
+  ],
+  "ja": [
+   "出力の画素数、65535 と書き手の上限まで (JPEG は 65500: それより大きい辺は、入力のものも HDRG_ERR_INVALID_ARG)。0 = 縦横比を保ってもう一方の辺から決める。両方 0 = 入力の寸法。違う寸法では SCALE 段を走らせます: hdrg_context_add_filter で足したフィルタ、なければ内蔵の scaler (両方の辺で大きいときは hdrg_params_t.upscaler のもの、ほかは hdrg.scale.lanczos: 3 lobe、アンチリンギング)。解析とプランは入力の寸法のままです。既定 0"
+  ]
+ },
+ {
+  "key": "c2211d706322ade1",
+  "of": "hdrg_encode_params_t.output_height",
+  "en": [
+   "default 0"
+  ],
+  "ja": [
+   "既定 0"
+  ]
+ },
+ {
+  "key": "2184436744a04d05",
+  "of": "hdrg_encode_params_t.dither",
+  "en": [
+   "triangular dither on 8-bit output rows and the gain map.",
+   "default true"
+  ],
+  "ja": [
+   "8bit の出力の行とゲインマップへの三角ディザ。既定 true"
+  ]
+ },
+ {
+  "key": "cda9da64e5bacf7a",
+  "of": "HDRG_GAMUT_SRGB",
+  "en": [
+   "the gamut an output may use (hdrg_display_caps_t.gamut)"
+  ],
+  "ja": [
+   "出力が使ってよい色域 (hdrg_display_caps_t.gamut)"
+  ]
+ },
+ {
+  "key": "ac4c530cf6edbbfc",
+  "of": "HDRG_GAMUT_BT2020",
+  "en": [
+   "a BT.2020 container (video): the colors stay within P3"
+  ],
+  "ja": [
+   "BT.2020 の入れ物 (動画): 色は P3 の内側に留まる"
+  ]
+ },
+ {
+  "key": "1f7285a01c2bfe7d",
+  "of": "hdrg_display_caps_t",
+  "en": [
+   "What the display shows: the rendition never guesses.",
+   "Initialize with hdrg_display_caps_init(), the assumed viewing of a file",
+   "(no headroom limit, 203-nit SDR white, the format's peak: never the",
+   "content's, Display P3); a still file's form may lower it (the gain map's",
+   "headroom cap, the gamut the writer can tag: sRGB without lcms2 for one",
+   "signaling ICC profiles)."
+  ],
+  "ja": [
+   "表示が見せるもの: 描画は推測しません。hdrg_display_caps_init() で、ファイルの想定の視聴 (ヘッドルームの上限なし、203 nits の SDR の白、形式のピーク: 内容のものではない、Display P3) に初期化します。静止画のファイルの形がそれを下げることがあります (ゲインマップのヘッドルームの上限、書き手が付けられる色域: ICC プロファイルで伝える書き手では lcms2 なしなら sRGB)。"
+  ]
+ },
+ {
+  "key": "567238772e5821b3",
+  "of": "hdrg_display_caps_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_display_caps_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_display_caps_t) にする"
+  ]
+ },
+ {
+  "key": "5783151723e433de",
+  "of": "hdrg_display_caps_t.headroom_stops",
+  "en": [
+   "log2(peak / SDR white) the display delivers; < 0 = no limit.",
+   "default -1"
+  ],
+  "ja": [
+   "表示が出せる log2(peak / SDR white)。< 0 = 上限なし。既定 -1"
+  ]
+ },
+ {
+  "key": "cf53af8abdf73df2",
+  "of": "hdrg_display_caps_t.sdr_white_nits",
+  "en": [
+   "the display's SDR reference white; 0 = 203 (BT.2408).",
+   "default 0"
+  ],
+  "ja": [
+   "表示の SDR の基準の白。0 = 203 (BT.2408)。既定 0"
+  ]
+ },
+ {
+  "key": "b50d89ad99a14ab7",
+  "of": "hdrg_display_caps_t.peak_nits",
+  "en": [
+   "the rendition ceiling; a soft shoulder starts at 75% of it",
+   "so highlight gradation is never clipped flat. 0 = the",
+   "format's: 1000 (PQ; a gain map: SDR white x 2^headroom).",
+   "default 0"
+  ],
+  "ja": [
+   "描画の上限。その 75% からやわらかい肩が始まるので、ハイライトの階調が平らにクリップされることはありません。0 = 形式のもの: 1000 (PQ。ゲインマップは SDR の白 x 2^headroom)。既定 0"
+  ]
+ },
+ {
+  "key": "8f826aa4baa49165",
+  "of": "hdrg_display_caps_t.max_full_frame_nits",
+  "en": [
+   "full-white (ABL) limit of the average; 0 = none. default 0"
+  ],
+  "ja": [
+   "全白 (ABL) での平均の上限。0 = なし。既定 0"
+  ]
+ },
+ {
+  "key": "8c2f726183328033",
+  "of": "hdrg_display_caps_t.gamut",
+  "en": [
+   "HDRG_GAMUT_*: the widest gamut the output may use.",
+   "default HDRG_GAMUT_P3"
+  ],
+  "ja": [
+   "HDRG_GAMUT_*: 出力が使ってよい最も広い色域。既定 HDRG_GAMUT_P3"
+  ]
+ },
+ {
+  "key": "080b1a1ad126869f",
+  "of": "HDRG_PRESET_PHOTO",
+  "en": [
+   "Content presets: starting points of the same pipeline.",
+   "PHOTO: camera pictures (boundary colors are mostly clipped, expansion is",
+   "best founded). ANIME: the palette is the intent; gentler expansion,",
+   "strong protection of skin and dark line art, gamma 2.2. GAME: vivid,",
+   "reach kept below the boundary (HUD colors cannot be told apart from the",
+   "scene's, so none is pushed to the gamut's edge)."
+  ],
+  "ja": [
+   "コンテンツのプリセット: 同じパイプラインの出発点。PHOTO: カメラの写真 (境界の色はたいていクリップしたもので、拡張の根拠が最もある)。ANIME: パレットが意図。穏やかな拡張、肌と暗い線画の強い保護、ガンマ 2.2。GAME: 鮮やか、届く先は境界の手前まで (HUD の色を場面の色と見分けられないので、どれも色域の縁まで押し出さない)。"
+  ]
+ },
+ {
+  "key": "5840bd7f5c16cbcd",
+  "of": "HDRG_SDR_EOTF_AUTO",
+  "en": [
+   "the source's own curve"
+  ],
+  "ja": [
+   "ソース自身の曲線"
+  ]
+ },
+ {
+  "key": "b2af0202f024ef88",
+  "of": "HDRG_SDR_EOTF_SRGB",
+  "en": [
+   "IEC 61966-2-1 piecewise"
+  ],
+  "ja": [
+   "IEC 61966-2-1 の区分的な曲線"
+  ]
+ },
+ {
+  "key": "ae3ee704c060d320",
+  "of": "HDRG_SDR_EOTF_BT1886",
+  "en": [
+   "gamma 2.4"
+  ],
+  "ja": [
+   "ガンマ 2.4"
+  ]
+ },
+ {
+  "key": "6c650163f372d748",
+  "of": "HDRG_GRAIN_RESYNTH",
+  "en": [
+   "remove, grade, resynthesize in PQ (a session's)"
+  ],
+  "ja": [
+   "取り除き、グレーディングし、PQ で再合成する (セッションのもの)"
+  ]
+ },
+ {
+  "key": "8fccc74ebdf6d96d",
+  "of": "HDRG_GRAIN_AUTO",
+  "en": [
+   "PHOTO's video sessions: RESYNTH, else PRESERVE"
+  ],
+  "ja": [
+   "PHOTO の動画のセッション: RESYNTH、ほかは PRESERVE"
+  ]
+ },
+ {
+  "key": "6a6ad2004e149d50",
+  "of": "HDRG_EFFORT_AUTO",
+  "en": [
+   "QUALITY: a still image, an OFFLINE session"
+  ],
+  "ja": [
+   "QUALITY: 静止画、OFFLINE のセッション"
+  ]
+ },
+ {
+  "key": "5d0c7bed8375b106",
+  "of": "hdrg_params_init",
+  "en": [
+   "defaults of a preset; NULL params is a no-op"
+  ],
+  "ja": [
+   "プリセットの既定値。params が NULL なら何もしない"
+  ]
+ },
+ {
+  "key": "f52ab9e3420ac6e4",
+  "of": "hdrg_encode_params_init",
+  "en": [
+   "the defaults; NULL is a no-op"
+  ],
+  "ja": [
+   "既定値。NULL なら何もしない"
+  ]
+ },
+ {
+  "key": "c07a6373dddabafa",
+  "of": "hdrg_display_caps_peak",
+  "en": [
+   "The highest rendition peak (cd/m^2) caps allow any picture: the display's",
+   "peak, else 1000, within its headroom. A stream's mastering display",
+   "maximum before any frame (hdrg_session_peak gives the same of a session);",
+   "0 for invalid caps (NULL = the defaults)"
+  ],
+  "ja": [
+   "表示能力がどの絵にも許す最も高い描画のピーク (cd/m^2): 表示のピーク、なければ 1000 で、そのヘッドルームの内。どのフレームより前に分かる、ストリームのマスタリングディスプレイの最大です (hdrg_session_peak はセッションの同じものを返す)。表示能力が不正なら 0 (NULL = 既定値)"
+  ]
+ },
+ {
+  "key": "49818ec9ac82f9a7",
+  "of": "HDRG_SETTING_INTENT",
+  "en": [
+   "The settings by name, for bindings and tools (WASM, VapourSynth,",
+   "GStreamer, the FFmpeg filter, the GUI, the CLIs' --set): mostly the",
+   "hdrg-cli option names without the dashes (\"diffuse-max\", \"peak-nits\",",
+   "\"display-headroom\", \"deband\", ...), a session's hdrg-video's (\"temporal\",",
+   "\"latency\", \"past\", ...), the struct's own where the CLI takes a switch or",
+   "a pair (\"mode\", \"output-width\", \"flash-off\", \"out-rate-num\"). Every field",
+   "of the three structs has one but struct_size and",
+   "hdrg_display_caps_t.gamut, and the session's those of its numbers,",
+   "rates, size and switches. \"preset\" initializes the intent",
+   "(hdrg_params_init): set it first. A setting's struct is its part's (a",
+   "session's: hdrg_session_setting_set of video.h); switches take 0 / 1;",
+   "enumerated ones have their values' names too (hdrg_setting_value_at,",
+   "hdrg_setting_parse). The ranges are checked where the settings are used."
+  ],
+  "ja": [
+   "名前での設定。バインディングとツール (WASM・VapourSynth・GStreamer・FFmpeg のフィルタ・GUI・CLI の --set) のためのものです: 多くは hdrg-cli のオプション名からダッシュを除いたもの (\"diffuse-max\"・\"peak-nits\"・\"display-headroom\"・\"deband\" など)、セッションのものは hdrg-video のもの (\"temporal\"・\"latency\"・\"past\" など)、CLI がスイッチや組で受け取るところは構造体自身の名前 (\"mode\"・\"output-width\"・\"flash-off\"・\"out-rate-num\") です。3 つの構造体のどの欄にもあり (struct_size と hdrg_display_caps_t.gamut を除く)、セッションのものはその数・レート・寸法・スイッチの欄にあります。\"preset\" は意図を初期化します (hdrg_params_init): 最初に設定してください。設定の構造体はその部分のものです (セッションのものは video.h の hdrg_session_setting_set)。スイッチは 0 / 1 を取り、列挙の設定はその値の名前も持ちます (hdrg_setting_value_at・hdrg_setting_parse)。範囲は設定を使うところで確かめます。"
+  ]
+ },
+ {
+  "key": "d12cf8d2004e4d90",
+  "of": "HDRG_SETTING_INTENT",
+  "en": [
+   "hdrg_params_t"
+  ],
+  "ja": [
+   "hdrg_params_t"
+  ]
+ },
+ {
+  "key": "cc0edc2b70804bdb",
+  "of": "HDRG_SETTING_DISPLAY",
+  "en": [
+   "hdrg_display_caps_t"
+  ],
+  "ja": [
+   "hdrg_display_caps_t"
+  ]
+ },
+ {
+  "key": "e4d1bf77ed3281e7",
+  "of": "HDRG_SETTING_ENCODE",
+  "en": [
+   "hdrg_encode_params_t"
+  ],
+  "ja": [
+   "hdrg_encode_params_t"
+  ]
+ },
+ {
+  "key": "49d2107d1b17f535",
+  "of": "HDRG_SETTING_SESSION",
+  "en": [
+   "hdrg_session_config_t (video.h)"
+  ],
+  "ja": [
+   "hdrg_session_config_t (video.h)"
+  ]
+ },
+ {
+  "key": "ad926cc6cb08474f",
+  "of": "hdrg_setting_t.part",
+  "en": [
+   "HDRG_SETTING_INTENT / DISPLAY / ENCODE / SESSION"
+  ],
+  "ja": [
+   "HDRG_SETTING_INTENT / DISPLAY / ENCODE / SESSION"
+  ]
+ },
+ {
+  "key": "ff71604aedd53784",
+  "of": "hdrg_setting_t.kind",
+  "en": [
+   "HDRG_SETTING_FLOAT / U8 / U16 / U32 / BOOL"
+  ],
+  "ja": [
+   "HDRG_SETTING_FLOAT / U8 / U16 / U32 / BOOL"
+  ]
+ },
+ {
+  "key": "4e39111ade6a3ba7",
+  "of": "hdrg_setting_t.values",
+  "en": [
+   "its values' names (hdrg_setting_value_at; 0: a number alone)"
+  ],
+  "ja": [
+   "その値の名前の数 (hdrg_setting_value_at。0: 数だけ)"
+  ]
+ },
+ {
+  "key": "c0a6254626a88d03",
+  "of": "hdrg_setting_at",
+  "en": [
+   "the index-th setting, in a fixed order; false past the last"
+  ],
+  "ja": [
+   "決まった順で index 番目の設定値。最後を過ぎれば false"
+  ]
+ },
+ {
+  "key": "3ac6dedcdc9b64af",
+  "of": "hdrg_setting_set",
+  "en": [
+   "One setting into its part's struct (the others may be NULL):",
+   "HDRG_ERR_NOT_FOUND for an unknown name, HDRG_ERR_INVALID_ARG for a NULL",
+   "struct of its part or a value outside its kind (NaN, not a whole number",
+   "of the type's range, a switch other than 0 / 1)"
+  ],
+  "ja": [
+   "1 つの設定値をその part の構造体へ書きます (ほかは NULL でよい): 知らない名前は HDRG_ERR_NOT_FOUND、その part の構造体が NULL のときと種類の外の値 (NaN、型の範囲の整数でないもの、0 / 1 以外のスイッチ) は HDRG_ERR_INVALID_ARG です"
+  ]
+ },
+ {
+  "key": "e3e60699afd1151b",
+  "of": "hdrg_setting_get",
+  "en": [
+   "one setting's value from its part's struct (switches 0 / 1); the errors of hdrg_setting_set"
+  ],
+  "ja": [
+   "その part の構造体から 1 つの設定値の値を読む (スイッチは 0 / 1)。エラーは hdrg_setting_set と同じ"
+  ]
+ },
+ {
+  "key": "7d35c59dccf304ad",
+  "of": "hdrg_setting_value_at",
+  "en": [
+   "the index-th of the named values of setting name: *text and *value; false past the last"
+  ],
+  "ja": [
+   "設定 name の名前の付いた値の index 番目: *text と *value。最後を過ぎると false"
+  ]
+ },
+ {
+  "key": "0591c61a8d101ad0",
+  "of": "hdrg_setting_value_name",
+  "en": [
+   "the name of setting name's value (NULL: none, or no such setting)"
+  ],
+  "ja": [
+   "設定 name の値の名前 (NULL: 名前がない、またはその設定がない)"
+  ]
+ },
+ {
+  "key": "90144e802da6db24",
+  "of": "hdrg_setting_parse",
+  "en": [
+   "The value of setting name written text: one of its values' names, else a",
+   "number in the C locale's form. HDRG_ERR_NOT_FOUND for an unknown name,",
+   "HDRG_ERR_INVALID_ARG for a text that is neither (the kind is checked by",
+   "hdrg_setting_set)"
+  ],
+  "ja": [
+   "text と書かれた設定 name の値: その値の名前のどれか、そうでなければ C のロケールの形の数。名前を知らなければ HDRG_ERR_NOT_FOUND、どちらでもない text は HDRG_ERR_INVALID_ARG (型は hdrg_setting_set が確かめる)"
+  ]
+ },
+ {
+  "key": "7940b6c967d83ed6",
+  "of": "hdrg_allocator_t",
+  "en": [
+   "Custom allocator. The allocations of the library, of its built-in filters",
+   "and GPU layers, of the plugins through their API table (mem_alloc and the",
+   "others), and of the dependencies that take hooks (libpng, zlib through",
+   "it, lcms2) route through these hooks, as do the buffers later released by",
+   "hdrg_free. jpegli, giflib, Highway and the GPU drivers allocate on their",
+   "own. Hooks are called from any thread (the pool's, a GPU's completion),",
+   "and must stay usable until hdrg_context_destroy returns and every buffer",
+   "of hdrg_free is freed. calloc_fn is optional (NULL = malloc_fn and zero",
+   "filling); aligned blocks (GPU host memory) are carved from malloc_fn's.",
+   "Copied at context creation. NULL in hdrg_context_desc_t: the build's",
+   "defaults (HDRG_MALLOC and the others, malloc unless the build replaces",
+   "them)."
+  ],
+  "ja": [
+   "独自のアロケータ。ライブラリ、その内蔵のフィルタと GPU の層、API 表を通したプラグイン (mem_alloc など)、フックを受け付ける依存 (libpng、それを通した zlib、lcms2) の確保はこれらのフックを通ります。後で hdrg_free で解放するバッファも同じです。jpegli・giflib・Highway・GPU のドライバは自分で確保します。フックはどのスレッドからも呼ばれ (プールのもの、GPU の完了)、hdrg_context_destroy が戻り、hdrg_free のバッファがすべて解放されるまで使えなければなりません。calloc_fn は任意です (NULL = malloc_fn と 0 埋め)。そろえたブロック (GPU の host のメモリ) は malloc_fn のブロックから切り出します。コンテキストを作るときに写します。hdrg_context_desc_t で NULL: ビルドの既定 (HDRG_MALLOC など。ビルドが差し替えなければ malloc)。"
+  ]
+ },
+ {
+  "key": "42020464a34e9d40",
+  "of": "HDRG_SIMD_SCALAR",
+  "en": [
+   "SIMD tiers. A context runs the best tier the CPU supports;",
+   "the environment variable HDRG_SIMD_MAX (a name of hdrg_simd_name, read at",
+   "context creation) caps it, and a tier of another architecture caps to",
+   "scalar. AVX-512 and SVE are provisional: they run only when HDRG_SIMD_MAX",
+   "names them. The tier that ran is in hdrg_stats_t.simd_tier."
+  ],
+  "ja": [
+   "SIMD の階層。コンテキストは CPU が対応する最もよい階層で動きます。環境変数 HDRG_SIMD_MAX (hdrg_simd_name の名前、コンテキストを作るときに読む) がそれを抑え、別のアーキテクチャの階層なら scalar に抑えます。AVX-512 と SVE は仮実装です: HDRG_SIMD_MAX がその名前を指定したときだけ動きます。動いた階層は hdrg_stats_t.simd_tier にあります。"
+  ]
+ },
+ {
+  "key": "3d2787c72e13a676",
+  "of": "HDRG_SIMD_AVX2",
+  "en": [
+   "with FMA (x86-64-v3)"
+  ],
+  "ja": [
+   "FMA 付き (x86-64-v3)"
+  ]
+ },
+ {
+  "key": "5c9ec82e8d828278",
+  "of": "HDRG_SIMD_AVX512",
+  "en": [
+   "F / DQ / BW / VL + VBMI2 / VNNI / BITALG (Ice Lake)"
+  ],
+  "ja": [
+   "F / DQ / BW / VL + VBMI2 / VNNI / BITALG (Ice Lake)"
+  ]
+ },
+ {
+  "key": "c560ebd30f6d77cf",
+  "of": "hdrg_simd_name",
+  "en": [
+   "\"scalar\", \"sse41\", \"avx2\", \"avx512\", \"neon\", \"sve\", \"wasm128\"; NULL for others"
+  ],
+  "ja": [
+   "\"scalar\"、\"sse41\"、\"avx2\"、\"avx512\"、\"neon\"、\"sve\"、\"wasm128\"。ほかは NULL"
+  ]
+ },
+ {
+  "key": "035033e5d0a35429",
+  "of": "hdrg_context_desc_t",
+  "en": [
+   "How a context runs. thread_count and simd_max never change the output",
+   "bytes beyond the SIMD tier's own tolerance: the work is split",
+   "the same way for any thread count."
+  ],
+  "ja": [
+   "コンテキストの動かし方。thread_count と simd_max は、SIMD の階層自身の許容誤差を超えて出力のバイト列を変えません: 仕事はどのスレッド数でも同じに分けます。"
+  ]
+ },
+ {
+  "key": "808b3a576b77a34c",
+  "of": "hdrg_context_desc_t.struct_size",
+  "en": [
+   "set to sizeof(hdrg_context_desc_t)"
+  ],
+  "ja": [
+   "sizeof(hdrg_context_desc_t) にする"
+  ]
+ },
+ {
+  "key": "77a46f4aafacf04b",
+  "of": "hdrg_context_desc_t.allocator",
+  "en": [
+   "NULL = the build's defaults (HDRG_MALLOC and the",
+   "others); copied"
+  ],
+  "ja": [
+   "NULL = ビルドの既定 (HDRG_MALLOC など)。写す"
+  ]
+ },
+ {
+  "key": "8eca2da66b26f437",
+  "of": "hdrg_context_desc_t.thread_count",
+  "en": [
+   "threads a call may run on, the calling one",
+   "included: 0 = one per core, 1 = the calling",
+   "thread alone. default 0"
+  ],
+  "ja": [
+   "呼び出しが使ってよいスレッドの数 (呼び出したスレッドを含む): 0 = コアごとに 1 つ、1 = 呼び出したスレッドだけ。既定 0"
+  ]
+ },
+ {
+  "key": "f3620e6960c184a2",
+  "of": "hdrg_context_desc_t.max_pixels",
+  "en": [
+   "the largest image (input or output) a call takes:",
+   "larger ones fail with HDRG_ERR_LIMIT before their",
+   "pixels are allocated. 0 = HDRG_DEFAULT_MAX_PIXELS.",
+   "where size_t is 32 bits, capped to 2^28 - 1 (16",
+   "bytes a pixel must fit it: 16384 x 16384 does not)"
+  ],
+  "ja": [
+   "呼び出しが受ける最も大きい画像 (入力か出力): それより大きいものは、画素を確保する前に HDRG_ERR_LIMIT で失敗します。0 = HDRG_DEFAULT_MAX_PIXELS。size_t が 32 ビットのところでは 2^28 - 1 までに抑えます (1 画素 16 バイトがそれに収まらなければならない: 16384 x 16384 は収まらない)"
+  ]
+ },
+ {
+  "key": "abd26433db16d30b",
+  "of": "hdrg_context_desc_t.simd_max",
+  "en": [
+   "HDRG_SIMD_*: the best tier to run (as the",
+   "environment variable HDRG_SIMD_MAX, which caps",
+   "it further); 0 = the CPU's best. default 0"
+  ],
+  "ja": [
+   "HDRG_SIMD_*: 動かす最もよい階層 (環境変数 HDRG_SIMD_MAX と同じで、それがさらに抑える)。0 = CPU の最もよいもの。既定 0"
+  ]
+ },
+ {
+  "key": "11f432f78343731c",
+  "of": "hdrg_context_desc_t.gpu",
+  "en": [
+   "HDRG_GPU_*: FILTERS runs the built-in PREFILTER",
+   "filters, the SCALE stage's built-in scaler and the",
+   "INTERP stage's default on their GPU versions, on",
+   "Metal, else Vulkan, else WebGPU, when the build has",
+   "them and a device is found (else on the CPU): the",
+   "CPU's bytes for deblock, dering, defringe, Lanczos,",
+   "MCTF and the interpolation, the L2",
+   "tolerance for the debanding and the noise",
+   "reduction, 2 codes for the edge-adaptive scaler,",
+   "FSR 1 and NIS. AUTO also runs a session's Y'CbCr",
+   "input's conversion and its apply pass there (within",
+   "L2 of the CPU's). default OFF"
+  ],
+  "ja": [
+   "HDRG_GPU_*: FILTERS は、内蔵の PREFILTER のフィルタ・SCALE 段の内蔵の scaler・INTERP 段の既定を、ビルドにあって device が見つかれば GPU 版で、Metal、なければ Vulkan、なければ WebGPU で走らせます (なければ CPU で): deblock・dering・defringe・Lanczos・MCTF・補間は CPU と同じバイト、deband とノイズ低減は L2 の許容誤差、エッジ適応の scaler・FSR 1・NIS は 2 コード。AUTO はさらに、セッションの Y'CbCr の入力の変換とその適用の走査もそこで走らせます (CPU のものから L2 の内)。既定 OFF"
+  ]
+ },
+ {
+  "key": "5da046522ba9eefe",
+  "of": "hdrg_context_desc_t.gpu_analysis",
+  "en": [
+   "HDRG_GPU_ANALYSIS_*, with gpu HDRG_GPU_AUTO: where",
+   "a session's analysis adds up its pixels. EXACT: on",
+   "the CPU (the GPU only moves the pixels: the",
+   "statistics are the CPU's bit for bit). FAST: pass",
+   "A's and pass B's sums on the GPU (16-bit sources:",
+   "Y'CbCr input), within L2 of the CPU's, so a light",
+   "near a threshold may be judged otherwise.",
+   "default EXACT"
+  ],
+  "ja": [
+   "HDRG_GPU_ANALYSIS_*、gpu が HDRG_GPU_AUTO のとき: セッションの解析が画素をどこで積算するか。EXACT: CPU で (GPU は画素を動かすだけ: 統計はビットまで CPU のもの)。FAST: 走査 A と走査 B の和を GPU で (16bit のソース: Y'CbCr の入力)。CPU のものから L2 の内なので、閾値の近くの光は別に判定されることがあります。既定 EXACT"
+  ]
+ },
+ {
+  "key": "213ad7841f0b8db6",
+  "of": "HDRG_DEFAULT_MAX_PIXELS",
+  "en": [
+   "16384 x 16384"
+  ],
+  "ja": [
+   "16384 x 16384"
+  ]
+ },
+ {
+  "key": "5a6f122d921c2e76",
+  "of": "hdrg_context_create",
+  "en": [
+   "desc NULL = the defaults"
+  ],
+  "ja": [
+   "desc が NULL = 既定値"
+  ]
+ },
+ {
+  "key": "53001afa123485a2",
+  "of": "hdrg_convert",
+  "en": [
+   "High-level API: bytes in / HDR file bytes out. The input's codec is the",
+   "first of the context's readers recognizing it (built in: JPEG, PNG, GIF;",
+   "a plugin's: AVIF): HDRG_ERR_UNSUPPORTED_FORMAT when none does. The output's",
+   "is the context's writer (plugin.h's hdrg_context_set_writer; default",
+   "hdrg.jpeg, also hdrg.jxl where built, a plugin's: AVIF, HEIF).",
+   "params, display and encode NULL = their defaults. A writer signaling its",
+   "color by ICC profiles (hdrg.jpeg) takes HYBRID and PQ in an lcms2-enabled",
+   "build alone (profile generation): HDRG_ERR_ICC_UNSUPPORTED otherwise.",
+   "Output buffers carry their originating allocator, so hdrg_free works after",
+   "the context is destroyed."
+  ],
+  "ja": [
+   "高水準の API: バイト列を入れ、HDR のファイルのバイト列を出します。入力のコーデックは、それを認識するコンテキストの読み手の最初のもの (内蔵: JPEG・PNG・GIF。プラグインのもの: AVIF) で、どれも認識しなければ HDRG_ERR_UNSUPPORTED_FORMAT です。出力のコーデックはコンテキストの書き手です (plugin.h の hdrg_context_set_writer。既定は hdrg.jpeg、組んだビルドでは hdrg.jxl も、プラグインのもの: AVIF・HEIF)。params・display・encode が NULL = それぞれの既定値。色を ICC プロファイルで伝える書き手 (hdrg.jpeg) は、HYBRID と PQ を lcms2 を有効にしたビルドでだけ受けます (プロファイルの生成): ほかでは HDRG_ERR_ICC_UNSUPPORTED です。出力のバッファは元のアロケータを持つので、コンテキストを壊した後も hdrg_free が使えます。"
+  ]
+ },
+ {
+  "key": "1f0abc95ac99018a",
+  "of": "hdrg_raw_image_t",
+  "en": [
+   "Low-level API: pre-decoded interleaved RGB(A) buffer.",
+   "bit_depth is 8 or 16 (16 = native-endian uint16_t per sample, e.g. PNG16",
+   "already expanded; pixels and stride at 2 bytes). stride is in bytes. Alpha,",
+   "when present, is ignored and the image is treated as opaque. primaries /",
+   "transfer are HDRG_PRIMARIES_* / HDRG_TRANSFER_* (sRGB: BT709 + SRGB); other",
+   "values are rejected."
+  ],
+  "ja": [
+   "低水準の API: 復号済みの、交互に並んだ RGB(A) のバッファ。bit_depth は 8 か 16 (16 = 標本ごとにネイティブのエンディアンの uint16_t、たとえば展開済みの PNG16。pixels と stride は 2 バイトにそろえる)。stride はバイト単位です。アルファがあっても無視し、画像を不透明として扱います。primaries / transfer は HDRG_PRIMARIES_* / HDRG_TRANSFER_* (sRGB: BT709 + SRGB) で、ほかの値は拒否します。"
+  ]
+ },
+ {
+  "key": "fce74b62e31eed83",
+  "of": "hdrg_stats_t",
+  "en": [
+   "Stats of the most recent successful convert on this context."
+  ],
+  "ja": [
+   "このコンテキストで直前に成功した変換の統計。"
+  ]
+ },
+ {
+  "key": "e81f7d2ca95e6fe0",
+  "of": "hdrg_stats_t.diffuse_stops",
+  "en": [
+   "the diffuse level applied (the APL budget included)"
+  ],
+  "ja": [
+   "当てた拡散面の水準 (APL の予算を含む)"
+  ]
+ },
+ {
+  "key": "3dc6359b24c96dda",
+  "of": "hdrg_stats_t.light_area_ratio",
+  "en": [
+   "the fraction (0..1) of the analysis cells in lights and",
+   "reflections"
+  ],
+  "ja": [
+   "解析のセルのうち光と反射のものの割合 (0..1)"
+  ]
+ },
+ {
+  "key": "fa222c63004ae146",
+  "of": "hdrg_stats_t.sdr_apl_nits",
+  "en": [
+   "source average luminance at 203-nit white"
+  ],
+  "ja": [
+   "203 nits の白でのソースの平均輝度"
+  ]
+ },
+ {
+  "key": "58849a391e739d5f",
+  "of": "hdrg_stats_t.apl_nits",
+  "en": [
+   "estimated output average luminance"
+  ],
+  "ja": [
+   "見積もった出力の平均輝度"
+  ]
+ },
+ {
+  "key": "29210e23d9cf5ba7",
+  "of": "hdrg_stats_t.apl_scale",
+  "en": [
+   "gain-field factor applied by the APL budget"
+  ],
+  "ja": [
+   "APL の予算が当てたゲインの場の係数"
+  ]
+ },
+ {
+  "key": "7aa3e28a58d30e64",
+  "of": "hdrg_stats_t.noise_sigma",
+  "en": [
+   "the source's Y' noise (standard deviation) in 8-bit codes;",
+   "< 0 = not measured (too small)"
+  ],
+  "ja": [
+   "ソースの Y' のノイズ (標準偏差)、8bit のコードで。< 0 = 測っていない (小さすぎる)"
+  ]
+ },
+ {
+  "key": "cb6a7ddd9c790f6b",
+  "of": "hdrg_stats_t.noise_blockiness",
+  "en": [
+   "Y' steps across the 8-pixel grid over those inside it on the",
+   "quieter areas: 1 = no block artifacts"
+  ],
+  "ja": [
+   "静かな領域での、8 画素の格子をまたぐ Y' の段差とその内側の段差の比: 1 = ブロックの跡なし"
+  ]
+ },
+ {
+  "key": "19d24db5b3001fe6",
+  "of": "hdrg_stats_t.noise_ringing",
+  "en": [
+   "in the grid's blocks with an edge, the variation away from the",
+   "edge over the variation of the blocks without one: 1 = no",
+   "ringing"
+  ],
+  "ja": [
+   "格子のエッジのあるブロックでの、エッジから離れた変動とエッジのないブロックの変動の比: 1 = リンギングなし"
+  ]
+ },
+ {
+  "key": "f56cab65c8e18afe",
+  "of": "hdrg_stats_t.simd_tier",
+  "en": [
+   "HDRG_SIMD_* of the kernels that ran"
+  ],
+  "ja": [
+   "動いたカーネルの HDRG_SIMD_*"
+  ]
+ }
+]

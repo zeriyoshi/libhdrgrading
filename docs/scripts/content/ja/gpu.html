@@ -1,0 +1,50 @@
+<p class="lead">GPU はどこでも任意です。MetalFX のほかの内蔵の GPU のフィルタにはどれも CPU 版があり、device のないコンテキストは CPU で動きます。シェーダは WGSL で 1 回だけ書き、フィルタとコアは WebGPU の上、または Metal と Vulkan の共通の層の上で 1 回だけ書きます。</p>
+
+{{fig:gpu}}
+
+<h2>有効にする</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>{{api:hdrg_context_desc_t.gpu|hdrg_context_desc_t.gpu}}</th><th>GPU で動くもの</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_GPU_OFF}} (既定)</td><td>なし。</td></tr>
+<tr><td>{{api:HDRG_GPU_FILTERS}}</td><td>内蔵の PREFILTER のフィルタ、SCALE 段の内蔵の scaler、INTERP 段の既定 (GPU 版と device があるとき)。</td></tr>
+<tr><td>{{api:HDRG_GPU_AUTO}}</td><td>FILTERS に加えて、セッションの Y'CbCr の取り込みと、SCALE の段がなければ適用。すべての段が許せば、取り込みから適用までフレームを GPU に置きます。</td></tr>
+</tbody></table></div>
+<p>内蔵のフィルタはセッションの {{api:hdrg_session_config_t.device|config.device}} があればその種類を先に、次に Metal → Vulkan → WebGPU の順に選び、device がなければ CPU 版を残します ({{src:src/host/defaults.c}})。{{api:hdrg_context_desc_t.gpu_analysis|gpu_analysis}} はセッションの解析が画素を足し合わせる場所を選びます: {{api:HDRG_GPU_ANALYSIS_EXACT}} は CPU で (GPU は画素を運ぶだけで、統計は CPU とビットまで同じ)、{{api:HDRG_GPU_ANALYSIS_FAST}} は GPU で。</p>
+
+<h2>シェーダ</h2>
+<ul>
+<li>リファレンスは WGSL で、消費者の隣に置きます: フィルタは各プラグインの <code>wgsl/</code> (例: {{src:src/plugins/deband/wgsl}})、コアは {{src:src/core/wgsl}} (apply・convert・gather・io・analyze)。</li>
+<li>{{src:scripts/gen_shaders.sh}} が Tint の CLI (<code>scripts/build_dawn.sh --tint</code> で作る) を compute の入口ごとに走らせ、WGSL の隣に MSL と SPIR-V (<code>msl/</code>・<code>spirv/</code>: {{src:src/plugins/deband/msl}}・{{src:src/core/spirv}})、コアの apply と convert の HLSL ({{src:src/core/hlsl|core/hlsl/}}) を書きます。生成物はコミットし、CI の format のジョブが <code>--check</code> を走らせます。</li>
+<li>CMake がどのシェーダも配列として埋め込むので (プラグインのものは <code>hdrg_plugin</code> が: WGSL を <code>hdrg_wgsl_&lt;名前&gt;</code>、入口ごとの MSL と SPIR-V をシェーダ <code>hdrg_gk_&lt;名前&gt;_&lt;入口&gt;</code> に)、実行時にファイルは読みません。</li>
+</ul>
+
+<h2>下位層</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>下位層</th><th>ビルドのオプション</th><th>注意</th></tr></thead>
+<tbody>
+<tr><td>WebGPU ({{src:src/gpu/webgpu.c}})</td><td><code>HDRG_WITH_WEBGPU</code>: Dawn があれば ON (<code>scripts/build_dawn.sh</code>)。ブラウザは <code>HDRG_WASM_WEBGPU</code></td><td>WebGPU の呼び出しはすべて 1 つの device のスレッドの上で (<code>hdrg_gpu_run</code> / <code>hdrg_gpu_call</code>)。同じ device と API 表は共有します。単一スレッドのブラウザの版はその場で動き、待ちは JSPI で止めます。</td></tr>
+<tr><td>Metal ({{src:src/gpu/metal.m}})</td><td><code>HDRG_WITH_METAL</code>: Apple で既定 ON</td><td>唯一の Objective-C のファイル (ARC、ヘッダは純 C)。Tint の MSL を safe の数学モードで。パスは完了ハンドラで終わり、<code>hdrg.metal.metalfx</code> は MetalFX Spatial。</td></tr>
+<tr><td>Vulkan ({{src:src/gpu/vulkan.c}})</td><td><code>HDRG_WITH_VULKAN</code>: Vulkan のヘッダがあれば ON (Apple とブラウザ以外)</td><td>ローダーは実行時に開きます (<code>libvulkan.so.1</code>、またはアプリの <code>vkGetInstanceProcAddr</code>)。Vulkan 1.1 と <code>VK_KHR_push_descriptor</code> が要ります。device にあれば dma-buf (<code>VK_EXT_external_memory_dma_buf</code>) と、Android では AHardwareBuffer (<code>VK_ANDROID_external_memory_android_hardware_buffer</code>) を取り込みます。Mesa の lavapipe でテストします。</td></tr>
+<tr><td>共通の層 ({{src:src/gpu/include/hdrgrading/gpu/gk.h|gk.h}})</td><td>Metal か Vulkan があるとき</td><td>バッファ・カーネル・パス・完了の関数表 ({{src:src/gpu/gk_metal.c|gk_metal.c}}・{{src:src/gpu/gk_vulkan.c|gk_vulkan.c}})。Metal と Vulkan のフィルタ (各プラグインの <code>gk_&lt;名前&gt;.c</code>、{{src:src/gpu/filter_gk.c|filter_gk.c}} の上) とコア ({{src:src/core/gpu_core_gk.c}}) を 1 回だけ書きます。</td></tr>
+<tr><td>CVPixelBuffer ({{src:src/gpu/apple.c}})</td><td>Apple で Metal か WebGPU があるとき</td><td>IOSurface のピクセルバッファの画素の形式と面。</td></tr>
+</tbody></table></div>
+
+<h2>GPU のフィルタ</h2>
+<p>deblock・dering・defringe・deband・空間の NR・MCTF・Lanczos・独自のエッジ適応の scaler・FSR 1・NIS・動き補償の補間の WebGPU・Metal・Vulkan 版は、系統のプラグインのクラス <code>hdrg.webgpu.&lt;名前&gt;</code>・<code>hdrg.metal.&lt;名前&gt;</code>・<code>hdrg.vulkan.&lt;名前&gt;</code> で ({{page:plugins}})、コンテキストのその種類のネイティブの device を自分の GPU の層で包み (下)、{{api:HDRG_FILTER_GPU_FRAMES}} を申告します。deblock・dering・defringe・Lanczos・MCTF・補間は CPU 版とバイトまで同じ、deband と NR は L2 の許容誤差 ({{dev:verification#determinism|決定性の水準}}) で、エッジの scaler・FSR 1・NIS は 1〜2 コード以内で一致します。MetalFX はそうした約束のない別の scaler です。飛行中が 1 枚までの連鎖で隣り合う GPU のフィルタは、フレームを device に置いたまま渡します。</p>
+
+<h2>GPU の上のコア</h2>
+<ul>
+<li>{{src:src/core/gpu_core.c}}: セッションに 1 つの device (コンテキストの Metal、なければ Vulkan、なければ WebGPU)、コアのシェーダを最初に使うときに作るプログラム、番号で持つ 40 個のバッファ (CPU から見えるものと GPU だけのもの、アプリの面、GPU に置くフレーム、解析)。</li>
+<li>{{src:src/core/gpu_convert.c}}: Y'CbCr の入力を CPU と同じ演算の順で 16bit の R'G'B' へ。L2 で一致 (LINEAR は 2 コード、SEGMENTED は 16 コード以内で、1 コードを超える標本はわずか)。</li>
+<li>{{src:src/core/gpu_apply.c}}: セッションの走査 C (PQ の R'G'B' 16 / 8bit か 4:2:0、光の集計、粒)。CPU と L2 で一致し、失敗したら CPU に戻ります (SCALE の段があるときは使わない: その帯は CPU のまま)。</li>
+<li>{{src:src/core/gpu_analyze.c}}・{{src:src/core/gpu_gather.c}}: FAST の解析の積算と、GPU に置いたフレームから読み戻す縮小画とノイズのウィンドウ。</li>
+</ul>
+<p>HDRG_GPU_AUTO で Y'CbCr の入力、PREFILTER の連鎖がライブラリの GPU のフィルタだけ、SCALE も出力のレートもないとき、フレームを取り込みから適用まで GPU に置きます (遅延のレポートの <code>frames_on_gpu</code>)。既定では WebGPU は置き、Metal と Vulkan は LOW のときだけ置きます (アプリのフレーム config.device ならどのプロファイルでも)。</p>
+
+<h2>device とアプリのフレーム</h2>
+<ul>
+<li>{{api:hdrg_context_set_device}} がアプリの device とキューをコンテキストに渡します ({{api:HDRG_DEVICE_METAL}}、{{api:hdrg_vulkan_device_t}} を付けた {{api:HDRG_DEVICE_VULKAN}}、{{api:HDRG_DEVICE_WEBGPU}})。なければライブラリが最初に使うときに自分で作ります。どちらでも、ライブラリとコンテキストのどのプラグインもその device を共有します: プラグインの GPU のクラスは <code>filter_gpu_share</code> でそれを受け取り、ネイティブの device とキューと、それらを一緒に使うのに要るもの (Vulkan のキューのロック、WebGPU の device のスレッド) が渡ります。device の上のフレームはネイティブのバッファのままフィルタの間を渡ります (<code>hdrg_gpu_share_frame_t</code>、{{src:src/foundation/include/hdrgrading/foundation/gpu_share.h|gpu_share.h}})。共有には版があり (<code>HDRG_GPU_SHARE_VERSION</code>)、別の版で組んだモジュールは {{api:HDRG_ERR_UNSUPPORTED}} を受け取り、その GPU のクラスは動きません。自分の GPU の API を使うプラグインは <code>filter_device</code> で素の device とキューを受け取ります。</li>
+<li>{{api:hdrg_session_config_t.device|config.device}} を付けたセッション (HDRG_GPU_AUTO と Y'CbCr の入力で、フレームを GPU に置けるとき。ほかは {{api:HDRG_ERR_UNSUPPORTED}}) は GPU の上のフレーム ({{api:hdrg_device_frame_t}}) を受け取り、返します: {{api:HDRG_FRAME_BUFFERS}} (コンテキストの device の MTLBuffer・VkBuffer・WGPUBuffer)、{{api:HDRG_FRAME_CVPIXELBUFFER}} (VideoToolbox のデコーダの出力やエンコーダのプール。WebGPU では入力だけ)、{{api:HDRG_FRAME_DMABUF}} (Vulkan、線形の dma-buf)、{{api:HDRG_FRAME_AHARDWAREBUFFER}} (Android の Vulkan: Vulkan の形式で辺が偶数の NV12 か P010 の AHardwareBuffer。フレームごとに 1 回だけ画像として取り込み、面の写しを 1 つのパスにまとめ、Vulkan の外の生産者から 1 回受け取って返します)。</li>
+<li>またはアプリが自分で適用を走らせます: {{api:hdrg_shader}} と {{api:hdrg_session_receive_state}} ({{page:video}}の「アプリ自身の GPU」)。</li>
+</ul>

@@ -1,0 +1,142 @@
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+# Publishes GitHub Pages: the docs as the site (docs/scripts/build.py --site, built again with
+# their source links to the commit on GitHub; their top links the rest), the WASM demo under demo/
+# (scripts/wasm_demo.sh) and the coverage of every platform under coverage/ (the
+# coverage-html artifact of CI's coverage-merge, from the CI run of a push to main this follows, or
+# for a manual run main's latest). Every deployment replaces the whole site, so all parts are
+# assembled into one artifact. A CI run without the merged coverage (every platform's coverage
+# failed) does not hold the site back: a page saying so stands in coverage/ instead.
+name: Pages
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  wasm-demo:
+    # a push to this repository's main only: never a pull request's run, whose artifacts are not ours
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-26.04
+    env:
+      # the container's ~/.cache (scripts/docker_dev.sh): Emscripten's cache of the five builds (its
+      # system libraries, the emdawnwebgpu port), kept in the Actions cache
+      HDRG_DEV_CACHE: ${{ github.workspace }}/build/dev-cache
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - run: scripts/fetch_deps.sh
+      - uses: $/.github/actions/dev-image
+        with:
+          arch: amd64
+      - id: emsdk
+        name: emsdk version (.devcontainer/Dockerfile)
+        run: echo "version=$(sed -n 's/^ARG EMSDK_VERSION=//p' .devcontainer/Dockerfile)" >> "$GITHUB_OUTPUT"
+      - id: emscripten
+        name: Restore Emscripten's cache
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: build/dev-cache/emscripten
+          key: emscripten-${{ steps.emsdk.outputs.version }}-demo-${{ hashFiles('cmake/HdrgWasm.cmake') }}
+          restore-keys: emscripten-${{ steps.emsdk.outputs.version }}-demo-
+      - run: scripts/docker_dev.sh scripts/wasm_demo.sh build/web
+      - if: ${{ !cancelled() && steps.emscripten.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: build/dev-cache/emscripten
+          key: emscripten-${{ steps.emsdk.outputs.version }}-demo-${{ hashFiles('cmake/HdrgWasm.cmake') }}
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: wasm-demo
+          path: build/web/demo
+          retention-days: 7
+
+  deploy:
+    needs: wasm-demo
+    runs-on: ubuntu-26.04
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: The CI run of the coverage
+        id: run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main \
+              --event push --status completed --limit 1 --json databaseId --jq '.[0].databaseId')" || true
+          fi
+          echo "id=$RUN_ID" >> "$GITHUB_OUTPUT"
+      # the docs first: --out writes the site's directory afresh
+      - name: The docs as the site, their source links to the commit
+        env:
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.event.workflow_run.head_sha || github.sha }}
+        run: python3 -I docs/scripts/build.py --strict --out site --site --source-base "$SOURCE"
+      - id: coverage
+        uses: actions/download-artifact@v8.0.2
+        continue-on-error: true
+        with:
+          name: coverage-html
+          path: site/coverage
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ github.token }}
+      - name: A page in place of the coverage the CI run does not have
+        if: steps.coverage.outcome != 'success'
+        env:
+          CI_URL: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/ci.yml
+        run: |
+          rm -rf site/coverage
+          mkdir -p site/coverage
+          cat > site/coverage/index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <meta name="color-scheme" content="light dark">
+          <title>libhdrgrading: coverage</title>
+          </head>
+          <body>
+          <h1>Code coverage</h1>
+          <p>This deployment has no coverage: the CI run it follows did not produce the merged report.
+          See the runs of <a href="$CI_URL">CI</a>.</p>
+          <p lang="ja">このデプロイにはカバレッジがありません (元の CI の実行が合算のレポートを作れませんでした)。
+          <a href="$CI_URL">CI</a> の実行を見てください。</p>
+          <p><a href="../">libhdrgrading</a></p>
+          </body>
+          </html>
+          EOF
+          printf '# Code no test reaches\n\nThis deployment has no coverage: see the runs of CI (%s).\n' \
+            "$CI_URL" > site/coverage/uncovered.md
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: wasm-demo
+          path: site/demo
+      - uses: actions/configure-pages@v6.0.0
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1

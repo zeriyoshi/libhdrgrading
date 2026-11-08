@@ -1,0 +1,55 @@
+<p class="lead">{{api:hdrg_convert}} は SDR のファイルのバイト列を受け取り、HDR のファイルのバイト列を返します。{{api:hdrg_convert_raw}} は H.273 の原色と伝達特性の付いた復号済みの画素を受け取ります。どちらも pipeline を 1 回通し、3 つの形のどれかをコンテキストの書き手で書きます: コーデックのプラグインで、既定は JPEG、JPEG XL は内蔵、AVIF と HEIF はモジュールです。</p>
+
+{{fig:still}}
+
+<h2>手順</h2>
+<ol>
+<li><strong>設定</strong>: 3 つの構造体 ({{api:hdrg_params_t}}・{{api:hdrg_display_caps_t}}・{{api:hdrg_encode_params_t}}、NULL は既定) を検査して解決します。静止画は <code>effort</code> の AUTO を QUALITY に、<code>grain_policy</code> の AUTO を PRESERVE にします (RESYNTH は動画のフレームが要り、{{api:HDRG_ERR_UNSUPPORTED}})。{{api:HDRG_OUTPUT_AUTO|output_mode の AUTO}} は書き手の既定の形です。</li>
+<li><strong>形式</strong>: コンテキストの読み手が、登録した順にファイルの頭を試します (内蔵の JPEG・PNG・GIF、次にアプリのプラグイン。AVIF のモジュールもここ)。どれも受けなければ (読み手を外したビルドの PNG・GIF も) {{api:HDRG_ERR_UNSUPPORTED_FORMAT}}。</li>
+<li><strong>デコード</strong> (読み手、{{src:src/host/codec_host.c}}): ホストが確保した絵へ 8 か 16bit の詰めた R'G'B'、その色、その EXIF。画素を確保する前に寸法をコンテキストの <code>max_pixels</code> と比べます ({{api:HDRG_ERR_LIMIT}})。</li>
+<li><strong>向き</strong>: EXIF の向き 2〜8 を画素に当て、出力へ運ぶ EXIF のタグを 1 にします。</li>
+<li><strong>パイプライン</strong> ({{page:pipeline}}): ファイルの想定の視聴で開き、1 回通し、行を書き手へ流します。</li>
+<li><strong>書き手</strong> ({{src:src/container.c}}): 行を帯ごとに、次に形に要るゲインマップとそのメタデータ・プロファイル・光を渡し、書き手のバイト列が出力です。</li>
+</ol>
+
+<h2>入力の色</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>入力</th><th>読み手</th><th>色 (優先の順)</th></tr></thead>
+<tbody>
+<tr><td>JPEG</td><td><code>hdrg.jpeg</code>、jpegli ({{src:src/plugins/jpeg/jpeg.c}})</td><td>ICC &gt; EXIF R03 (Adobe RGB) &gt; sRGB。色差を間引いた Y'CbCr (4:2:0 / 4:2:2) は 16bit の面のまま受け取り、ライブラリの chroma from luma ({{api:hdrg_params_t.chroma_fit|chroma_fit}}: LINEAR、線画には SEGMENTED) で 8 iMCU 行の帯ごとに拡大し、8bit へ 1 回だけ丸めます。</td></tr>
+<tr><td>PNG</td><td><code>hdrg.png</code>、libpng ({{src:src/plugins/png/png.c}})</td><td>cICP &gt; iCCP &gt; sRGB &gt; cHRM / gAMA。16bit の標本はそのまま。</td></tr>
+<tr><td>GIF</td><td><code>hdrg.gif</code>、giflib ({{src:src/plugins/gif/gif.c}})</td><td>sRGB。最初の画像だけ。</td></tr>
+<tr><td>AVIF</td><td>AVIF のモジュール (<code>org.hdrgrading.avif</code>、システムの libavif: {{src:src/plugins/avif/avif.c}})</td><td>ICC、なければ SDR の伝達特性の CICP。PQ と HLG のソースは拒否。clap の切り抜きを当て、回転・反転 (irot / imir) は向きに。</td></tr>
+</tbody></table></div>
+<p>行列 + TRC の ICC プロファイルは直接読み ({{src:src/io/icc.c}})、LUT 型は lcms2 で BT.2020 γ2.2 の 16bit にします。lcms2 なし (<code>HDRG_WITH_LCMS2=OFF</code>) では、JPEG のハイブリッドと PQ の形は {{api:HDRG_ERR_ICC_UNSUPPORTED}} (生成する P3 PQ のプロファイルが要る)、JPEG の書き手の目標の色域は sRGB で、JPEG XL はありません (libjxl のカラーマネジメントは lcms2)。色を CICP で伝える書き手はプロファイルが要りません。HEIF は書くだけで、読みません。</p>
+
+<h2>3 つの形</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>{{api:hdrg_output_mode_t|output_mode}}</th><th>基本の画像</th><th>HDR を伝えるもの</th><th>正しく見える環境</th></tr></thead>
+<tbody>
+<tr><td>{{api:HDRG_OUTPUT_GAINMAP}} (JPEG・AVIF・HEIF の既定)</td><td>本物の SDR の描画 (sRGB、色域を広げたときは Display P3)</td><td>HDR へのモノクロのゲインマップ (ISO 21496-1)。宣言するヘッドルームは <code>gainmap_headroom_cap_stops</code> (3 段) まで</td><td>ゲインマップを読む環境 (iOS 18+ / macOS 15+、Android 15+、Chrome) は HDR、ほかはどこでも正しい SDR</td></tr>
+<tr><td>{{api:HDRG_OUTPUT_HYBRID}} (JPEG XL の既定)</td><td>PQ の画素 (JPEG は cicp と HAGC のタグの付いた「P3 PQ」の ICC プロファイル、ほかは CICP で)</td><td>PQ の基本そのもの。SDR へ戻すゲインマップ (HDR が基本の向き)</td><td>HDR を読む環境は HDR。カラーマネジメントのない SDR の表示は暗く、libultrahdr はこの向きを拒否</td></tr>
+<tr><td>{{api:HDRG_OUTPUT_PQ}}</td><td>単層 PQ</td><td>PQ の基本。ヘッドルームの小さい表示には JPEG の ICC の HAGC の曲線 (SMPTE ST 2094-50)</td><td>PQ を読む環境</td></tr>
+</tbody></table></div>
+<p>JPEG では、ゲインマップは MPF でつないだ 2 つ目の JPEG のストリームで、ISO 21496-1 のメタデータ、Apple の HDRGainMap XMP、Adobe / Google の hdrgm XMP を付けます (どれも切り替え可)。HAGC のタグは適用で測った SDR へ戻すゲインの曲線を運ぶので、ICC プロファイルだけを残す経路でもトーンマップできます ({{src:src/core/dynamic.c}}・{{src:src/plugins/jpeg/jpeg_mux.c}})。</p>
+
+<h2>書き手</h2>
+<p>{{api:hdrg_context_set_writer}} が以後の変換の書き手を ID とオプション (key=value、{{api:hdrg_options_set}}) で選びます (ID が NULL でオプションがあれば既定の <code>hdrg.jpeg</code> のオプションに、どちらも NULL なら既定に戻します)。hdrg-cli は <code>--format</code> (なければ出力の拡張子) と <code>--format-opt</code>、hdrg-gui は設定の形式で選びます ({{page:tools}})。</p>
+<div class="table-wrap"><table>
+<thead><tr><th>書き手</th><th>コーデック</th><th>信号</th><th>オプション</th></tr></thead>
+<tbody>
+<tr><td><code>hdrg.jpeg</code> (既定)</td><td>jpegli、4:4:4</td><td>ICC (と HAGC)、ゲインマップに MPF + XMP</td><td><code>quality</code> (98)・<code>gainmap_quality</code> (90)・<code>hagc</code>・<code>icc_lumi</code>・<code>apple_xmp</code>・<code>hdrgm_xmp</code></td></tr>
+<tr><td><code>hdrg.jxl</code> (内蔵、系統 jxl: lcms2 が要る)</td><td>JPEG XL、同梱の libjxl。16bit の基本を 1 枚のフレームで</td><td>基本の色の符号化 (HDR の基本は BT.2100 の PQ、強度の目標は描画のピーク)。ゲインマップは 8bit の灰色のコードストリームで、ISO 21496-1 のメタデータと代替の色とともに <code>jhgm</code> の箱へ。Exif はその箱へ</td><td><code>quality</code> (90。100 は可逆)・<code>gainmap_quality</code> (90)・<code>effort</code> (7)</td></tr>
+<tr><td><code>org.hdrgrading.avif</code> (モジュール、<code>HDRG_WITH_AVIF</code>)</td><td>システムの libavif の 10bit の AV1</td><td>CICP だけ (ICC なし)。PQ の基本は BT.2020 の入れ物 (CICP 9/16/9) で MaxCLL / MaxFALL (clli) 付き。ゲインマップは ISO 21496-1</td><td><code>quality</code> (90)・<code>gainmap_quality</code> (90)・<code>speed</code> (6)・<code>threads</code> (0: 変換のスレッド)・<code>chroma</code> (444 / 420)</td></tr>
+<tr><td><code>org.hdrgrading.heif</code> (モジュール、任意の <code>HDRG_WITH_HEIF</code>)</td><td>10bit の HEVC (libheif の x265)</td><td>AVIF と同じ。ゲインマップは ISO 21496-1 (tmap) と Apple の HDR ゲインマップの補助画像の両方 ({{src:src/plugins/heif/bmff.c}})</td><td><code>quality</code> (70)・<code>gainmap_quality</code> (70)・<code>chroma</code> (420 / 444)・<code>apple_xmp</code></td></tr>
+</tbody></table></div>
+<p>モジュールはアプリが読み込みます ({{api:hdrg_context_load_plugin}})。hdrg-cli と hdrg-gui は隣にあるものを読み込みます。どちらのモジュールも既定では組まず、組むのは自己責任です ({{dev:build}})。エンコード後のバイト列は CPU によって変わりえます (jpegli と libjxl は CPU で命令を選ぶ)。エンコード前の画素は変わりません。AVIF のモジュールのバイト列はシステムのエンコーダのものです。libaom の出力は版で、版によっては使うスレッドの数でも変わるため、ライブラリは AVIF のバイト列が実行や機械をまたいで同じことを保証しません。既定では変換のスレッドで符号化します。<code>threads=1</code> にすると、同じ libaom なら変換のスレッド数によらず同じバイト列になります (テストはこの設定で走ります)。</p>
+
+<h2>想定の視聴</h2>
+<p>ファイルには尋ねる表示がないので、容器が想定を決めます (表示能力と符号化の設定からの <code>hdrg_container_caps</code>): SDR の白 203 cd/m²、ピークは <code>peak_nits</code> か形式の値 (PQ は 1000 cd/m²、ゲインマップは SDR の白 × 2<sup>上限</sup>、既定 3 段)、Display P3 (JPEG のような ICC の書き手は lcms2 があるときだけで、なければプロファイルの要らない sRGB。CICP の書き手の PQ とハイブリッドの基本は BT.2020 の入れ物)。表示はゲインマップを自分のヘッドルームと宣言の比で縮めるので、ヘッドルームの小さい表示ではどのゲインも縮み、SDR を下回ることはありません。</p>
+
+<h2>出力の寸法</h2>
+<p>{{api:hdrg_encode_params_t.output_width|output_width}} と <code>output_height</code> (片方 0 で縦横比を保つ) で SCALE 段を通します: {{api:hdrg_context_add_filter}} で足したフィルタ、なければ拡大は {{api:hdrg_params_t.upscaler|upscaler}} の内蔵の scaler、ほかは Lanczos。解析とプランは入力の寸法のままです。</p>
+
+<h2>結果</h2>
+<p>出力のバッファはアロケータを持つので、コンテキストを壊した後も {{api:hdrg_free}} で解放できます。{{api:hdrg_get_last_stats}} は直前に成功した変換が測って当てたもの (拡散面の倍率・光の面積・前後の APL・ノイズ・ブロック性・リンギング・動いた SIMD の階層) を返します。</p>

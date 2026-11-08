@@ -1,0 +1,85 @@
+libhdrgrading
+Copyright (c) 2026 Go Kudo
+
+Licensed under either of
+
+ * Apache License, Version 2.0 (LICENSE-APACHE)
+ * MIT License (LICENSE-MIT)
+
+at your option. SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this work by you, as defined in the Apache-2.0 license, shall
+be dual licensed as above, without any additional terms or conditions.
+
+Third-party algorithm and license notes:
+
+1. Counter-based hash (src/foundation: hdrgrading/foundation/hash.h, the dithering and noise)
+   Its mixing function is lowbias32 by Chris Wellons, from hash-prospector
+   (https://github.com/skeeto/hash-prospector), dedicated to the public domain
+   (The Unlicense). The odd constants of its word positions are the prime
+   constants of xxHash32 (https://github.com/Cyan4973/xxHash). Credited as a
+   courtesy: no code of either project is included.
+
+2. Bundled dependencies under third_party/ keep their own licenses:
+   - jpegli (google/jpegli): BSD-3-Clause
+   - Highway (a submodule of jpegli, built with jpegli and libjxl): Apache-2.0 OR BSD-3-Clause
+   - zlib: zlib License
+   - libjpeg-turbo (jpegli's vendored headers): IJG / BSD-3-Clause / zlib
+   - libpng: PNG Reference Library License v2
+   - giflib: MIT
+   - Little-CMS (lcms2): MIT
+   - libjxl (libjxl/libjxl, third_party/libjxl; the JPEG XL writer, the jxl family):
+     BSD-3-Clause, with the patent grant of its PATENTS file
+   - Brotli (google/brotli, third_party/brotli; with libjxl): MIT
+   - AMD FidelityFX Super Resolution 1 (GPUOpen-Effects/FidelityFX-FSR,
+     third_party/fidelityfx-fsr): MIT, Copyright (c) 2021 Advanced Micro
+     Devices, Inc. Its EASU and RCAS are ported to C and WGSL
+     (src/plugins/fsr: fsr.h, fsr.c, wgsl/fsr.wgsl, keeping its notice);
+     the submodule is their reference, not compiled.
+   - NVIDIA Image Scaling (NVIDIAGameWorks/NVIDIAImageScaling, third_party/nis):
+     MIT, Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. Its scaler is
+     ported to C and WGSL (src/plugins/nis: nis.h, nis.c, wgsl/nis.wgsl,
+     keeping its notice); its filter tables are compiled from its
+     NIS/NIS_Config.h (generated nis_coefs.c).
+   - Unity (ThrowTheSwitch, test framework): MIT
+   - SDL 3 (libsdl-org/SDL, third_party/sdl; hdrg-gui only, HDRG_BUILD_GUI): zlib License
+   - Dear ImGui (ocornut/imgui, third_party/imgui; hdrg-gui only, HDRG_BUILD_GUI): MIT
+   - VapourSynth: LGPL-2.1-or-later. Only its API header (VapourSynth4.h:
+     declarations and macros) is used to build the plugin in
+     src/bindings/vapoursynth; no VapourSynth code is compiled into or linked
+     with the library or the plugin, which loads into VapourSynth at run time.
+   - FFmpeg (libavutil / libavcodec / libavformat / libswscale): LGPL-2.1-or-later
+     (GPL-2.0-or-later when built with --enable-gpl). Not bundled: src/bindings/ffmpeg
+     and tools/hdrg-ffmpeg link the system's FFmpeg dynamically, and the library
+     itself does not use it. A distributed hdrg-ffmpeg takes the license of the
+     FFmpeg it links (use an LGPL build of FFmpeg for an LGPL-compatible binary).
+   - libavif (HDRG_WITH_AVIF): BSD-2-Clause, with the AV1 codecs it is built with
+     (libaom: BSD-2-Clause and the Alliance for Open Media Patent License 1.0; dav1d:
+     BSD-2-Clause). Not bundled: the AVIF module (src/plugins/avif, a loadable
+     module never linked into the library) links the system's libavif dynamically.
+   - libheif, libde265 (HDRG_WITH_HEIF, opt-in): LGPL-3.0-or-later; x265 (its HEVC
+     encoder): GPL-2.0-or-later. Not bundled: the system's libheif, or, when none is
+     found, these three fetched at build time (pinned tags) and built as shared
+     libraries the HEIF module (src/plugins/heif, a loadable module never linked
+     into the library) links dynamically (installed beside it). A distributed
+     module with the fetched x265 takes the GPL's terms.
+   - GStreamer / GLib: LGPL-2.1-or-later. Not bundled: the plugin in
+     src/bindings/gstreamer links the system's GStreamer dynamically.
+   - Dawn (google/dawn, HDRG_WITH_WEBGPU): BSD-3-Clause. Not bundled:
+     scripts/build_dawn.sh builds its pinned tag as a shared library the library
+     links dynamically; the browser builds (HDRG_WASM_WEBGPU) use its emdawnwebgpu
+     port. Its Tint generated the committed MSL, SPIR-V and HLSL from the project's
+     WGSL (scripts/gen_shaders.sh).
+   - Emscripten (third_party/emsdk, the WebAssembly builds' toolchain): MIT OR
+     University of Illinois/NCSA. Its runtime is part of the WebAssembly modules
+     it builds.
+
+3. Test image and training data:
+   - assets/kodim23.png is kodim23 of the Kodak Lossless True Color Image Suite
+     (Photo CD PCD0992), released by the Eastman Kodak Company for unrestricted
+     usage; assets/kodim23_gainmap.jpg and assets/kodim23_x_iccpq.jpg are made
+     from it.
+   - The light predictor's weights (src/plugins/predict/predict_weights.c) were
+     trained (scripts/predictor) on HDRIs of Poly Haven (https://polyhaven.com),
+     CC0; no image of them is included.

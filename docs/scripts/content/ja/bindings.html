@@ -1,0 +1,29 @@
+<p class="lead">バインディングは、メディアの枠組みのフレームの形の後ろにセッションを置きます。枠組みのバインディングは公開ヘッダだけを使い (ブラウザのモジュールは foundation の <code>memory.h</code> も読む)、どれもライブラリの設定を同じ名前 (hdrg-cli のオプション名: {{api:hdrg_setting_at}}・{{api:hdrg_setting_set}}・{{api:hdrg_setting_get}}。セッションのものは {{api:hdrg_session_setting_set}}。VapourSynth の引数は <code>-</code> を <code>_</code> にしたもの) で、値は数で受け取ります。プリセット・時間モード・遅延のための自分の選択肢は、代わりにライブラリの値の名前を受け取ります: GStreamer の文字列のプロパティと VapourSynth の引数は {{api:hdrg_setting_parse}} で読み (<code>preset=anime</code>・<code>temporal=recursive</code>・<code>latency=low</code>)、FFmpeg の <code>preset</code>・<code>temporal</code>・<code>latency</code>・<code>gpu</code> は AVOption の定数です。</p>
+
+<p>統計のウィンドウ (<code>past</code> / <code>future</code> が 0 より大きい)・RECURSIVE・TWO_PASS には STATS のフィルタが、出力のレートには動き補償の補間 <code>hdrg.interp.mc</code> が要ります。どちらも <code>HDRG_WITH_TEMPORAL</code> のビルドに入り、既定は OFF です ({{page:video}})。バインディングは自分ではフィルタを足さないので、ほかのビルドではこれらは {{api:HDRG_ERR_UNSUPPORTED}} で失敗します。下の例のうちウィンドウや出力のレートを指定するものは、そのビルドのものです。</p>
+
+{{fig:bindings}}
+
+<h2>FFmpeg</h2>
+<p>2 つあります: それを使うツールの隣の補助ライブラリ ({{src:tools/ffmpeg}}) と、FFmpeg そのもののフィルタ ({{src:src/bindings/ffmpeg}}) です:</p>
+<ul>
+<li><strong>補助ライブラリ</strong> {{src:tools/ffmpeg/hdrg_ffmpeg.h|hdrg_ffmpeg.{h,c}}} (libavutil 59 以降、install しない: hdrg-ffmpeg とテストのもの。CMake の <code>HDRG_WITH_FFMPEG</code>、見つかれば ON): <code>AVFrame</code> の画素の形式と色をセッションのものへ対応づけ (平面と NV12 / P010 型の Y'CbCr、詰めた RGB、VideoToolbox のフレーム。PQ と HLG のソースは対象外)、フレームを写さずに包み (参照は <code>release</code> で外す)、AV1 の粒のパラメータを {{api:HDRG_SD_FILM_GRAIN}} で渡し、出力のフレームに色・マスタリングディスプレイ・HDR10+・ST 2094-50 のサイドデータを付けます (ライブラリの T.35 のバイト列を FFmpeg 自身の読み手で読む)。</li>
+<li><strong>フィルタ</strong> <code>libhdrgrading</code> ({{src:src/bindings/ffmpeg/patches}}: FFmpeg に <code>libavfilter/vf_libhdrgrading.c</code> と <code>--enable-libhdrgrading</code> を足すパッチで、upstreamに出せる形)。公開 API だけを使い、install した共有ライブラリを pkg-config で見つけます。選択肢は <code>preset</code>・<code>temporal</code>・<code>latency</code> (既定 offline)・<code>past</code> / <code>future</code>・<code>proxy</code> (解析の縮小。リアルタイムの effort のとき: <code>latency</code> が playback か low)・<code>w</code> / <code>h</code>・<code>fps</code>・<code>threads</code>・<code>gpu</code>・<code>flash_limit</code>・<code>dither</code>・<code>settings</code> (ライブラリの設定の名前、値は数)。出力は PQ / BT.2020 の yuv420p10・p010・rgb48。</li>
+</ul>
+<pre><code>scripts/build_ffmpeg.sh --filter build/deps/hdrgrading
+build/deps/ffmpeg-filter/bin/ffmpeg -i in.mp4 \
+  -vf "libhdrgrading=preset=anime:settings='diffuse-max=1.5'" -c:v libsvtav1 out.mkv</code></pre>
+<p>ツールの <code>hdrg-ffmpeg</code> ({{page:tools}}) は補助ライブラリでファイルを丸ごと変換します。</p>
+
+<h2>GStreamer</h2>
+<p>{{src:src/bindings/gstreamer/gsthdrgrading.c}} は要素 <code>hdrgrade</code> を持つプラグイン <code>libgsthdrgrading</code> です (GStreamer 1.20 以降。<code>HDRG_BUILD_GSTREAMER</code>)。未来のウィンドウを遅延にする <code>GstBaseTransform</code> で (LATENCY の問い合わせに足し、EOS で出し切り、FLUSH_STOP で作り直す)、入力は 8〜16bit の平面の YUV (NV12 / P010 などの形も) と詰めた RGB、色は caps の colorimetry と chroma-site から取り、バッファはマッピングしたまま写さずに渡します。出力は I420_10LE の <code>bt2100-pq</code> で、caps にマスタリングディスプレイを付けます。プロパティ <code>latency</code> でプロファイルを選び (既定 playback)、<code>out-rate</code> で出力のレートを変えられます。光を測ったバッファには、HDR10+ と ST 2094-50 の T.35 のペイロードを持つカスタムメタ <code>HdrgDynamicHdrMeta</code> が付きます。ほかのプロパティは設定の表から既定値付きで作ります (符号なし整数・浮動小数点・真偽値)。</p>
+<pre><code>GST_PLUGIN_PATH=build/dev gst-launch-1.0 filesrc location=in.mp4 ! decodebin ! videoconvert ! \
+  hdrgrade future=4 diffuse-max=1.5 ! x265enc ! h265parse ! matroskamux ! filesink location=out.mkv</code></pre>
+
+<h2>VapourSynth</h2>
+<p>{{src:src/bindings/vapoursynth/hdrg_vapoursynth.c}} は <code>hdrg.Grade</code> を足します (モジュール <code>libhdrgrading_vs</code>。<code>HDRG_BUILD_VAPOURSYNTH</code>)。フレームを任意の順に並列で求めても同じバイトになります (RECURSIVE は近似だけ): セッションの位置に近い要求はセッションを進め、遠い要求は preroll の分だけ前から開き直します ({{api:hdrg_session_preroll}})。色はフレームの属性 (<code>_Matrix</code>・<code>_Transfer</code>・<code>_Primaries</code>・<code>_ColorRange</code>・<code>_ChromaLocation</code>) か引数 <code>matrix</code>・<code>transfer</code>・<code>primaries</code>・<code>range</code>・<code>chromaloc</code> から取ります。<code>preset</code> と <code>temporal</code> (windowed・recursive・static) は名前で受け取り、<code>fpsnum</code> / <code>fpsden</code> で出力のレートを変え、セッションはいつも OFFLINE です。出力は PQ / BT.2020 の 4:2:0 10bit、<code>format="rgb48"</code> なら Display P3 (<code>bt2020=1</code> で BT.2020) の 16bit の R'G'B' です。出力にはマスタリングディスプレイ・測った光・T.35 のペイロード <code>HDR10Plus</code> (FFMS2 の形) と <code>HdrgST2094_50</code> を付けます。</p>
+<pre><code>clip = core.bs.VideoSource("in.mp4")
+hdr = core.hdrg.Grade(clip, past=8, future=4, preset="photo", diffuse_max=1.5)</code></pre>
+
+<h2>ブラウザのモジュール</h2>
+<p>{{src:src/wasm/hdrg_wasm.c}} は JavaScript へ関数だけのインタフェースを出します (<code>hdrg_wasm_context_create</code>・名前での設定・<code>hdrg_wasm_convert</code>・対話プレビューの状態)。5 通りに組み (SIMD128 か scalar、単一スレッドか pthreads、そして emdawnwebgpu と JSPI でブラウザの WebGPU を使う SIMD128)、<code>hdrgrading-&lt;simd128|scalar&gt;-&lt;st|mt|webgpu&gt;.mjs</code> + <code>.wasm</code> になります。静止画を変換します ({{api:hdrg_convert}} と同じ形: 既定はゲインマップの JPEG)。{{src:src/wasm/demo}} のデモは Worker で変換し、HDR の canvas でプレビューします: {{src:src/wasm/demo/preview.js|preview.js}} が 1 フレームのセッションの状態 ({{api:hdrg_session_receive_state}}) の上でライブラリの適用の WGSL を走らせ、スライダに合わせて描き直します。</p>

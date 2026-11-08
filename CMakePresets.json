@@ -1,0 +1,765 @@
+{
+    "version": 8,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 29,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/$env{HDRG_BUILD_PREFIX}${presetName}",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "debug",
+            "hidden": true,
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "HDRG_WITH_SIMD_FMA": "OFF"
+            }
+        },
+        {
+            "name": "clang",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "dev",
+            "displayName": "Debug",
+            "inherits": "debug"
+        },
+        {
+            "name": "release",
+            "displayName": "Release (shared library)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BUILD_SHARED_LIBS": "ON"
+            }
+        },
+        {
+            "name": "nolcms2",
+            "displayName": "Debug without lcms2 (no P3 / PQ profiles: GAINMAP only)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "HDRG_WITH_LCMS2": "OFF"
+            }
+        },
+        {
+            "name": "minimal",
+            "displayName": "Debug without the optional built-in filters and codecs (HDRG_PLUGINS_EXCLUDE: Lanczos and JPEG alone)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "HDRG_PLUGINS_EXCLUDE": "filters;png;gif;jxl"
+            }
+        },
+        {
+            "name": "temporal",
+            "displayName": "Debug with the temporal filters of the video statistics, the motion-compensated interpolation and the multi-frame upscale (off by default)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "HDRG_WITH_TEMPORAL": "ON"
+            }
+        },
+        {
+            "name": "heif",
+            "displayName": "Debug with HEIF (libheif: the system's, else fetched with libde265 and x265 at build time)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "HDRG_WITH_HEIF": "ON"
+            }
+        },
+        {
+            "name": "avif",
+            "displayName": "Debug with the AVIF module (the system's libavif, by pkg-config)",
+            "inherits": "debug",
+            "cacheVariables": {
+                "HDRG_WITH_AVIF": "ON"
+            }
+        },
+        {
+            "name": "asan-ubsan",
+            "displayName": "AddressSanitizer + UndefinedBehaviorSanitizer",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "HDRG_SANITIZER": "address-undefined"
+            }
+        },
+        {
+            "name": "tsan",
+            "displayName": "ThreadSanitizer",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "HDRG_SANITIZER": "thread"
+            }
+        },
+        {
+            "name": "msan-core",
+            "displayName": "MemorySanitizer (the core without the codecs, Linux + Clang)",
+            "inherits": [
+                "base",
+                "clang"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "HDRG_SANITIZER": "memory",
+                "HDRG_PLUGINS_EXCLUDE": "codecs"
+            }
+        },
+        {
+            "name": "valgrind",
+            "displayName": "Valgrind memcheck",
+            "inherits": "debug",
+            "cacheVariables": {
+                "CMAKE_TEST_LAUNCHER": "valgrind;--error-exitcode=1;--leak-check=full;--errors-for-leak-kinds=definite;--track-origins=yes",
+                "HDRG_WITH_WEBGPU": "OFF",
+                "HDRG_WITH_VULKAN": "OFF"
+            }
+        },
+        {
+            "name": "coverage",
+            "displayName": "Clang source-based coverage (the temporal features on: every source measured)",
+            "inherits": [
+                "debug",
+                "clang"
+            ],
+            "cacheVariables": {
+                "HDRG_COVERAGE": "ON",
+                "HDRG_WITH_TEMPORAL": "ON"
+            }
+        },
+        {
+            "name": "coverage-msvc",
+            "displayName": "Clang source-based coverage with clang-cl (Windows; Ninja, the target of the developer prompt, -m32 in CFLAGS for x86)",
+            "inherits": "debug",
+            "generator": "Ninja",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "HDRG_COVERAGE": "ON",
+                "HDRG_WITH_TEMPORAL": "ON"
+            }
+        },
+        {
+            "name": "fuzz",
+            "displayName": "libFuzzer + ASan/UBSan",
+            "inherits": [
+                "base",
+                "clang"
+            ],
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "HDRG_SANITIZER": "address-undefined",
+                "HDRG_BUILD_FUZZERS": "ON",
+                "HDRG_BUILD_TESTS": "OFF",
+                "HDRG_BUILD_TOOLS": "OFF"
+            }
+        },
+        {
+            "name": "wasm-base",
+            "hidden": true,
+            "inherits": "base",
+            "toolchainFile": "$env{HDRG_EMSDK_DIR}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "wasm",
+            "displayName": "WASM SIMD128, single thread (the demo's default)",
+            "inherits": "wasm-base"
+        },
+        {
+            "name": "wasm-mt",
+            "displayName": "WASM SIMD128, pthreads",
+            "inherits": "wasm-base",
+            "cacheVariables": {
+                "HDRG_WASM_THREADS": "ON"
+            }
+        },
+        {
+            "name": "wasm-scalar",
+            "displayName": "WASM scalar, single thread",
+            "inherits": "wasm-base",
+            "cacheVariables": {
+                "HDRG_WITH_SIMD": "OFF"
+            }
+        },
+        {
+            "name": "wasm-scalar-mt",
+            "displayName": "WASM scalar, pthreads",
+            "inherits": "wasm-base",
+            "cacheVariables": {
+                "HDRG_WASM_THREADS": "ON",
+                "HDRG_WITH_SIMD": "OFF"
+            }
+        },
+        {
+            "name": "wasm-webgpu",
+            "displayName": "WASM SIMD128 with WebGPU (emdawnwebgpu, JSPI), single thread",
+            "inherits": "wasm-base",
+            "cacheVariables": {
+                "HDRG_WASM_WEBGPU": "ON"
+            }
+        },
+        {
+            "name": "wasm-debug",
+            "displayName": "WASM SIMD128, single thread, Debug",
+            "inherits": "wasm-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "HDRG_WITH_SIMD_FMA": "OFF"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "dev",
+            "configurePreset": "dev"
+        },
+        {
+            "name": "release",
+            "configurePreset": "release"
+        },
+        {
+            "name": "nolcms2",
+            "configurePreset": "nolcms2"
+        },
+        {
+            "name": "minimal",
+            "configurePreset": "minimal"
+        },
+        {
+            "name": "temporal",
+            "configurePreset": "temporal"
+        },
+        {
+            "name": "heif",
+            "configurePreset": "heif"
+        },
+        {
+            "name": "avif",
+            "configurePreset": "avif"
+        },
+        {
+            "name": "asan-ubsan",
+            "configurePreset": "asan-ubsan"
+        },
+        {
+            "name": "tsan",
+            "configurePreset": "tsan"
+        },
+        {
+            "name": "msan-core",
+            "configurePreset": "msan-core"
+        },
+        {
+            "name": "valgrind",
+            "configurePreset": "valgrind"
+        },
+        {
+            "name": "coverage",
+            "configurePreset": "coverage"
+        },
+        {
+            "name": "coverage-msvc",
+            "configurePreset": "coverage-msvc"
+        },
+        {
+            "name": "fuzz",
+            "configurePreset": "fuzz"
+        },
+        {
+            "name": "wasm",
+            "configurePreset": "wasm"
+        },
+        {
+            "name": "wasm-mt",
+            "configurePreset": "wasm-mt"
+        },
+        {
+            "name": "wasm-scalar",
+            "configurePreset": "wasm-scalar"
+        },
+        {
+            "name": "wasm-scalar-mt",
+            "configurePreset": "wasm-scalar-mt"
+        },
+        {
+            "name": "wasm-webgpu",
+            "configurePreset": "wasm-webgpu"
+        },
+        {
+            "name": "wasm-debug",
+            "configurePreset": "wasm-debug"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "output": {
+                "outputOnFailure": true
+            },
+            "execution": {
+                "noTestsAction": "error"
+            }
+        },
+        {
+            "name": "dev",
+            "inherits": "base",
+            "configurePreset": "dev"
+        },
+        {
+            "name": "release",
+            "inherits": "base",
+            "configurePreset": "release"
+        },
+        {
+            "name": "nolcms2",
+            "inherits": "base",
+            "configurePreset": "nolcms2"
+        },
+        {
+            "name": "minimal",
+            "inherits": "base",
+            "configurePreset": "minimal"
+        },
+        {
+            "name": "temporal",
+            "inherits": "base",
+            "configurePreset": "temporal"
+        },
+        {
+            "name": "heif",
+            "inherits": "base",
+            "configurePreset": "heif"
+        },
+        {
+            "name": "avif",
+            "inherits": "base",
+            "configurePreset": "avif"
+        },
+        {
+            "name": "asan-ubsan",
+            "inherits": "base",
+            "configurePreset": "asan-ubsan"
+        },
+        {
+            "name": "tsan",
+            "inherits": "base",
+            "configurePreset": "tsan"
+        },
+        {
+            "name": "msan-core",
+            "inherits": "base",
+            "configurePreset": "msan-core"
+        },
+        {
+            "name": "valgrind",
+            "inherits": "base",
+            "configurePreset": "valgrind",
+            "execution": {
+                "timeout": 10800
+            }
+        },
+        {
+            "name": "coverage",
+            "inherits": "base",
+            "configurePreset": "coverage"
+        },
+        {
+            "name": "coverage-msvc",
+            "inherits": "base",
+            "configurePreset": "coverage-msvc"
+        },
+        {
+            "name": "wasm",
+            "inherits": "base",
+            "configurePreset": "wasm",
+            "execution": {
+                "timeout": 1800
+            }
+        },
+        {
+            "name": "wasm-mt",
+            "inherits": "base",
+            "configurePreset": "wasm-mt",
+            "execution": {
+                "timeout": 1800
+            }
+        },
+        {
+            "name": "wasm-scalar",
+            "inherits": "base",
+            "configurePreset": "wasm-scalar",
+            "execution": {
+                "timeout": 1800
+            }
+        },
+        {
+            "name": "wasm-scalar-mt",
+            "inherits": "base",
+            "configurePreset": "wasm-scalar-mt",
+            "execution": {
+                "timeout": 1800
+            }
+        },
+        {
+            "name": "wasm-webgpu",
+            "inherits": "base",
+            "configurePreset": "wasm-webgpu",
+            "execution": {
+                "timeout": 1800
+            }
+        },
+        {
+            "name": "wasm-debug",
+            "inherits": "base",
+            "configurePreset": "wasm-debug",
+            "execution": {
+                "timeout": 1800
+            }
+        }
+    ],
+    "workflowPresets": [
+        {
+            "name": "dev",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "dev"
+                },
+                {
+                    "type": "build",
+                    "name": "dev"
+                },
+                {
+                    "type": "test",
+                    "name": "dev"
+                }
+            ]
+        },
+        {
+            "name": "release",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "release"
+                },
+                {
+                    "type": "build",
+                    "name": "release"
+                },
+                {
+                    "type": "test",
+                    "name": "release"
+                }
+            ]
+        },
+        {
+            "name": "nolcms2",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "nolcms2"
+                },
+                {
+                    "type": "build",
+                    "name": "nolcms2"
+                },
+                {
+                    "type": "test",
+                    "name": "nolcms2"
+                }
+            ]
+        },
+        {
+            "name": "minimal",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "minimal"
+                },
+                {
+                    "type": "build",
+                    "name": "minimal"
+                },
+                {
+                    "type": "test",
+                    "name": "minimal"
+                }
+            ]
+        },
+        {
+            "name": "temporal",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "temporal"
+                },
+                {
+                    "type": "build",
+                    "name": "temporal"
+                },
+                {
+                    "type": "test",
+                    "name": "temporal"
+                }
+            ]
+        },
+        {
+            "name": "heif",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "heif"
+                },
+                {
+                    "type": "build",
+                    "name": "heif"
+                },
+                {
+                    "type": "test",
+                    "name": "heif"
+                }
+            ]
+        },
+        {
+            "name": "avif",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "avif"
+                },
+                {
+                    "type": "build",
+                    "name": "avif"
+                },
+                {
+                    "type": "test",
+                    "name": "avif"
+                }
+            ]
+        },
+        {
+            "name": "asan-ubsan",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "asan-ubsan"
+                },
+                {
+                    "type": "build",
+                    "name": "asan-ubsan"
+                },
+                {
+                    "type": "test",
+                    "name": "asan-ubsan"
+                }
+            ]
+        },
+        {
+            "name": "tsan",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "tsan"
+                },
+                {
+                    "type": "build",
+                    "name": "tsan"
+                },
+                {
+                    "type": "test",
+                    "name": "tsan"
+                }
+            ]
+        },
+        {
+            "name": "msan-core",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "msan-core"
+                },
+                {
+                    "type": "build",
+                    "name": "msan-core"
+                },
+                {
+                    "type": "test",
+                    "name": "msan-core"
+                }
+            ]
+        },
+        {
+            "name": "valgrind",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "valgrind"
+                },
+                {
+                    "type": "build",
+                    "name": "valgrind"
+                },
+                {
+                    "type": "test",
+                    "name": "valgrind"
+                }
+            ]
+        },
+        {
+            "name": "coverage",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "coverage"
+                },
+                {
+                    "type": "build",
+                    "name": "coverage"
+                },
+                {
+                    "type": "test",
+                    "name": "coverage"
+                }
+            ]
+        },
+        {
+            "name": "coverage-msvc",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "coverage-msvc"
+                },
+                {
+                    "type": "build",
+                    "name": "coverage-msvc"
+                },
+                {
+                    "type": "test",
+                    "name": "coverage-msvc"
+                }
+            ]
+        },
+        {
+            "name": "wasm",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasm"
+                },
+                {
+                    "type": "build",
+                    "name": "wasm"
+                },
+                {
+                    "type": "test",
+                    "name": "wasm"
+                }
+            ]
+        },
+        {
+            "name": "wasm-mt",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasm-mt"
+                },
+                {
+                    "type": "build",
+                    "name": "wasm-mt"
+                },
+                {
+                    "type": "test",
+                    "name": "wasm-mt"
+                }
+            ]
+        },
+        {
+            "name": "wasm-scalar",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasm-scalar"
+                },
+                {
+                    "type": "build",
+                    "name": "wasm-scalar"
+                },
+                {
+                    "type": "test",
+                    "name": "wasm-scalar"
+                }
+            ]
+        },
+        {
+            "name": "wasm-scalar-mt",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasm-scalar-mt"
+                },
+                {
+                    "type": "build",
+                    "name": "wasm-scalar-mt"
+                },
+                {
+                    "type": "test",
+                    "name": "wasm-scalar-mt"
+                }
+            ]
+        },
+        {
+            "name": "wasm-webgpu",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasm-webgpu"
+                },
+                {
+                    "type": "build",
+                    "name": "wasm-webgpu"
+                },
+                {
+                    "type": "test",
+                    "name": "wasm-webgpu"
+                }
+            ]
+        },
+        {
+            "name": "wasm-debug",
+            "steps": [
+                {
+                    "type": "configure",
+                    "name": "wasm-debug"
+                },
+                {
+                    "type": "build",
+                    "name": "wasm-debug"
+                },
+                {
+                    "type": "test",
+                    "name": "wasm-debug"
+                }
+            ]
+        }
+    ]
+}

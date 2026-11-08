@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 640" width="1060" height="640" class="hd-svg" role="img" aria-labelledby="gpu-title" lang="ja">
+<title id="gpu-title">GPU の層: シェーダ・下位層・フィルタ・コア</title>
+<desc>シェーダのリファレンスは WGSL で、Tint が MSL と SPIR-V を作る。フィルタとコアは WebGPU か、Metal と Vulkan の共通の層の上で 1 回だけ書く。</desc>
+<style>
+.hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+@media (prefers-color-scheme: dark) {
+  .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+  html[data-theme="light"] .hd-svg { --hd-bg: #fafaf9; --hd-ink: #1c1917; --hd-muted: #57534e; --hd-line: #6b6560; --hd-group: #f5f5f4; --hd-group-stroke: #d6d3d1; --hd-accent: #b45309; --hd-app-fill: #eef0ff; --hd-app-stroke: #4c56c8; --hd-api-fill: #e5f2fd; --hd-api-stroke: #1c6fb8; --hd-entry-fill: #e3f8f3; --hd-entry-stroke: #0b7f87; --hd-core-fill: #e8f7ea; --hd-core-stroke: #2f8540; --hd-io-fill: #fdf0e2; --hd-io-stroke: #c2550f; --hd-plugin-fill: #f6ecfb; --hd-plugin-stroke: #8f35ab; --hd-filter-fill: #fbeaf3; --hd-filter-stroke: #b0306a; --hd-gpu-fill: #fdebeb; --hd-gpu-stroke: #bf3434; --hd-common-fill: #f0f1f3; --hd-common-stroke: #505865; --hd-ext-fill: #fdf6d8; --hd-ext-stroke: #a86a00; --hd-data-fill: #ffffff; --hd-data-stroke: #7d858f; }
+}
+html[data-theme="dark"] .hd-svg { --hd-bg: #0c0a09; --hd-ink: #f5f5f4; --hd-muted: #a8a29e; --hd-line: #a8a29e; --hd-group: #1c1917; --hd-group-stroke: #44403c; --hd-accent: #f59e0b; --hd-app-fill: #20233f; --hd-app-stroke: #8f97ef; --hd-api-fill: #13283b; --hd-api-stroke: #6cb2ee; --hd-entry-fill: #11302f; --hd-entry-stroke: #5ccdc4; --hd-core-fill: #16301b; --hd-core-stroke: #77c987; --hd-io-fill: #3a2512; --hd-io-stroke: #f0a061; --hd-plugin-fill: #2f1a38; --hd-plugin-stroke: #cc8ae2; --hd-filter-fill: #371827; --hd-filter-stroke: #e483b0; --hd-gpu-fill: #3a1818; --hd-gpu-stroke: #ef8a8a; --hd-common-fill: #24272c; --hd-common-stroke: #a3aab6; --hd-ext-fill: #332b10; --hd-ext-stroke: #e2b84f; --hd-data-fill: #1b1d21; --hd-data-stroke: #8d949e; }
+.hd-svg .hd-bg { fill: var(--hd-bg); }
+.hd-svg text { font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", sans-serif; fill: var(--hd-ink); }
+.hd-svg .hd-mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Noto Sans Mono", "DejaVu Sans Mono", monospace; }
+.hd-svg .hd-label { font-size: 13px; font-weight: 600; }
+.hd-svg .hd-sub { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-gtitle { font-size: 12px; font-weight: 700; fill: var(--hd-muted); }
+.hd-svg .hd-note { font-size: 11.5px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel { font-size: 11px; fill: var(--hd-muted); }
+.hd-svg .hd-elabel-bg { fill: var(--hd-bg); opacity: .92; }
+.hd-svg .hd-group { fill: var(--hd-group); stroke: var(--hd-group-stroke); stroke-width: 1; }
+.hd-svg .hd-edge { fill: none; stroke: var(--hd-line); stroke-width: 1.4; }
+.hd-svg .hd-edge.hd-dashed { stroke-dasharray: 5 4; }
+.hd-svg .hd-edge.hd-accent { stroke: var(--hd-accent); stroke-width: 1.8; }
+.hd-svg .hd-arrow { fill: var(--hd-line); }
+.hd-svg .hd-arrow.hd-accent { fill: var(--hd-accent); }
+.hd-svg .hd-k-app rect.hd-box { fill: var(--hd-app-fill); stroke: var(--hd-app-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-api rect.hd-box { fill: var(--hd-api-fill); stroke: var(--hd-api-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-entry rect.hd-box { fill: var(--hd-entry-fill); stroke: var(--hd-entry-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-core rect.hd-box { fill: var(--hd-core-fill); stroke: var(--hd-core-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-io rect.hd-box { fill: var(--hd-io-fill); stroke: var(--hd-io-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-plugin rect.hd-box { fill: var(--hd-plugin-fill); stroke: var(--hd-plugin-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-filter rect.hd-box { fill: var(--hd-filter-fill); stroke: var(--hd-filter-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-gpu rect.hd-box { fill: var(--hd-gpu-fill); stroke: var(--hd-gpu-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-common rect.hd-box { fill: var(--hd-common-fill); stroke: var(--hd-common-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box { fill: var(--hd-ext-fill); stroke: var(--hd-ext-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-data rect.hd-box { fill: var(--hd-data-fill); stroke: var(--hd-data-stroke); stroke-width: 1.3; }
+.hd-svg .hd-k-ext rect.hd-box, .hd-svg .hd-k-data rect.hd-box { stroke-dasharray: 4 3; }
+</style>
+<rect class="hd-bg" x="0" y="0" width="1060" height="640"/>
+<rect class="hd-group" x="20" y="20" width="1020" height="112" rx="10"/>
+<text class="hd-gtitle" x="32" y="38">シェーダ (ビルド時)</text>
+<rect class="hd-group" x="20" y="150" width="1020" height="160" rx="10"/>
+<text class="hd-gtitle" x="32" y="168">GPU を使うもの</text>
+<rect class="hd-group" x="20" y="328" width="1020" height="150" rx="10"/>
+<text class="hd-gtitle" x="32" y="346">下位層 (src/gpu/、公開しない)</text>
+<rect class="hd-group" x="20" y="496" width="1020" height="124" rx="10"/>
+<text class="hd-gtitle" x="32" y="514">device</text>
+<polyline class="hd-edge" points="290.0,82.0 324.0,82.0"/>
+<polygon class="hd-arrow" points="330.0,82.0 323.0,78.5 323.0,85.5"/>
+<polyline class="hd-edge" points="560.0,82.0 594.0,82.0"/>
+<polygon class="hd-arrow" points="600.0,82.0 593.0,78.5 593.0,85.5"/>
+<polyline class="hd-edge" points="439.2,400.0 440.0,414.0"/>
+<polygon class="hd-arrow" points="440.0,420.0 436.5,413.0 443.5,413.0"/>
+<polyline class="hd-edge" points="610.8,400.0 610.0,414.0"/>
+<polygon class="hd-arrow" points="610.0,420.0 606.5,413.0 613.5,413.0"/>
+<polyline class="hd-edge" points="190.0,292.0 190.0,354.0"/>
+<polygon class="hd-arrow" points="190.0,360.0 186.5,353.0 193.5,353.0"/>
+<polyline class="hd-edge" points="525.0,292.0 525.0,354.0"/>
+<polygon class="hd-arrow" points="525.0,360.0 521.5,353.0 528.5,353.0"/>
+<polyline class="hd-edge" points="772.0,292.0 772.0,380.0 696.0,380.0"/>
+<polygon class="hd-arrow" points="690.0,380.0 697.0,376.5 697.0,383.5"/>
+<polyline class="hd-edge hd-dashed" points="728.6,292.0 729.0,318.0 295.0,318.0 295.0,354.0"/>
+<polygon class="hd-arrow" points="295.0,360.0 291.5,353.0 298.5,353.0"/>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="40" y="50" width="250" height="64" rx="7"/>
+<text class="hd-label" x="165.0" y="79.0" text-anchor="middle">WGSL (リファレンス)</text>
+<text class="hd-sub hd-mono" x="165.0" y="94.0" text-anchor="middle">plugins/*/wgsl · core/wgsl</text>
+</g>
+<g class="hd-k-common">
+<rect class="hd-box" x="330" y="50" width="230" height="64" rx="7"/>
+<text class="hd-label" x="445.0" y="79.0" text-anchor="middle">scripts/gen_shaders.sh</text>
+<text class="hd-sub" x="445.0" y="94.0" text-anchor="middle">Tint の CLI (build_dawn.sh --tint)</text>
+</g>
+<g class="hd-k-data">
+<rect class="hd-box" x="600" y="50" width="420" height="64" rx="7"/>
+<text class="hd-label" x="810.0" y="72.0" text-anchor="middle">生成物 (コミットする)</text>
+<text class="hd-sub hd-mono" x="810.0" y="87.0" text-anchor="middle">msl/*.metal · spirv/*.spv · core/hlsl/*.hlsl</text>
+<text class="hd-sub hd-mono" x="810.0" y="101.0" text-anchor="middle">(CMake embeds every one as arrays)</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="40" y="182" width="300" height="110" rx="7"/>
+<text class="hd-label" x="190.0" y="206.0" text-anchor="middle">WebGPU のフィルタ</text>
+<text class="hd-sub hd-mono" x="190.0" y="221.0" text-anchor="middle">plugins/*/webgpu_*.c</text>
+<text class="hd-sub hd-mono" x="190.0" y="235.0" text-anchor="middle">hdrg.webgpu.deblock · dering ·</text>
+<text class="hd-sub hd-mono" x="190.0" y="249.0" text-anchor="middle">defringe · deband · denoise ·</text>
+<text class="hd-sub hd-mono" x="190.0" y="263.0" text-anchor="middle">mctf · lanczos · edge · fsr1 ·</text>
+<text class="hd-sub hd-mono" x="190.0" y="277.0" text-anchor="middle">nis · interp.mc</text>
+</g>
+<g class="hd-k-filter">
+<rect class="hd-box" x="360" y="182" width="330" height="110" rx="7"/>
+<text class="hd-label" x="525.0" y="220.0" text-anchor="middle">Metal と Vulkan のフィルタ</text>
+<text class="hd-sub hd-mono" x="525.0" y="235.0" text-anchor="middle">plugins/*/gk_*.c (written once)</text>
+<text class="hd-sub hd-mono" x="525.0" y="249.0" text-anchor="middle">hdrg.metal.* · hdrg.vulkan.*</text>
+<text class="hd-sub hd-mono" x="525.0" y="263.0" text-anchor="middle">+ plugins/metalfx (MetalFX)</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="710" y="182" width="310" height="110" rx="7"/>
+<text class="hd-label" x="865.0" y="213.0" text-anchor="middle">コアの GPU の層</text>
+<text class="hd-sub hd-mono" x="865.0" y="228.0" text-anchor="middle">core/gpu_core.c: 40 buffer slots</text>
+<text class="hd-sub hd-mono" x="865.0" y="242.0" text-anchor="middle">gpu_convert: Y&#x27;CbCr → RGB16</text>
+<text class="hd-sub hd-mono" x="865.0" y="256.0" text-anchor="middle">gpu_apply: pass C</text>
+<text class="hd-sub hd-mono" x="865.0" y="270.0" text-anchor="middle">gpu_analyze · gpu_gather</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="40" y="360" width="300" height="100" rx="7"/>
+<text class="hd-label" x="190.0" y="400.0" text-anchor="middle">gpu/webgpu.{h,c}</text>
+<text class="hd-sub" x="190.0" y="415.0" text-anchor="middle">Dawn。device のスレッドが作業を</text>
+<text class="hd-sub" x="190.0" y="429.0" text-anchor="middle">順に実行 (ブラウザはその場 + JSPI)</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="360" y="360" width="330" height="40" rx="7"/>
+<text class="hd-label" x="525.0" y="377.0" text-anchor="middle">gpu/gk.h</text>
+<text class="hd-sub" x="525.0" y="392.0" text-anchor="middle">バッファ・カーネル・パス・フレーム</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="360" y="420" width="160" height="40" rx="7"/>
+<text class="hd-label" x="440.0" y="437.0" text-anchor="middle">gpu/metal.m</text>
+<text class="hd-sub hd-mono" x="440.0" y="452.0" text-anchor="middle">gk_metal.c</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="530" y="420" width="160" height="40" rx="7"/>
+<text class="hd-label" x="610.0" y="437.0" text-anchor="middle">gpu/vulkan.c</text>
+<text class="hd-sub hd-mono" x="610.0" y="452.0" text-anchor="middle">gk_vulkan.c</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="710" y="360" width="310" height="100" rx="7"/>
+<text class="hd-label" x="865.0" y="400.0" text-anchor="middle">gpu/apple.c</text>
+<text class="hd-sub" x="865.0" y="415.0" text-anchor="middle">CVPixelBuffer / IOSurface:</text>
+<text class="hd-sub" x="865.0" y="429.0" text-anchor="middle">画素の形式と面</text>
+</g>
+<g class="hd-k-api">
+<rect class="hd-box" x="40" y="528" width="300" height="76" rx="7"/>
+<text class="hd-label" x="190.0" y="556.0" text-anchor="middle">アプリの device</text>
+<text class="hd-sub hd-mono" x="190.0" y="571.0" text-anchor="middle">hdrg_context_set_device</text>
+<text class="hd-sub hd-mono" x="190.0" y="585.0" text-anchor="middle">HDRG_DEVICE_METAL / VULKAN / WEBGPU</text>
+</g>
+<g class="hd-k-gpu">
+<rect class="hd-box" x="360" y="528" width="330" height="76" rx="7"/>
+<text class="hd-label" x="525.0" y="556.0" text-anchor="middle">ライブラリ自身の device</text>
+<text class="hd-sub" x="525.0" y="571.0" text-anchor="middle">最初に使うときに作る。種類ごとに 1 つの</text>
+<text class="hd-sub" x="525.0" y="585.0" text-anchor="middle">層をコアとプラグインで共有</text>
+</g>
+<g class="hd-k-common">
+<rect class="hd-box" x="710" y="528" width="310" height="76" rx="7"/>
+<text class="hd-label" x="865.0" y="556.0" text-anchor="middle">選ぶ順</text>
+<text class="hd-sub" x="865.0" y="571.0" text-anchor="middle">config.device の種類を先に、</text>
+<text class="hd-sub" x="865.0" y="585.0" text-anchor="middle">次に Metal → Vulkan → WebGPU → CPU</text>
+</g>
+</svg>
